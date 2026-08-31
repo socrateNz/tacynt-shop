@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: tacynt-shop-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tacynt_shop
+      POSTGRES_USER: tacynt_owner
+      POSTGRES_PASSWORD: tacynt_owner_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - tacynt-shop-pgdata:/var/lib/postgresql/data
+
+volumes:
+  tacynt-shop-pgdata:

@@ -1,0 +1,121 @@
+/*
+ * Tacynt Shop — Charte graphique v1.0
+ * Sept rôles de couleur, deux thèmes, deux densités.
+ * Un composant ne connaît jamais un hexadécimal, uniquement un rôle.
+ */
+
+:root {
+  /* Neutres — 90 % de l'interface */
+  --background: #fafaf9; /* Fond */
+  --card: #ffffff; /* Surface — cartes, tableaux, panneaux */
+  --popover: #f5f5f4; /* Surface 2 — survol de ligne, champ inactif, popover */
+  --muted: #f5f5f4; /* Surface 2 */
+  --secondary: #f5f5f4; /* Surface 2 */
+  --accent: #f5f5f4; /* Surface 2 */
+  --border: #e7e5e4; /* Bordure — séparation par défaut */
+  --input: #d6d3d1; /* Bordure forte — contour de contrôle, en-tête de tableau */
+
+  --foreground: #0b0b0b; /* Texte */
+  --card-foreground: #0b0b0b;
+  --popover-foreground: #0b0b0b;
+  --secondary-foreground: #0b0b0b;
+  --accent-foreground: #0b0b0b;
+  --muted-foreground: #57534e; /* Texte 2 — descriptions, libellés secondaires */
+  --subtle-foreground: #8a857f; /* Texte 3 — métadonnées, placeholders, unités */
+
+  /* Accent de marque — un seul accent par écran */
+  --primary: #b8431a;
+  --primary-foreground: #ffffff;
+  --ring: #b8431a; /* anneau de focus */
+
+  /* États — la couleur est une information, jamais décorative */
+  --destructive: #b42318; /* Négatif — rupture, écart de caisse, annulation */
+  --success: #15803d; /* Positif — stock sain, ticket encaissé */
+  --warning: #a45b07; /* Attention — seuil atteint, péremption proche, ardoise en retard */
+
+  /* Navigation */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0b0b0b;
+  --sidebar-primary: #b8431a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f5f4;
+  --sidebar-accent-foreground: #0b0b0b;
+  --sidebar-border: #e7e5e4;
+  --sidebar-ring: #b8431a;
+
+  /* Graphiques — neutre par défaut, non spécifié par la charte v1.0 */
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+
+  --radius: 6px;
+
+  /* Densité admin (par défaut) */
+  --control-h: 36px;
+  --row-h: 40px;
+  --ui-font-size: 14px;
+}
+
+.dark {
+  --background: #0b0b0b;
+  --card: #141312;
+  --popover: #1c1a19;
+  --muted: #1c1a19;
+  --secondary: #1c1a19;
+  --accent: #1c1a19;
+  --border: #2a2726;
+  --input: #3a3634;
+
+  --foreground: #f4f1ea; /* crème Tacynt, pas de blanc pur */
+  --card-foreground: #f4f1ea;
+  --popover-foreground: #f4f1ea;
+  --secondary-foreground: #f4f1ea;
+  --accent-foreground: #f4f1ea;
+  --muted-foreground: #a8a29c;
+  --subtle-foreground: #78716c;
+
+  --primary: #e2703a;
+  --primary-foreground: #0b0b0b;
+  --ring: #e2703a;
+
+  --destructive: #f87171;
+  --success: #4ade80;
+  --warning: #e3a008;
+
+  --sidebar: #141312;
+  --sidebar-foreground: #f4f1ea;
+  --sidebar-primary: #e2703a;
+  --sidebar-primary-foreground: #0b0b0b;
+  --sidebar-accent: #1c1a19;
+  --sidebar-accent-foreground: #f4f1ea;
+  --sidebar-border: #2a2726;
+  --sidebar-ring: #e2703a;
+
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+}
+
+/* Densité caisse — mêmes composants, cibles tactiles agrandies */
+.density-pos {
+  --control-h: 48px;
+  --row-h: 52px;
+  --ui-font-size: 15px;
+}
+
+body {
+  font-size: var(--ui-font-size);
+}
+
+/* Tout chiffre passe par .num — mono, tabulaire. Les montants sont en plus
+   alignés à droite (text-right) ; une référence ou un code-barres reste
+   aligné au texte qui l'entoure. */
+.num {
+  font-family: var(--font-geist-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}

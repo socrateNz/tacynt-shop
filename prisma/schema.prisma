@@ -1,0 +1,445 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7 : l'URL de connexion ne se déclare plus ici. Migrate/Studio la
+// lisent depuis prisma.config.ts ; PrismaClient reçoit un `adapter` explicite
+// au runtime (voir lib/db/client.ts et lib/db/system-client.ts).
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrganizationPlan {
+  STARTER
+  BUSINESS
+  PRO
+  ENTERPRISE
+
+  @@map("organization_plan")
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  GRACE_PERIOD
+  SUSPENDED
+
+  @@map("organization_status")
+}
+
+enum UserRole {
+  PROPRIETAIRE
+  GERANT
+  RESPONSABLE_STOCK
+  VENDEUR
+  COMPTABLE
+
+  @@map("user_role")
+}
+
+enum StockMovementType {
+  RECEPTION
+  VENTE
+  RETOUR_CLIENT
+  RETOUR_FOURNISSEUR
+  TRANSFERT_SORTANT
+  TRANSFERT_ENTRANT
+  AJUSTEMENT
+  CASSE_PERTE_VOL
+  CONSOMMATION_INTERNE
+
+  @@map("stock_movement_type")
+}
+
+enum SaleStatus {
+  VALIDEE
+  ANNULEE
+
+  @@map("sale_status")
+}
+
+enum PaymentMode {
+  ESPECES
+  MOBILE_MONEY
+  CARTE
+  VIREMENT
+  ARDOISE
+  BON_ACHAT
+
+  @@map("payment_mode")
+}
+
+model Organization {
+  id           String             @id @default(uuid()) @db.Uuid
+  nom          String
+  slug         String             @unique
+  plan         OrganizationPlan   @default(STARTER)
+  statut       OrganizationStatus @default(ACTIVE)
+  devise       String             @default("XOF")
+  fuseau       String             @default("Africa/Douala")
+  profilMetier String             @default("generique") @map("profil_metier")
+  settings     Json               @default("{}")
+  createdAt    DateTime           @default(now()) @map("created_at")
+
+  shops      Shop[]
+  users      User[]
+  categories Category[]
+  products   Product[]
+  sales      Sale[]
+  auditLogs  AuditLog[]
+  stockMovements StockMovement[]
+  stockAlerts    StockAlert[]
+
+  @@map("organizations")
+}
+
+model Shop {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  nom            String
+  adresse        String?
+  telephone      String?
+  actif          Boolean @default(true)
+
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  userShops      UserShop[]
+  shopPrices     ShopPrice[]
+  stockLevels    StockLevel[]
+  stockMovements StockMovement[]
+  sales          Sale[]
+  cashSessions   CashSession[]
+  registers      Register[]
+  stockAlerts    StockAlert[]
+
+  @@index([organizationId])
+  @@map("shops")
+}
+
+model User {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  email          String
+  hash           String
+  role           UserRole
+  actif          Boolean   @default(true)
+  mfaEnabled     Boolean   @default(false) @map("mfa_enabled")
+  mfaSecret      String?   @map("mfa_secret")
+  failedAttempts Int       @default(0) @map("failed_attempts")
+  lockedUntil    DateTime? @map("locked_until")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  userShops    UserShop[]
+  sessions     Session[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@map("users")
+}
+
+model UserShop {
+  // organization_id dénormalisé ici aussi : règle non négociable du cahier
+  // des charges ("organization_id sur toutes les tables métier"), même sur
+  // une table de jointure.
+  organizationId String @map("organization_id") @db.Uuid
+  userId         String @map("user_id") @db.Uuid
+  shopId         String @map("shop_id") @db.Uuid
+
+  user User @relation(fields: [userId], references: [id])
+  shop Shop @relation(fields: [shopId], references: [id])
+
+  @@id([userId, shopId])
+  @@index([organizationId])
+  @@map("user_shops")
+}
+
+model Session {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  tokenHash      String   @unique @map("token_hash")
+  expiresAt      DateTime @map("expires_at")
+  ip             String?
+  userAgent      String?  @map("user_agent")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@map("sessions")
+}
+
+model Category {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  parentId       String? @map("parent_id") @db.Uuid
+  nom            String
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  parent       Category?    @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children     Category[]   @relation("CategoryToCategory")
+  products     Product[]
+
+  @@index([organizationId])
+  @@map("categories")
+}
+
+model Product {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  reference      String
+  designation    String
+  categoryId     String?  @map("category_id") @db.Uuid
+  unite          String   @default("piece")
+  tauxTaxe       Decimal  @default(0) @map("taux_taxe") @db.Decimal(5, 2)
+  suiviStock     Boolean  @default(true) @map("suivi_stock")
+  actif          Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  category     Category?        @relation(fields: [categoryId], references: [id])
+  variants     ProductVariant[]
+
+  @@unique([organizationId, reference])
+  @@index([organizationId])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model ProductVariant {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  productId      String  @map("product_id") @db.Uuid
+  attributs      Json    @default("{}")
+  // Unique par organisation, pas globalement : deux boutiques différentes
+  // (organisations distinctes) peuvent légitimement utiliser le même
+  // code-barres interne. Une contrainte globale coupait à tort des données
+  // qui n'ont aucune raison d'être liées entre tenants.
+  codeBarres     String? @map("code_barres")
+  prixAchatRef   Decimal @default(0) @map("prix_achat_ref") @db.Decimal(12, 2)
+
+  product        Product         @relation(fields: [productId], references: [id])
+  shopPrices     ShopPrice[]
+  stockLevels    StockLevel[]
+  stockMovements StockMovement[]
+  saleLines      SaleLine[]
+  stockAlerts    StockAlert[]
+
+  @@unique([organizationId, codeBarres])
+  @@index([organizationId])
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model ShopPrice {
+  organizationId String   @map("organization_id") @db.Uuid
+  variantId      String   @map("variant_id") @db.Uuid
+  shopId         String   @map("shop_id") @db.Uuid
+  prixVente      Decimal  @map("prix_vente") @db.Decimal(12, 2)
+  prixPlancher   Decimal? @map("prix_plancher") @db.Decimal(12, 2)
+  // "Seuil d'alerte : entier, par boutique" (fiche produit, section 5.1) —
+  // absent de l'extrait de modèle section 10, ajouté ici puisqu'il est
+  // explicitement scopé par boutique comme le prix.
+  seuilAlerte    Int?     @map("seuil_alerte")
+
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+  shop    Shop           @relation(fields: [shopId], references: [id])
+
+  @@id([variantId, shopId])
+  @@index([organizationId])
+  @@index([shopId])
+  @@map("shop_prices")
+}
+
+// Projection de performance : reconstructible intégralement depuis
+// stock_movements (scripts/reconstruct-stock.ts). Jamais la source de vérité.
+model StockLevel {
+  organizationId String  @map("organization_id") @db.Uuid
+  variantId      String  @map("variant_id") @db.Uuid
+  shopId         String  @map("shop_id") @db.Uuid
+  quantite       Decimal @default(0) @db.Decimal(14, 3)
+  cump           Decimal @default(0) @db.Decimal(14, 4)
+
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+  shop    Shop           @relation(fields: [shopId], references: [id])
+
+  @@id([variantId, shopId])
+  @@index([organizationId])
+  @@index([shopId])
+  @@map("stock_levels")
+}
+
+// Journal immuable : aucune méthode d'update/delete dans le code applicatif.
+// Une erreur se corrige par un mouvement inverse, jamais par une édition.
+model StockMovement {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  shopId         String            @map("shop_id") @db.Uuid
+  variantId      String            @map("variant_id") @db.Uuid
+  type           StockMovementType
+  // Signée : positif = entrée en stock, négatif = sortie. Le signe porte
+  // toute l'information de sens — critère d'acceptation section 12 : "somme
+  // des mouvements = stock affiché", un simple SUM(quantite) sans avoir à
+  // recroiser avec `type`. Le CUMP ne se recalcule que sur les entrées
+  // (quantite > 0) ; une sortie ne change jamais le CUMP.
+  quantite       Decimal           @db.Decimal(14, 3)
+  coutUnitaire   Decimal           @map("cout_unitaire") @db.Decimal(14, 4)
+  documentType   String?           @map("document_type")
+  documentId     String?           @map("document_id") @db.Uuid
+  userId         String?           @map("user_id") @db.Uuid
+  motif          String?
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  shop         Shop           @relation(fields: [shopId], references: [id])
+  variant      ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([organizationId])
+  @@index([shopId, variantId])
+  @@map("stock_movements")
+}
+
+model Register {
+  id                  String @id @default(uuid()) @db.Uuid
+  organizationId      String @map("organization_id") @db.Uuid
+  shopId              String @map("shop_id") @db.Uuid
+  nom                 String
+  // Préfixe court et stable des numéros de ticket ("C1", "C2"...) — les
+  // plages sont allouées par poste, pas par boutique : sans préfixe propre à
+  // chaque caisse, deux postes de la même boutique pourraient s'allouer des
+  // plages numériques qui se chevauchent et produire le même numéro.
+  code                String
+  currentAllocatedMax BigInt @default(0) @map("current_allocated_max")
+
+  shop         Shop          @relation(fields: [shopId], references: [id])
+  cashSessions CashSession[]
+
+  @@unique([shopId, code])
+  @@index([organizationId])
+  @@index([shopId])
+  @@map("registers")
+}
+
+model CashSession {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  shopId         String    @map("shop_id") @db.Uuid
+  registerId     String    @map("register_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  fondInitial    Decimal   @map("fond_initial") @db.Decimal(12, 2)
+  compteFinal    Decimal?  @map("compte_final") @db.Decimal(12, 2)
+  ecart          Decimal?  @db.Decimal(12, 2)
+  openedAt       DateTime  @default(now()) @map("opened_at")
+  closedAt       DateTime? @map("closed_at")
+
+  shop     Shop     @relation(fields: [shopId], references: [id])
+  register Register @relation(fields: [registerId], references: [id])
+  sales    Sale[]
+
+  @@index([organizationId])
+  @@index([shopId])
+  @@map("cash_sessions")
+}
+
+model Sale {
+  id             String     @id @default(uuid()) @db.Uuid
+  organizationId String     @map("organization_id") @db.Uuid
+  shopId         String     @map("shop_id") @db.Uuid
+  numero         String
+  uuidClient     String     @unique @map("uuid_client") @db.Uuid
+  sessionId      String     @map("session_id") @db.Uuid
+  customerId     String?    @map("customer_id") @db.Uuid
+  totalHt        Decimal    @map("total_ht") @db.Decimal(14, 2)
+  totalTaxe      Decimal    @map("total_taxe") @db.Decimal(14, 2)
+  totalTtc       Decimal    @map("total_ttc") @db.Decimal(14, 2)
+  statut         SaleStatus @default(VALIDEE)
+  userId         String     @map("user_id") @db.Uuid
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  shop         Shop         @relation(fields: [shopId], references: [id])
+  session      CashSession  @relation(fields: [sessionId], references: [id])
+  lines        SaleLine[]
+  payments     Payment[]
+
+  @@unique([shopId, numero])
+  @@index([organizationId])
+  @@index([sessionId])
+  @@map("sales")
+}
+
+model SaleLine {
+  // organization_id/shop_id dénormalisés depuis la vente parente au moment
+  // de l'insertion (jamais recalculés) : règle non négociable, policy RLS
+  // simple sans jointure vers sales.
+  organizationId   String  @map("organization_id") @db.Uuid
+  shopId           String  @map("shop_id") @db.Uuid
+  id               String  @id @default(uuid()) @db.Uuid
+  saleId           String  @map("sale_id") @db.Uuid
+  variantId        String  @map("variant_id") @db.Uuid
+  quantite         Decimal @db.Decimal(14, 3)
+  prixUnitaire     Decimal @map("prix_unitaire") @db.Decimal(12, 2)
+  remise           Decimal @default(0) @db.Decimal(12, 2)
+  coutUnitaireFige Decimal @map("cout_unitaire_fige") @db.Decimal(14, 4)
+
+  sale    Sale           @relation(fields: [saleId], references: [id])
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([organizationId])
+  @@index([saleId])
+  @@map("sale_lines")
+}
+
+model Payment {
+  organizationId String      @map("organization_id") @db.Uuid
+  shopId         String      @map("shop_id") @db.Uuid
+  id             String      @id @default(uuid()) @db.Uuid
+  saleId         String      @map("sale_id") @db.Uuid
+  mode           PaymentMode
+  montant        Decimal     @db.Decimal(12, 2)
+  reference      String?
+
+  sale Sale @relation(fields: [saleId], references: [id])
+
+  @@index([organizationId])
+  @@index([saleId])
+  @@map("payments")
+}
+
+// Cas "stock négatif après resynchronisation" (cahier des charges 7.3) :
+// la vente déjà encaissée n'est jamais annulée, on lève une alerte à traiter
+// à l'inventaire.
+model StockAlert {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  shopId         String    @map("shop_id") @db.Uuid
+  variantId      String    @map("variant_id") @db.Uuid
+  ecart          Decimal   @db.Decimal(14, 3)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  resolvedAt     DateTime? @map("resolved_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  shop         Shop           @relation(fields: [shopId], references: [id])
+  variant      ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([organizationId])
+  @@map("stock_alerts")
+}
+
+// Append-only : aucune méthode d'update/delete côté code (lib/audit.ts).
+model AuditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String?  @map("user_id") @db.Uuid
+  action         String
+  entite         String
+  entiteId       String?  @map("entite_id") @db.Uuid
+  avant          Json?
+  apres          Json?
+  ip             String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("audit_logs")
+}
