@@ -71,7 +71,9 @@ DECLARE
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'shops', 'users', 'user_shops', 'categories', 'products',
-    'product_variants', 'audit_logs', 'sessions'
+    'product_variants', 'audit_logs', 'sessions', 'import_batches',
+    'customers', 'customer_ledger',
+    'suppliers', 'supplier_products', 'supplier_ledger'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
@@ -100,7 +102,11 @@ DECLARE
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'shop_prices', 'stock_levels', 'stock_movements', 'registers',
-    'cash_sessions', 'sales', 'sale_lines', 'payments', 'stock_alerts'
+    'cash_sessions', 'sales', 'sale_lines', 'payments', 'stock_alerts',
+    'customer_category_prices',
+    'purchase_orders', 'purchase_order_lines', 'goods_receipts', 'goods_receipt_lines',
+    'expenses', 'cash_movements',
+    'inventory_sessions', 'inventory_counts'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);

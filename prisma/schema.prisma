@@ -68,6 +68,72 @@ enum PaymentMode {
   @@map("payment_mode")
 }
 
+enum ImportBatchStatus {
+  EN_ATTENTE
+  COMMITE
+  ANNULE
+
+  @@map("import_batch_status")
+}
+
+enum CustomerLedgerType {
+  VENTE_ARDOISE
+  PAIEMENT
+  AJUSTEMENT
+  ANNULATION_VENTE
+
+  @@map("customer_ledger_type")
+}
+
+enum PurchaseOrderStatus {
+  BROUILLON
+  ENVOYEE
+  RECUE_PARTIELLE
+  RECUE_COMPLETE
+  ANNULEE
+
+  @@map("purchase_order_status")
+}
+
+enum SupplierLedgerType {
+  RECEPTION
+  PAIEMENT
+  AJUSTEMENT
+
+  @@map("supplier_ledger_type")
+}
+
+enum ExpenseStatus {
+  EN_ATTENTE
+  VALIDEE
+  REJETEE
+
+  @@map("expense_status")
+}
+
+enum CashMovementType {
+  APPRO
+  PRELEVEMENT
+  DEPOT_BANQUE
+
+  @@map("cash_movement_type")
+}
+
+enum InventorySessionType {
+  COMPLET
+  PARTIEL
+
+  @@map("inventory_session_type")
+}
+
+enum InventorySessionStatus {
+  EN_COURS
+  VALIDEE
+  ANNULEE
+
+  @@map("inventory_session_status")
+}
+
 model Organization {
   id           String             @id @default(uuid()) @db.Uuid
   nom          String
@@ -88,6 +154,9 @@ model Organization {
   auditLogs  AuditLog[]
   stockMovements StockMovement[]
   stockAlerts    StockAlert[]
+  importBatches  ImportBatch[]
+  customers      Customer[]
+  suppliers      Supplier[]
 
   @@map("organizations")
 }
@@ -109,6 +178,12 @@ model Shop {
   cashSessions   CashSession[]
   registers      Register[]
   stockAlerts    StockAlert[]
+  customerCategoryPrices CustomerCategoryPrice[]
+  purchaseOrders PurchaseOrder[]
+  goodsReceipts  GoodsReceipt[]
+  expenses       Expense[]
+  cashMovements  CashMovement[]
+  inventorySessions InventorySession[]
 
   @@index([organizationId])
   @@map("shops")
@@ -178,6 +253,7 @@ model Category {
   parent       Category?    @relation("CategoryToCategory", fields: [parentId], references: [id])
   children     Category[]   @relation("CategoryToCategory")
   products     Product[]
+  inventorySessions InventorySession[]
 
   @@index([organizationId])
   @@map("categories")
@@ -216,6 +292,9 @@ model ProductVariant {
   // qui n'ont aucune raison d'être liées entre tenants.
   codeBarres     String? @map("code_barres")
   prixAchatRef   Decimal @default(0) @map("prix_achat_ref") @db.Decimal(12, 2)
+  // Une variante retirée ne se supprime pas (mouvements/lignes de vente
+  // déjà rattachés) — même contrainte que Product.actif.
+  actif          Boolean @default(true)
 
   product        Product         @relation(fields: [productId], references: [id])
   shopPrices     ShopPrice[]
@@ -223,6 +302,11 @@ model ProductVariant {
   stockMovements StockMovement[]
   saleLines      SaleLine[]
   stockAlerts    StockAlert[]
+  customerCategoryPrices CustomerCategoryPrice[]
+  supplierProducts   SupplierProduct[]
+  purchaseOrderLines PurchaseOrderLine[]
+  goodsReceiptLines  GoodsReceiptLine[]
+  inventoryCounts    InventoryCount[]
 
   @@unique([organizationId, codeBarres])
   @@index([organizationId])
@@ -331,9 +415,11 @@ model CashSession {
   openedAt       DateTime  @default(now()) @map("opened_at")
   closedAt       DateTime? @map("closed_at")
 
-  shop     Shop     @relation(fields: [shopId], references: [id])
-  register Register @relation(fields: [registerId], references: [id])
-  sales    Sale[]
+  shop          Shop           @relation(fields: [shopId], references: [id])
+  register      Register       @relation(fields: [registerId], references: [id])
+  sales         Sale[]
+  expenses      Expense[]
+  cashMovements CashMovement[]
 
   @@index([organizationId])
   @@index([shopId])
@@ -358,6 +444,7 @@ model Sale {
   organization Organization @relation(fields: [organizationId], references: [id])
   shop         Shop         @relation(fields: [shopId], references: [id])
   session      CashSession  @relation(fields: [sessionId], references: [id])
+  customer     Customer?    @relation(fields: [customerId], references: [id])
   lines        SaleLine[]
   payments     Payment[]
 
@@ -423,6 +510,331 @@ model StockAlert {
 
   @@index([organizationId])
   @@map("stock_alerts")
+}
+
+// Deux temps (preview -> commit, section M12) : payload contient les lignes
+// validées (JSON), jamais le fichier brut. Un lot déjà COMMITE ne se rejoue
+// jamais — un nouvel import est un nouveau batch.
+model ImportBatch {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  userId         String            @map("user_id") @db.Uuid
+  statut         ImportBatchStatus @default(EN_ATTENTE)
+  payload        Json
+  resultat       Json?
+  createdAt      DateTime          @default(now()) @map("created_at")
+  committedAt    DateTime?         @map("committed_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("import_batches")
+}
+
+model Customer {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  nom            String
+  telephone      String?
+  // Libre (pas un enum) : catégories tarifaires propres à chaque commerce,
+  // pas de liste fermée imposée par le cahier des charges (section M13).
+  categorieTarif String   @default("") @map("categorie_tarif")
+  plafondCredit  Decimal  @default(0) @map("plafond_credit") @db.Decimal(12, 2)
+  actif          Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization  Organization     @relation(fields: [organizationId], references: [id])
+  sales         Sale[]
+  ledgerEntries CustomerLedger[]
+
+  @@index([organizationId])
+  @@map("customers")
+}
+
+// Journal append-only comme stock_movements/audit_logs : le solde d'un
+// client est SUM(montant), jamais une colonne mutable — mêmes garanties de
+// traçabilité qu'un mouvement de stock.
+model CustomerLedger {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  customerId     String             @map("customer_id") @db.Uuid
+  type           CustomerLedgerType
+  // Signé : positif = le client doit plus (vente à crédit), négatif =
+  // paiement/avoir qui réduit sa dette.
+  montant        Decimal            @db.Decimal(12, 2)
+  documentType   String?            @map("document_type")
+  documentId     String?            @map("document_id") @db.Uuid
+  userId         String?            @map("user_id") @db.Uuid
+  motif          String?
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@map("customer_ledger")
+}
+
+// Surcouche optionnelle sur shop_prices (section M13) : prix spécifique à
+// une catégorie tarifaire (ex. "Grossiste"), par variante et par boutique.
+// Absent pour un triplet donné => on retombe sur shop_prices.prixVente.
+model CustomerCategoryPrice {
+  organizationId String  @map("organization_id") @db.Uuid
+  variantId      String  @map("variant_id") @db.Uuid
+  shopId         String  @map("shop_id") @db.Uuid
+  categorieTarif String  @map("categorie_tarif")
+  prixVente      Decimal @map("prix_vente") @db.Decimal(12, 2)
+
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+  shop    Shop           @relation(fields: [shopId], references: [id])
+
+  @@id([variantId, shopId, categorieTarif])
+  @@index([organizationId])
+  @@index([shopId])
+  @@map("customer_category_prices")
+}
+
+model Supplier {
+  id                  String   @id @default(uuid()) @db.Uuid
+  organizationId      String   @map("organization_id") @db.Uuid
+  nom                 String
+  telephone           String?
+  email               String?
+  delaiLivraisonJours Int?     @map("delai_livraison_jours")
+  actif               Boolean  @default(true)
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  organization     Organization      @relation(fields: [organizationId], references: [id])
+  supplierProducts SupplierProduct[]
+  purchaseOrders   PurchaseOrder[]
+  goodsReceipts    GoodsReceipt[]
+  ledgerEntries    SupplierLedger[]
+
+  @@index([organizationId])
+  @@map("suppliers")
+}
+
+// Association fournisseur <-> variante (dernier prix d'achat connu,
+// fournisseur préféré) — indépendante des commandes/réceptions, qui gardent
+// chacune leur propre prix figé au moment de l'opération.
+model SupplierProduct {
+  organizationId   String  @map("organization_id") @db.Uuid
+  supplierId       String  @map("supplier_id") @db.Uuid
+  variantId        String  @map("variant_id") @db.Uuid
+  prixAchatDernier Decimal @default(0) @map("prix_achat_dernier") @db.Decimal(12, 2)
+  estPrefere       Boolean @default(false) @map("est_prefere")
+
+  supplier Supplier       @relation(fields: [supplierId], references: [id])
+  variant  ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@id([supplierId, variantId])
+  @@index([organizationId])
+  @@map("supplier_products")
+}
+
+model PurchaseOrder {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  shopId         String              @map("shop_id") @db.Uuid
+  supplierId     String              @map("supplier_id") @db.Uuid
+  numero         String
+  statut         PurchaseOrderStatus @default(BROUILLON)
+  userId         String              @map("user_id") @db.Uuid
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  supplier      Supplier            @relation(fields: [supplierId], references: [id])
+  shop          Shop                @relation(fields: [shopId], references: [id])
+  lines         PurchaseOrderLine[]
+  goodsReceipts GoodsReceipt[]
+
+  @@unique([organizationId, numero])
+  @@index([organizationId])
+  @@index([shopId])
+  @@index([supplierId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  // organization_id/shop_id dénormalisés depuis la commande parente au
+  // moment de l'insertion — même règle que sale_lines/payments.
+  organizationId       String  @map("organization_id") @db.Uuid
+  shopId               String  @map("shop_id") @db.Uuid
+  id                   String  @id @default(uuid()) @db.Uuid
+  purchaseOrderId      String  @map("purchase_order_id") @db.Uuid
+  variantId            String  @map("variant_id") @db.Uuid
+  quantiteCommandee    Decimal @map("quantite_commandee") @db.Decimal(14, 3)
+  prixUnitaireCommande Decimal @map("prix_unitaire_commande") @db.Decimal(12, 2)
+
+  purchaseOrder PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id])
+  variant       ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([organizationId])
+  @@index([purchaseOrderId])
+  @@map("purchase_order_lines")
+}
+
+// purchaseOrderId optionnel : une réception peut être rattachée à une
+// commande (suivi normal) ou être un achat spontané sans commande préalable.
+model GoodsReceipt {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  shopId          String   @map("shop_id") @db.Uuid
+  supplierId      String   @map("supplier_id") @db.Uuid
+  purchaseOrderId String?  @map("purchase_order_id") @db.Uuid
+  numero          String
+  userId          String   @map("user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  supplier      Supplier           @relation(fields: [supplierId], references: [id])
+  shop          Shop               @relation(fields: [shopId], references: [id])
+  purchaseOrder PurchaseOrder?     @relation(fields: [purchaseOrderId], references: [id])
+  lines         GoodsReceiptLine[]
+
+  @@unique([organizationId, numero])
+  @@index([organizationId])
+  @@index([shopId])
+  @@index([supplierId])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptLine {
+  organizationId   String  @map("organization_id") @db.Uuid
+  shopId           String  @map("shop_id") @db.Uuid
+  id               String  @id @default(uuid()) @db.Uuid
+  goodsReceiptId   String  @map("goods_receipt_id") @db.Uuid
+  variantId        String  @map("variant_id") @db.Uuid
+  quantiteRecue    Decimal @map("quantite_recue") @db.Decimal(14, 3)
+  prixUnitaireRecu Decimal @map("prix_unitaire_recu") @db.Decimal(12, 2)
+
+  goodsReceipt GoodsReceipt   @relation(fields: [goodsReceiptId], references: [id])
+  variant      ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([organizationId])
+  @@index([goodsReceiptId])
+  @@map("goods_receipt_lines")
+}
+
+// Journal append-only comme customer_ledger : le solde dû à un fournisseur
+// est SUM(montant), jamais une colonne mutable.
+model SupplierLedger {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  supplierId     String             @map("supplier_id") @db.Uuid
+  type           SupplierLedgerType
+  // Signé : positif = on doit plus au fournisseur (réception), négatif =
+  // paiement qui réduit la dette.
+  montant        Decimal            @db.Decimal(12, 2)
+  documentType   String?            @map("document_type")
+  documentId     String?            @map("document_id") @db.Uuid
+  userId         String?            @map("user_id") @db.Uuid
+  motif          String?
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@index([organizationId])
+  @@index([supplierId])
+  @@map("supplier_ledger")
+}
+
+// Le justificatif (photo) est stocké directement en base (bytea) : aucune
+// infra cloud à configurer, l'isolation tenant est héritée gratuitement de
+// RLS (un expenseId d'une autre organisation n'existe simplement pas dans
+// la requête). Migration vers S3 plus tard = changer une seule route.
+model Expense {
+  id                   String        @id @default(uuid()) @db.Uuid
+  organizationId       String        @map("organization_id") @db.Uuid
+  shopId               String        @map("shop_id") @db.Uuid
+  categorie            String
+  montant              Decimal       @db.Decimal(12, 2)
+  modePaiement         PaymentMode   @map("mode_paiement")
+  cashSessionId        String?       @map("cash_session_id") @db.Uuid
+  statut               ExpenseStatus @default(EN_ATTENTE)
+  justificatifData     Bytes?        @map("justificatif_data")
+  justificatifMimeType String?       @map("justificatif_mime_type")
+  userId               String        @map("user_id") @db.Uuid
+  approvedByUserId     String?       @map("approved_by_user_id") @db.Uuid
+  approvedAt           DateTime?     @map("approved_at")
+  createdAt            DateTime      @default(now()) @map("created_at")
+
+  shop        Shop         @relation(fields: [shopId], references: [id])
+  cashSession CashSession? @relation(fields: [cashSessionId], references: [id])
+
+  @@index([organizationId])
+  @@index([shopId])
+  @@map("expenses")
+}
+
+// Entrées/sorties de caisse hors vente (approvisionnement, prélèvement,
+// dépôt banque) — montant toujours positif, le signe est porté par `type`
+// dans la formule de rapprochement (sessions/[sessionId]/close/route.ts).
+model CashMovement {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  shopId         String           @map("shop_id") @db.Uuid
+  cashSessionId  String           @map("cash_session_id") @db.Uuid
+  type           CashMovementType
+  montant        Decimal          @db.Decimal(12, 2)
+  motif          String
+  userId         String           @map("user_id") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  shop        Shop        @relation(fields: [shopId], references: [id])
+  cashSession CashSession @relation(fields: [cashSessionId], references: [id])
+
+  @@index([organizationId])
+  @@index([shopId])
+  @@index([cashSessionId])
+  @@map("cash_movements")
+}
+
+// La boutique continue de vendre pendant l'inventaire (section M16) : la
+// session ne fait que définir le périmètre (COMPLET ou PARTIEL par
+// catégorie), jamais un instantané figé de tout le stock à l'ouverture.
+model InventorySession {
+  id             String                  @id @default(uuid()) @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+  shopId         String                  @map("shop_id") @db.Uuid
+  type           InventorySessionType
+  categoryId     String?                 @map("category_id") @db.Uuid
+  statut         InventorySessionStatus  @default(EN_COURS)
+  userId         String                  @map("user_id") @db.Uuid
+  createdAt      DateTime                @default(now()) @map("created_at")
+  validatedAt    DateTime?               @map("validated_at")
+
+  shop     Shop              @relation(fields: [shopId], references: [id])
+  category Category?         @relation(fields: [categoryId], references: [id])
+  counts   InventoryCount[]
+
+  @@index([organizationId])
+  @@index([shopId])
+  @@map("inventory_sessions")
+}
+
+// Une ligne n'existe qu'une fois comptée : quantite_theorique/cump_au_comptage
+// sont figés au moment précis du comptage de CETTE ligne (lecture de
+// stock_levels à cet instant), pas à l'ouverture de la session — d'où leur
+// caractère NOT NULL, contrairement à quantite_comptee (qui pourrait en
+// théorie rester vide sur un flux en deux temps futur).
+model InventoryCount {
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @map("organization_id") @db.Uuid
+  shopId             String    @map("shop_id") @db.Uuid
+  inventorySessionId String    @map("inventory_session_id") @db.Uuid
+  variantId          String    @map("variant_id") @db.Uuid
+  quantiteTheorique  Decimal   @map("quantite_theorique") @db.Decimal(14, 3)
+  quantiteComptee    Decimal?  @map("quantite_comptee") @db.Decimal(14, 3)
+  cumpAuComptage     Decimal   @map("cump_au_comptage") @db.Decimal(14, 4)
+  comptePar          String?   @map("compte_par") @db.Uuid
+  comptedAt          DateTime? @map("compted_at")
+
+  inventorySession InventorySession @relation(fields: [inventorySessionId], references: [id])
+  variant          ProductVariant   @relation(fields: [variantId], references: [id])
+
+  @@unique([inventorySessionId, variantId])
+  @@index([organizationId])
+  @@index([inventorySessionId])
+  @@map("inventory_counts")
 }
 
 // Append-only : aucune méthode d'update/delete côté code (lib/audit.ts).

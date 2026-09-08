@@ -13,7 +13,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <div className="flex flex-1 flex-col bg-background">
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
+      <header className="no-print flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-6">
           <span className="text-sm font-semibold text-foreground">{organization?.nom}</span>
           <nav className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -26,14 +26,35 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <Link href="/catalog/products" className="hover:text-foreground">
               Produits
             </Link>
+            <Link href="/catalog/import" className="hover:text-foreground">
+              Import
+            </Link>
             <Link href="/stock/movements" className="hover:text-foreground">
               Stock
+            </Link>
+            <Link href="/customers" className="hover:text-foreground">
+              Clients
+            </Link>
+            <Link href="/suppliers" className="hover:text-foreground">
+              Fournisseurs
+            </Link>
+            <Link href="/expenses" className="hover:text-foreground">
+              Dépenses
+            </Link>
+            <Link href="/inventory" className="hover:text-foreground">
+              Inventaire
             </Link>
             <Link href="/caisse" className="hover:text-foreground">
               Caisse
             </Link>
             <Link href="/sales" className="hover:text-foreground">
               Ventes
+            </Link>
+            <Link href="/reports" className="hover:text-foreground">
+              Rapports
+            </Link>
+            <Link href="/mobile" className="hover:text-foreground">
+              Vue propriétaire
             </Link>
             <Link href="/users" className="hover:text-foreground">
               Utilisateurs

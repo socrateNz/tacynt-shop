@@ -69,13 +69,20 @@
 
 /* Ticket de caisse imprimable (58/80mm) — décision verrouillée : impression
    navigateur plutôt qu'ESC/POS brut, qui exige du matériel réel pour être
-   testé. Seul .printable-ticket doit apparaître sur la page imprimée. */
+   testé. Seul .printable-ticket doit apparaître sur la page imprimée.
+   @page reste global (non scopable proprement à un sélecteur en CSS
+   standard) : un export PDF de rapport (section M17) peut donc hériter de
+   cette suggestion de format 80mm dans la boîte de dialogue d'impression —
+   l'utilisateur choisit A4/Lettre manuellement si besoin. Risque accepté
+   plutôt que de fiabiliser au prix de casser l'impression ticket déjà
+   vérifiée en Phase 1. La visibilité, elle, reste scopée à
+   :has(.printable-ticket) pour ne pas masquer le contenu des rapports. */
 @media print {
   @page {
     size: 80mm auto;
     margin: 0;
   }
-  body * {
+  body:has(.printable-ticket) * {
     visibility: hidden;
   }
   .printable-ticket,
@@ -87,5 +94,11 @@
     top: 0;
     left: 0;
     width: 80mm;
+  }
+
+  /* Rapports (section M17) : masque uniquement la navigation/les filtres/
+     les boutons d'export, le reste de la page s'imprime normalement. */
+  .no-print {
+    display: none !important;
   }
 }

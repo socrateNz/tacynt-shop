@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions";
+import { adjustStockQuantity, creditStock } from "@/lib/stock/movements";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
@@ -35,40 +36,15 @@ export async function receiveStock(
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
 
   await withTenantContext({ organizationId: ctx.organizationId, shopId }, async (tx) => {
-    const movement = await tx.stockMovement.create({
-      data: {
-        organizationId: ctx.organizationId,
-        shopId,
-        variantId,
-        type: "RECEPTION",
-        quantite, // positif : entrée (cf. commentaire sur le modèle)
-        coutUnitaire,
-        documentType: "reception_manuelle",
-        userId: ctx.userId,
-        motif,
-      },
-    });
-
-    const current = await tx.stockLevel.findUnique({
-      where: { variantId_shopId: { variantId, shopId } },
-    });
-
-    const stockActuel = current ? Number(current.quantite) : 0;
-    const cumpActuel = current ? Number(current.cump) : 0;
-    const nouvelleQuantite = stockActuel + quantite;
-    // CUMP = (stock_actuel × CUMP_actuel + qté_entrée × prix_entrée) / (stock_actuel + qté_entrée)
-    const nouveauCump = (stockActuel * cumpActuel + quantite * coutUnitaire) / nouvelleQuantite;
-
-    await tx.stockLevel.upsert({
-      where: { variantId_shopId: { variantId, shopId } },
-      create: {
-        organizationId: ctx.organizationId,
-        variantId,
-        shopId,
-        quantite: nouvelleQuantite,
-        cump: nouveauCump,
-      },
-      update: { quantite: nouvelleQuantite, cump: nouveauCump },
+    const { movement } = await creditStock(tx, {
+      organizationId: ctx.organizationId,
+      shopId,
+      variantId,
+      quantite,
+      coutUnitaire,
+      documentType: "reception_manuelle",
+      userId: ctx.userId,
+      motif,
     });
 
     await recordAuditLog(tx, {
@@ -88,8 +64,7 @@ export async function receiveStock(
 export type AdjustStockState = { error: string | null };
 
 // Ajustement d'inventaire (section 5.2, sens ±) : comptage physique ou
-// casse/perte/vol. Le CUMP ne bouge jamais sur un ajustement — on n'a pas de
-// nouveau prix d'achat à intégrer, seule la quantité change.
+// casse/perte/vol. Le CUMP ne bouge jamais sur un ajustement.
 export async function adjustStock(
   _prevState: AdjustStockState,
   formData: FormData,
@@ -108,37 +83,14 @@ export async function adjustStock(
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
 
   await withTenantContext({ organizationId: ctx.organizationId, shopId }, async (tx) => {
-    const current = await tx.stockLevel.findUnique({
-      where: { variantId_shopId: { variantId, shopId } },
-    });
-    const stockActuel = current ? Number(current.quantite) : 0;
-    const cumpActuel = current ? Number(current.cump) : 0;
-    const nouvelleQuantite = stockActuel + delta;
-
-    const movement = await tx.stockMovement.create({
-      data: {
-        organizationId: ctx.organizationId,
-        shopId,
-        variantId,
-        type: "AJUSTEMENT",
-        quantite: delta,
-        coutUnitaire: cumpActuel,
-        documentType: "ajustement_inventaire",
-        userId: ctx.userId,
-        motif,
-      },
-    });
-
-    await tx.stockLevel.upsert({
-      where: { variantId_shopId: { variantId, shopId } },
-      create: {
-        organizationId: ctx.organizationId,
-        variantId,
-        shopId,
-        quantite: nouvelleQuantite,
-        cump: cumpActuel,
-      },
-      update: { quantite: nouvelleQuantite },
+    const { movement } = await adjustStockQuantity(tx, {
+      organizationId: ctx.organizationId,
+      shopId,
+      variantId,
+      delta,
+      documentType: "ajustement_inventaire",
+      userId: ctx.userId,
+      motif,
     });
 
     await recordAuditLog(tx, {

@@ -6,6 +6,7 @@ import {
   markSaleStatus,
   removeSale,
   saveCatalog,
+  saveCustomers,
   setSyncMeta,
   type QueuedSale,
   type QueuedSaleLine,
@@ -29,6 +30,19 @@ export async function loadCatalogFromServer(): Promise<number> {
   await saveCatalog(data.products);
   await setSyncMeta({ catalogGeneratedAt: data.generatedAt });
   return data.products.length;
+}
+
+export async function loadCustomersFromServer(): Promise<number> {
+  const res = await fetch("/api/pos/customers");
+  if (!res.ok) throw new Error("Impossible de charger les clients.");
+  const data = (await res.json()) as {
+    generatedAt: string;
+    customers: Parameters<typeof saveCustomers>[0];
+    categoryPrices: { variantId: string; categorieTarif: string; prixVente: number }[];
+  };
+  await saveCustomers(data.customers);
+  await setSyncMeta({ customersGeneratedAt: data.generatedAt, categoryPrices: data.categoryPrices });
+  return data.customers.length;
 }
 
 export async function openCashSession(
@@ -75,6 +89,7 @@ async function ensureTicketRange(registerId: string): Promise<void> {
 export async function createLocalSale(params: {
   lines: QueuedSaleLine[];
   payments: QueuedSalePayment[];
+  customerId?: string | null;
 }): Promise<QueuedSale> {
   const meta = await getSyncMeta();
   if (!meta.registerId) throw new Error("Aucun poste de caisse actif.");
@@ -93,6 +108,7 @@ export async function createLocalSale(params: {
     uuid: crypto.randomUUID(),
     numero,
     sessionId: fresh.sessionId,
+    customerId: params.customerId ?? null,
     lines: params.lines,
     payments: params.payments,
     clientCreatedAt: new Date().toISOString(),

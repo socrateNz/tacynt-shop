@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { recordAuditLog } from "@/lib/audit";
+import { getCustomerBalance, recordCustomerLedgerEntry } from "@/lib/customers/ledger";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import type { TenantContext } from "@/lib/tenant/context";
@@ -223,6 +224,53 @@ async function processOneSale(
             reference: payment.reference ?? null,
           },
         });
+
+        // Vente à crédit (ardoise, section M13) : jamais rejetée après coup,
+        // même au-delà du plafond — on l'accepte et on journalise pour revue
+        // managériale, même principe que la remise exceptionnelle ci-dessus.
+        if (payment.mode === "ARDOISE" && payment.montant > 0) {
+          if (!input.customerId) {
+            await recordAuditLog(tx, {
+              organizationId: ctx.organizationId,
+              userId: ctx.userId,
+              action: "ARDOISE_WITHOUT_CUSTOMER",
+              entite: "sale",
+              entiteId: sale.id,
+              apres: { montant: payment.montant },
+            });
+            continue;
+          }
+
+          await recordCustomerLedgerEntry(tx, {
+            organizationId: ctx.organizationId,
+            customerId: input.customerId,
+            type: "VENTE_ARDOISE",
+            montant: payment.montant,
+            documentType: "sale",
+            documentId: sale.id,
+            userId: ctx.userId,
+          });
+
+          const [customer, soldeApres] = await Promise.all([
+            tx.customer.findUnique({ where: { id: input.customerId } }),
+            getCustomerBalance(tx, input.customerId),
+          ]);
+
+          if (customer && soldeApres > Number(customer.plafondCredit)) {
+            await recordAuditLog(tx, {
+              organizationId: ctx.organizationId,
+              userId: ctx.userId,
+              action: "CREDIT_LIMIT_EXCEEDED",
+              entite: "customer",
+              entiteId: input.customerId,
+              apres: {
+                saleId: sale.id,
+                solde: soldeApres,
+                plafondCredit: Number(customer.plafondCredit),
+              },
+            });
+          }
+        }
       }
 
       await recordAuditLog(tx, {

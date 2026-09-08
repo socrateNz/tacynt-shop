@@ -44,7 +44,7 @@ export default async function StockMovementsPage() {
         include: { variant: { include: { product: true } } },
       });
       const variants = await tx.productVariant.findMany({
-        where: { product: { suiviStock: true } },
+        where: { actif: true, product: { suiviStock: true } },
         include: { product: true },
         orderBy: { product: { designation: "asc" } },
       });

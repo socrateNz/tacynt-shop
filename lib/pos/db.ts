@@ -26,6 +26,21 @@ export type QueuedSalePayment = {
   reference?: string;
 };
 
+export type PosCustomer = {
+  id: string;
+  nom: string;
+  telephone: string | null;
+  categorieTarif: string;
+  plafondCredit: number;
+  solde: number;
+};
+
+export type CategoryPrice = {
+  variantId: string;
+  categorieTarif: string;
+  prixVente: number;
+};
+
 export type QueuedSaleStatus = "pending" | "syncing" | "applied" | "error";
 
 export type QueuedSale = {
@@ -47,27 +62,35 @@ export type SyncMeta = {
   ticketRangeNext: number | null;
   ticketRangeEnd: number | null;
   catalogGeneratedAt: string | null;
+  customersGeneratedAt: string | null;
+  categoryPrices: CategoryPrice[];
 };
 
 interface PosDBSchema extends DBSchema {
   catalog_products: { key: string; value: CatalogProduct };
   sales_queue: { key: string; value: QueuedSale; indexes: { "by-status": string } };
   sync_meta: { key: string; value: SyncMeta };
+  customers: { key: string; value: PosCustomer };
 }
 
 const DB_NAME = "tacynt-pos";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<PosDBSchema>> | null = null;
 
 function getPosDB() {
   if (!dbPromise) {
     dbPromise = openDB<PosDBSchema>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        db.createObjectStore("catalog_products", { keyPath: "variantId" });
-        const salesQueue = db.createObjectStore("sales_queue", { keyPath: "uuid" });
-        salesQueue.createIndex("by-status", "status");
-        db.createObjectStore("sync_meta", { keyPath: "key" });
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          db.createObjectStore("catalog_products", { keyPath: "variantId" });
+          const salesQueue = db.createObjectStore("sales_queue", { keyPath: "uuid" });
+          salesQueue.createIndex("by-status", "status");
+          db.createObjectStore("sync_meta", { keyPath: "key" });
+        }
+        if (oldVersion < 2) {
+          db.createObjectStore("customers", { keyPath: "id" });
+        }
       },
     });
   }
@@ -85,6 +108,19 @@ export async function saveCatalog(products: CatalogProduct[]): Promise<void> {
 export async function getCatalog(): Promise<CatalogProduct[]> {
   const db = await getPosDB();
   return db.getAll("catalog_products");
+}
+
+export async function saveCustomers(customers: PosCustomer[]): Promise<void> {
+  const db = await getPosDB();
+  const tx = db.transaction("customers", "readwrite");
+  await tx.store.clear();
+  await Promise.all(customers.map((c) => tx.store.put(c)));
+  await tx.done;
+}
+
+export async function getCustomers(): Promise<PosCustomer[]> {
+  const db = await getPosDB();
+  return db.getAll("customers");
 }
 
 export async function enqueueSale(sale: QueuedSale): Promise<void> {
@@ -123,12 +159,18 @@ const DEFAULT_SYNC_META: SyncMeta = {
   ticketRangeNext: null,
   ticketRangeEnd: null,
   catalogGeneratedAt: null,
+  customersGeneratedAt: null,
+  categoryPrices: [],
 };
 
 export async function getSyncMeta(): Promise<SyncMeta> {
   const db = await getPosDB();
   const meta = await db.get("sync_meta", "singleton");
-  return meta ?? DEFAULT_SYNC_META;
+  // Fusion avec les défauts (pas juste un fallback si absent) : un
+  // enregistrement écrit avant l'ajout de customersGeneratedAt/categoryPrices
+  // (bump DB_VERSION 1 -> 2) n'a pas ces champs, un ?? seul les laisserait
+  // undefined au lieu de leur valeur par défaut.
+  return { ...DEFAULT_SYNC_META, ...meta };
 }
 
 export async function setSyncMeta(patch: Partial<SyncMeta>): Promise<void> {

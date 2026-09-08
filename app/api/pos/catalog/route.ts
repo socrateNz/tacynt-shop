@@ -29,21 +29,27 @@ export async function GET() {
 
   const catalog = products.flatMap((p) =>
     p.variants
-      .filter((v) => v.shopPrices.length > 0)
-      .map((v) => ({
-        variantId: v.id,
-        productId: p.id,
-        designation: p.designation,
-        reference: p.reference,
-        codeBarres: v.codeBarres,
-        unite: p.unite,
-        tauxTaxe: Number(p.tauxTaxe),
-        suiviStock: p.suiviStock,
-        prixVente: Number(v.shopPrices[0].prixVente),
-        prixPlancher: v.shopPrices[0].prixPlancher
-          ? Number(v.shopPrices[0].prixPlancher)
-          : null,
-      })),
+      .filter((v) => v.actif && v.shopPrices.length > 0)
+      .map((v) => {
+        const attrs = v.attributs as Record<string, string>;
+        const attrLabel = Object.values(attrs).join(", ");
+        return {
+          variantId: v.id,
+          productId: p.id,
+          // Désignation incluant les attributs : plusieurs variantes du
+          // même produit doivent rester distinguables en caisse.
+          designation: attrLabel ? `${p.designation} (${attrLabel})` : p.designation,
+          reference: p.reference,
+          codeBarres: v.codeBarres,
+          unite: p.unite,
+          tauxTaxe: Number(p.tauxTaxe),
+          suiviStock: p.suiviStock,
+          prixVente: Number(v.shopPrices[0].prixVente),
+          prixPlancher: v.shopPrices[0].prixPlancher
+            ? Number(v.shopPrices[0].prixPlancher)
+            : null,
+        };
+      }),
   );
 
   return NextResponse.json({

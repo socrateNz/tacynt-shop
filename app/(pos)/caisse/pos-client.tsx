@@ -17,19 +17,33 @@ import { hasCapability, type Role } from "@/lib/permissions";
 import {
   countPendingSales,
   getCatalog,
+  getCustomers,
   getSyncMeta,
   setSyncMeta,
   type CatalogProduct,
+  type CategoryPrice,
+  type PosCustomer,
 } from "@/lib/pos/db";
 import {
   createLocalSale,
   flushQueue,
   loadCatalogFromServer,
+  loadCustomersFromServer,
   openCashSession,
   startSyncLoop,
 } from "@/lib/pos/sync-engine";
 
+import { recordCashMovement } from "@/app/(admin)/cash-movements/actions";
+
 import { PrintableTicket, type TicketData } from "./printable-ticket";
+
+type CashMovementType = "APPRO" | "PRELEVEMENT" | "DEPOT_BANQUE";
+
+const CASH_MOVEMENT_TYPES: { value: CashMovementType; label: string }[] = [
+  { value: "APPRO", label: "Approvisionnement (ajout)" },
+  { value: "PRELEVEMENT", label: "Prélèvement (retrait)" },
+  { value: "DEPOT_BANQUE", label: "Dépôt banque (retrait)" },
+];
 
 type CartLine = {
   variantId: string;
@@ -77,6 +91,12 @@ export function PosClient({
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [fondInitialInput, setFondInitialInput] = useState("0");
 
+  const [customers, setCustomers] = useState<PosCustomer[]>([]);
+  const [categoryPrices, setCategoryPrices] = useState<CategoryPrice[]>([]);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
+  const [customerQuery, setCustomerQuery] = useState("");
+
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [heldTickets, setHeldTickets] = useState<HeldTicket[]>([]);
@@ -95,6 +115,12 @@ export function PosClient({
     ecart: number;
   } | null>(null);
 
+  const [cashMovementOpen, setCashMovementOpen] = useState(false);
+  const [cashMovementType, setCashMovementType] = useState<CashMovementType>("APPRO");
+  const [cashMovementMontant, setCashMovementMontant] = useState("0");
+  const [cashMovementMotif, setCashMovementMotif] = useState("");
+  const [cashMovementPending, setCashMovementPending] = useState(false);
+
   const searchRef = useRef<HTMLInputElement>(null);
   const cartRef = useRef(cart);
   useEffect(() => {
@@ -111,14 +137,22 @@ export function PosClient({
         } catch {
           // Hors ligne / erreur réseau : on retombe sur le cache local.
         }
+        try {
+          await loadCustomersFromServer();
+        } catch {
+          // Idem : les clients déjà en cache restent utilisables hors ligne.
+        }
       }
-      const [c, meta, pending] = await Promise.all([
+      const [c, custs, meta, pending] = await Promise.all([
         getCatalog(),
+        getCustomers(),
         getSyncMeta(),
         countPendingSales(),
       ]);
       if (ignore) return;
       setCatalog(c);
+      setCustomers(custs);
+      setCategoryPrices(meta.categoryPrices);
       setSessionId(meta.sessionId);
       setPendingCount(pending);
       setReady(true);
@@ -138,6 +172,14 @@ export function PosClient({
     };
   }, []);
 
+  const filteredCustomers = useMemo(() => {
+    const q = customerQuery.trim().toLowerCase();
+    if (!q) return customers.slice(0, 8);
+    return customers
+      .filter((c) => c.nom.toLowerCase().includes(q) || c.telephone?.includes(q))
+      .slice(0, 8);
+  }, [customers, customerQuery]);
+
   const filteredCatalog = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
@@ -151,7 +193,25 @@ export function PosClient({
       .slice(0, 8);
   }, [catalog, query]);
 
+  const selectedCustomer = useMemo(
+    () => customers.find((c) => c.id === customerId) ?? null,
+    [customers, customerId],
+  );
+
+  // Surcouche tarifaire optionnelle (section M13) : appliquée à l'ajout au
+  // panier selon le client déjà sélectionné — changer de client en cours de
+  // vente ne re-tarife pas rétroactivement les lignes déjà ajoutées (comme
+  // un vendeur qui demande "carte de fidélité ?" avant de scanner).
+  function getEffectivePrice(product: CatalogProduct): number {
+    if (!selectedCustomer?.categorieTarif) return product.prixVente;
+    const override = categoryPrices.find(
+      (p) => p.variantId === product.variantId && p.categorieTarif === selectedCustomer.categorieTarif,
+    );
+    return override?.prixVente ?? product.prixVente;
+  }
+
   function addToCart(product: CatalogProduct) {
+    const prixUnitaire = getEffectivePrice(product);
     setCart((prev) => {
       const existing = prev.find((l) => l.variantId === product.variantId);
       if (existing) {
@@ -164,7 +224,7 @@ export function PosClient({
         {
           variantId: product.variantId,
           designation: product.designation,
-          prixUnitaire: product.prixVente,
+          prixUnitaire,
           quantite: 1,
           remise: 0,
         },
@@ -240,6 +300,15 @@ export function PosClient({
       return;
     }
 
+    // Garde-fou côté client uniquement (aide à la saisie) : une vente déjà
+    // encaissée n'est jamais rejetée côté serveur (section M13), mais on ne
+    // peut de toute façon pas attribuer une dette à personne.
+    const hasArdoise = payments.some((p) => p.mode === "ARDOISE" && (Number(p.montant) || 0) > 0);
+    if (hasArdoise && !customerId) {
+      setError("Sélectionnez un client (F3) pour un paiement en ardoise.");
+      return;
+    }
+
     const lines = cart.map((l) => ({
       variantId: l.variantId,
       quantite: l.quantite,
@@ -248,7 +317,7 @@ export function PosClient({
     }));
     const paymentLines = payments.map((p) => ({ mode: p.mode, montant: Number(p.montant) || 0 }));
 
-    const sale = await createLocalSale({ lines, payments: paymentLines });
+    const sale = await createLocalSale({ lines, payments: paymentLines, customerId });
 
     setLastTicket({
       numero: sale.numero,
@@ -266,6 +335,7 @@ export function PosClient({
     });
 
     setCart([]);
+    setCustomerId(null);
     setCheckoutOpen(false);
     setPendingCount(await countPendingSales());
   }
@@ -285,6 +355,37 @@ export function PosClient({
       setError("Certaines ventes n'ont pas pu être synchronisées, réessayez.");
     } else {
       setError(null);
+    }
+  }
+
+  async function handleRecordCashMovement() {
+    if (!sessionId) return;
+    const montant = Number(cashMovementMontant) || 0;
+    if (montant <= 0 || !cashMovementMotif.trim()) {
+      setError("Montant (positif) et motif sont requis pour un mouvement de caisse.");
+      return;
+    }
+
+    setCashMovementPending(true);
+    try {
+      const formData = new FormData();
+      formData.set("cashSessionId", sessionId);
+      formData.set("type", cashMovementType);
+      formData.set("montant", cashMovementMontant);
+      formData.set("motif", cashMovementMotif);
+      const result = await recordCashMovement({ error: null }, formData);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setError(null);
+      setCashMovementOpen(false);
+      setCashMovementMontant("0");
+      setCashMovementMotif("");
+    } catch {
+      setError("Mouvement de caisse impossible (vérifiez la connexion).");
+    } finally {
+      setCashMovementPending(false);
     }
   }
 
@@ -328,7 +429,8 @@ export function PosClient({
         if (last) document.getElementById(`remise-${last.variantId}`)?.focus();
       } else if (e.key === "F3") {
         e.preventDefault();
-        setError("Clients disponibles à partir de la Phase 2.");
+        setCustomerQuery("");
+        setCustomerPickerOpen(true);
       } else if (e.key === "F4") {
         e.preventDefault();
         holdCart();
@@ -397,6 +499,9 @@ export function PosClient({
               Synchroniser maintenant
             </Button>
           )}
+          <Button variant="ghost" size="sm" onClick={() => setCashMovementOpen(true)}>
+            Mouvement de caisse
+          </Button>
           <Button variant="outline" size="sm" onClick={openCloseDialog}>
             Fermer la caisse
           </Button>
@@ -500,6 +605,29 @@ export function PosClient({
             </p>
           </div>
 
+          <button
+            type="button"
+            onClick={() => {
+              setCustomerQuery("");
+              setCustomerPickerOpen(true);
+            }}
+            className="rounded-xl border border-border bg-card p-4 text-left"
+          >
+            <p className="text-xs font-medium text-muted-foreground uppercase">Client (F3)</p>
+            {selectedCustomer ? (
+              <>
+                <p className="text-sm font-medium text-foreground">{selectedCustomer.nom}</p>
+                <p
+                  className={`num text-xs ${selectedCustomer.solde > selectedCustomer.plafondCredit ? "text-destructive" : "text-muted-foreground"}`}
+                >
+                  Solde (dernière synchro) : {formatMoney(selectedCustomer.solde, devise)}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Aucun client sélectionné</p>
+            )}
+          </button>
+
           <div className="flex flex-col gap-2">
             <Button onClick={openCheckout} disabled={cart.length === 0}>
               Encaisser (F9)
@@ -590,6 +718,61 @@ export function PosClient({
         </DialogContent>
       </Dialog>
 
+      <Dialog open={customerPickerOpen} onOpenChange={setCustomerPickerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sélectionner un client</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <Input
+              autoFocus
+              placeholder="Nom ou téléphone"
+              value={customerQuery}
+              onChange={(e) => setCustomerQuery(e.target.value)}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() => {
+                setCustomerId(null);
+                setCustomerPickerOpen(false);
+              }}
+            >
+              Aucun client
+            </Button>
+            <div className="flex max-h-64 flex-col divide-y divide-border overflow-y-auto rounded-md border border-border">
+              {filteredCustomers.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setCustomerId(c.id);
+                    setCustomerPickerOpen(false);
+                  }}
+                  className="flex items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
+                >
+                  <div>
+                    <p className="text-foreground">{c.nom}</p>
+                    {c.telephone && <p className="text-xs text-muted-foreground">{c.telephone}</p>}
+                  </div>
+                  <span
+                    className={`num text-xs ${c.solde > c.plafondCredit ? "text-destructive" : "text-muted-foreground"}`}
+                  >
+                    {formatMoney(c.solde, devise)}
+                  </span>
+                </button>
+              ))}
+              {filteredCustomers.length === 0 && (
+                <p className="px-3 py-4 text-center text-sm text-muted-foreground">
+                  Aucun client trouvé.
+                </p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
         <DialogContent>
           <DialogHeader>
@@ -620,6 +803,54 @@ export function PosClient({
             ) : (
               <Button onClick={handleCloseSession}>Valider la fermeture</Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={cashMovementOpen} onOpenChange={setCashMovementOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mouvement de caisse</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label>Type</Label>
+              <select
+                value={cashMovementType}
+                onChange={(e) => setCashMovementType(e.target.value as CashMovementType)}
+                className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
+              >
+                {CASH_MOVEMENT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="cashMovementMontant">Montant</Label>
+              <Input
+                id="cashMovementMontant"
+                type="number"
+                step="0.01"
+                value={cashMovementMontant}
+                onChange={(e) => setCashMovementMontant(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="cashMovementMotif">Motif</Label>
+              <Input
+                id="cashMovementMotif"
+                value={cashMovementMotif}
+                onChange={(e) => setCashMovementMotif(e.target.value)}
+                placeholder="Appoint monnaie, dépôt en banque..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleRecordCashMovement} disabled={cashMovementPending}>
+              {cashMovementPending ? "Enregistrement..." : "Enregistrer"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

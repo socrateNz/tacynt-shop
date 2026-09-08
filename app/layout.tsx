@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import Script from "next/script";
+import { RegisterServiceWorker } from "./register-sw";
 import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
 
@@ -29,6 +30,11 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Tacynt Shop",
   description: "SaaS multi-tenant de gestion de boutique",
+  appleWebApp: { capable: true, title: "Tacynt Shop", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#b8431a",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -43,7 +49,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {themeInitScript}
         </Script>
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <RegisterServiceWorker />
+      </body>
     </html>
   );
 }

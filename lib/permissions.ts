@@ -12,6 +12,13 @@ export type Role =
 export type Capability =
   | "catalog:read"
   | "catalog:write"
+  | "catalog:import"
+  | "customers:manage"
+  | "suppliers:manage"
+  | "purchasing:manage"
+  | "expenses:manage"
+  | "expenses:approve"
+  | "inventory:manage"
   | "stock:read"
   | "stock:write"
   | "pos:sell"
@@ -27,6 +34,13 @@ export type Capability =
 const ALL_CAPABILITIES: Capability[] = [
   "catalog:read",
   "catalog:write",
+  "catalog:import",
+  "customers:manage",
+  "suppliers:manage",
+  "purchasing:manage",
+  "expenses:manage",
+  "expenses:approve",
+  "inventory:manage",
   "stock:read",
   "stock:write",
   "pos:sell",
@@ -46,12 +60,24 @@ const CAPABILITIES_BY_ROLE: Record<Role, Capability[]> = {
   // Tout sur ses boutiques affectées, sauf la facturation SaaS.
   GERANT: ALL_CAPABILITIES.filter((c) => c !== "billing:manage"),
   // Catalogue, réceptions, inventaires, transferts. Pas d'accès caisse.
-  RESPONSABLE_STOCK: ["catalog:read", "catalog:write", "stock:read", "stock:write"],
+  RESPONSABLE_STOCK: [
+    "catalog:read",
+    "catalog:write",
+    "catalog:import",
+    "stock:read",
+    "stock:write",
+    "suppliers:manage",
+    "purchasing:manage",
+    "inventory:manage",
+  ],
   // Caisse uniquement (ouverture/fermeture de sa session incluse — "caisse
   // uniquement" au sens plein du terme). Ne voit ni prix d'achat ni marge,
   // ne peut ni annuler un ticket ni accorder une remise au-delà du plafond
-  // configuré.
-  VENDEUR: ["pos:sell", "cash_session:manage"],
+  // configuré. expenses:manage inclus : une dépense en espèces payée
+  // pendant son propre service doit pouvoir être saisie pour que le
+  // rapprochement de caisse à la fermeture soit exact — jamais
+  // expenses:approve, une dépense au-delà du seuil reste EN_ATTENTE.
+  VENDEUR: ["pos:sell", "cash_session:manage", "expenses:manage"],
   // Lecture seule sur ventes, achats, dépenses, exports.
   COMPTABLE: ["reports:read"],
 };

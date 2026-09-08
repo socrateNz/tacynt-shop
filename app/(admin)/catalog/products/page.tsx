@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import {
@@ -63,11 +64,13 @@ export default async function ProductsPage() {
               <TableHead>Catégorie</TableHead>
               <TableHead className="text-right">Prix de vente</TableHead>
               <TableHead>Stock suivi</TableHead>
+              <TableHead>Variantes</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {products.map((p) => {
               const price = p.variants[0]?.shopPrices[0];
+              const activeVariants = p.variants.filter((v) => v.actif).length;
               return (
                 <TableRow key={p.id}>
                   <TableCell className="num text-muted-foreground">{p.reference}</TableCell>
@@ -79,12 +82,20 @@ export default async function ProductsPage() {
                   <TableCell className="text-muted-foreground">
                     {p.suiviStock ? "Oui" : "Non"}
                   </TableCell>
+                  <TableCell>
+                    <Link
+                      href={`/catalog/products/${p.id}/variants`}
+                      className="text-sm text-primary underline-offset-4 hover:underline"
+                    >
+                      {activeVariants} variante{activeVariants > 1 ? "s" : ""}
+                    </Link>
+                  </TableCell>
                 </TableRow>
               );
             })}
             {products.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   Aucun produit pour l&apos;instant.
                 </TableCell>
               </TableRow>
