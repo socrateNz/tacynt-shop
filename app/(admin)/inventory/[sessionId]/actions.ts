@@ -16,7 +16,7 @@ export async function recordInventoryCount(
   formData: FormData,
 ): Promise<InventoryCountState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "inventory:manage");
+  await assertCapability(ctx.role, "inventory:manage");
 
   const inventorySessionId = String(formData.get("inventorySessionId") ?? "");
   const variantId = String(formData.get("variantId") ?? "");
@@ -75,7 +75,7 @@ export async function recordInventoryCount(
 
 export async function validateInventorySession(formData: FormData) {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "inventory:manage");
+  await assertCapability(ctx.role, "inventory:manage");
 
   const inventorySessionId = String(formData.get("inventorySessionId") ?? "");
   if (!inventorySessionId) return;
@@ -135,7 +135,7 @@ export async function validateInventorySession(formData: FormData) {
 
 export async function cancelInventorySession(formData: FormData) {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "inventory:manage");
+  await assertCapability(ctx.role, "inventory:manage");
 
   const inventorySessionId = String(formData.get("inventorySessionId") ?? "");
   if (!inventorySessionId) return;

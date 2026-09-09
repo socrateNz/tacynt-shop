@@ -72,7 +72,7 @@ BEGIN
   FOREACH t IN ARRAY ARRAY[
     'shops', 'users', 'user_shops', 'categories', 'products',
     'product_variants', 'audit_logs', 'sessions', 'import_batches',
-    'customers', 'customer_ledger',
+    'customers', 'customer_ledger', 'loyalty_ledger',
     'suppliers', 'supplier_products', 'supplier_ledger'
   ]
   LOOP
@@ -106,7 +106,8 @@ BEGIN
     'customer_category_prices',
     'purchase_orders', 'purchase_order_lines', 'goods_receipts', 'goods_receipt_lines',
     'expenses', 'cash_movements',
-    'inventory_sessions', 'inventory_counts'
+    'inventory_sessions', 'inventory_counts',
+    'lots', 'serial_numbers'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
@@ -124,6 +125,61 @@ BEGIN
          )',
       t
     );
+  END LOOP;
+END
+$$;
+
+-- Cas particulier (Phase 3, M19) : stock_transfers/stock_transfer_lines
+-- touchent DEUX boutiques (émettrice et destinataire), pas une seule —
+-- policy dédiée plutôt que le groupe générique ci-dessus, qui ne connaît
+-- qu'une colonne shop_id.
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['stock_transfers', 'stock_transfer_lines']
+  LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY tenant_isolation ON %I
+         USING (
+           organization_id = app_current_tenant_id()
+           AND (
+             app_current_shop_id() IS NULL
+             OR from_shop_id = app_current_shop_id()
+             OR to_shop_id = app_current_shop_id()
+           )
+         )
+         WITH CHECK (
+           organization_id = app_current_tenant_id()
+           AND (
+             app_current_shop_id() IS NULL
+             OR from_shop_id = app_current_shop_id()
+             OR to_shop_id = app_current_shop_id()
+           )
+         )',
+      t
+    );
+  END LOOP;
+END
+$$;
+
+-- Espace admin plateforme (Phase 3, M25) : platform_admins/
+-- platform_admin_sessions/platform_payments ne sont PAS des tables tenant —
+-- aucune policy RLS (rien à isoler, ce sont des vues délibérément
+-- cross-organisation). L'isolation réelle vient d'ici : tacynt_app n'a
+-- STRICTEMENT AUCUN accès, malgré le GRANT/ALTER DEFAULT PRIVILEGES par
+-- défaut plus haut dans ce fichier. Seul le rôle propriétaire des
+-- migrations y accède (lib/db/platform-client.ts, jamais lib/db/client.ts).
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['platform_admins', 'platform_admin_sessions', 'platform_payments']
+  LOOP
+    EXECUTE format('REVOKE ALL ON %I FROM tacynt_app', t);
   END LOOP;
 END
 $$;

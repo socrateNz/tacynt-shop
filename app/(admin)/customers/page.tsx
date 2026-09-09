@@ -28,7 +28,7 @@ export default async function CustomersPage() {
     where: { id: ctx.organizationId },
   });
 
-  const [customers, balances] = await withTenantContext(
+  const [customers, balances, pointsBalances] = await withTenantContext(
     { organizationId: ctx.organizationId },
     async (tx) => {
       const customers = await tx.customer.findMany({ orderBy: { nom: "asc" } });
@@ -36,12 +36,19 @@ export default async function CustomersPage() {
         by: ["customerId"],
         _sum: { montant: true },
       });
-      return [customers, balances] as const;
+      const pointsBalances = await tx.loyaltyLedger.groupBy({
+        by: ["customerId"],
+        _sum: { points: true },
+      });
+      return [customers, balances, pointsBalances] as const;
     },
   );
 
   const balanceByCustomer = new Map(
     balances.map((b) => [b.customerId, Number(b._sum.montant ?? 0)]),
+  );
+  const pointsByCustomer = new Map(
+    pointsBalances.map((p) => [p.customerId, p._sum.points ?? 0]),
   );
 
   return (
@@ -63,6 +70,7 @@ export default async function CustomersPage() {
               <TableHead>Catégorie tarifaire</TableHead>
               <TableHead className="text-right">Plafond crédit</TableHead>
               <TableHead className="text-right">Solde</TableHead>
+              <TableHead className="text-right">Points</TableHead>
               <TableHead>Statut</TableHead>
             </TableRow>
           </TableHeader>
@@ -91,6 +99,9 @@ export default async function CustomersPage() {
                   >
                     {formatMoney(solde, organization.devise)}
                   </TableCell>
+                  <TableCell className="num text-right">
+                    {pointsByCustomer.get(c.id) ?? 0}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={c.actif ? "success" : "secondary"}>
                       {c.actif ? "Actif" : "Inactif"}
@@ -101,7 +112,7 @@ export default async function CustomersPage() {
             })}
             {customers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   Aucun client pour l&apos;instant.
                 </TableCell>
               </TableRow>

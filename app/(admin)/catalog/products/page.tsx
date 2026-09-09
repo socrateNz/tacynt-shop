@@ -15,6 +15,7 @@ import { formatMoney } from "@/lib/money";
 import { hasCapability } from "@/lib/permissions";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
+import { profileHasLots, profileHasSerialNumbers } from "@/lib/tenant/profile";
 
 import { ProductForm } from "./product-form";
 
@@ -45,14 +46,26 @@ export default async function ProductsPage() {
   );
 
   const canWrite = hasCapability(ctx.role, "catalog:write");
+  const showLots = profileHasLots(organization.profilMetier);
+  const showSerial = profileHasSerialNumbers(organization.profilMetier);
 
   return (
     <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Produits</h1>
-        <p className="text-sm text-muted-foreground">
-          Catalogue mutualisé au niveau de l&apos;organisation, prix par boutique.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Produits</h1>
+          <p className="text-sm text-muted-foreground">
+            Catalogue mutualisé au niveau de l&apos;organisation, prix par boutique.
+          </p>
+        </div>
+        {showSerial && (
+          <Link
+            href="/catalog/serial-numbers"
+            className="text-sm text-primary underline-offset-4 hover:underline"
+          >
+            Rechercher un numéro de série
+          </Link>
+        )}
       </header>
 
       <div className="rounded-xl border border-border bg-card">
@@ -65,6 +78,8 @@ export default async function ProductsPage() {
               <TableHead className="text-right">Prix de vente</TableHead>
               <TableHead>Stock suivi</TableHead>
               <TableHead>Variantes</TableHead>
+              {showLots && <TableHead>Lots</TableHead>}
+              {showSerial && <TableHead>Numéros de série</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -90,12 +105,43 @@ export default async function ProductsPage() {
                       {activeVariants} variante{activeVariants > 1 ? "s" : ""}
                     </Link>
                   </TableCell>
+                  {showLots && (
+                    <TableCell>
+                      {p.suiviLots ? (
+                        <Link
+                          href={`/catalog/products/${p.id}/lots`}
+                          className="text-sm text-primary underline-offset-4 hover:underline"
+                        >
+                          Voir les lots
+                        </Link>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {showSerial && (
+                    <TableCell>
+                      {p.suiviSerie ? (
+                        <Link
+                          href={`/catalog/products/${p.id}/serial-numbers`}
+                          className="text-sm text-primary underline-offset-4 hover:underline"
+                        >
+                          Voir les numéros
+                        </Link>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
             {products.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell
+                  colSpan={6 + (showLots ? 1 : 0) + (showSerial ? 1 : 0)}
+                  className="text-center text-muted-foreground"
+                >
                   Aucun produit pour l&apos;instant.
                 </TableCell>
               </TableRow>
@@ -105,7 +151,11 @@ export default async function ProductsPage() {
       </div>
 
       {canWrite && (
-        <ProductForm categories={categories.map((c) => ({ id: c.id, nom: c.nom }))} />
+        <ProductForm
+          categories={categories.map((c) => ({ id: c.id, nom: c.nom }))}
+          showLots={showLots}
+          showSerial={showSerial}
+        />
       )}
     </div>
   );

@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: Promise<{ expenseId: string }> },
 ) {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "expenses:manage");
+  await assertCapability(ctx.role, "expenses:manage");
 
   const { expenseId } = await params;
 

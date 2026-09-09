@@ -19,7 +19,7 @@ export async function POST(
   { params }: { params: Promise<{ batchId: string }> },
 ) {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "catalog:import");
+  await assertCapability(ctx.role, "catalog:import");
 
   const { batchId } = await params;
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);

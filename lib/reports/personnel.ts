@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
+import { shopScope } from "./scope";
+
 export type PersonnelReport = {
   parVendeur: {
     userId: string;
@@ -14,17 +16,17 @@ export type PersonnelReport = {
 // "CA par vendeur, remises accordées, annulations" (section 5.7).
 export async function getPersonnelReport(
   tx: Prisma.TransactionClient,
-  shopId: string,
+  shopId: string | null,
   from: Date,
   to: Date,
 ): Promise<PersonnelReport> {
   const [validSales, cancelledSales] = await Promise.all([
     tx.sale.findMany({
-      where: { shopId, statut: "VALIDEE", createdAt: { gte: from, lt: to } },
+      where: { ...shopScope(shopId), statut: "VALIDEE", createdAt: { gte: from, lt: to } },
       include: { lines: true },
     }),
     tx.sale.findMany({
-      where: { shopId, statut: "ANNULEE", createdAt: { gte: from, lt: to } },
+      where: { ...shopScope(shopId), statut: "ANNULEE", createdAt: { gte: from, lt: to } },
     }),
   ]);
 

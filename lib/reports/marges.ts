@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
+import { shopScope } from "./scope";
+
 export type MargesReport = {
   parProduit: { designation: string; ca: number; cout: number; marge: number; margePourcent: number }[];
   parCategorie: { categorie: string; ca: number; cout: number; marge: number; margePourcent: number }[];
@@ -11,12 +13,12 @@ export type MargesReport = {
 // historique ne bouge pas quand le prix d'achat évolue.
 export async function getMargesReport(
   tx: Prisma.TransactionClient,
-  shopId: string,
+  shopId: string | null,
   from: Date,
   to: Date,
 ): Promise<MargesReport> {
   const lines = await tx.saleLine.findMany({
-    where: { shopId, sale: { statut: "VALIDEE", createdAt: { gte: from, lt: to } } },
+    where: { ...shopScope(shopId), sale: { statut: "VALIDEE", createdAt: { gte: from, lt: to } } },
     include: { variant: { include: { product: { include: { category: true } } } } },
   });
 

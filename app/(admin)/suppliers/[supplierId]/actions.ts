@@ -15,7 +15,7 @@ export async function recordSupplierPayment(
   formData: FormData,
 ): Promise<SupplierPaymentState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "purchasing:manage");
+  await assertCapability(ctx.role, "purchasing:manage");
 
   const supplierId = String(formData.get("supplierId") ?? "");
   const montant = Number(formData.get("montant") ?? NaN);
@@ -58,7 +58,7 @@ export async function updateSupplier(
   formData: FormData,
 ): Promise<SupplierUpdateState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "suppliers:manage");
+  await assertCapability(ctx.role, "suppliers:manage");
 
   const supplierId = String(formData.get("supplierId") ?? "");
   const delaiRaw = String(formData.get("delaiLivraisonJours") ?? "").trim();
@@ -98,7 +98,7 @@ export async function addSupplierProduct(
   formData: FormData,
 ): Promise<SupplierProductState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "suppliers:manage");
+  await assertCapability(ctx.role, "suppliers:manage");
 
   const supplierId = String(formData.get("supplierId") ?? "");
   const variantId = String(formData.get("variantId") ?? "");

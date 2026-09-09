@@ -14,6 +14,7 @@ import { formatMoney } from "@/lib/money";
 import { hasCapability } from "@/lib/permissions";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
+import { profileHasLots, profileHasSerialNumbers } from "@/lib/tenant/profile";
 
 import { AdjustStockForm } from "./adjust-stock-form";
 import { ReceiveStockForm } from "./receive-stock-form";
@@ -29,7 +30,14 @@ export default async function StockMovementsPage() {
     where: { id: ctx.organizationId },
   });
 
-  const [levels, movements, variants] = await withTenantContext(
+  const showLots = profileHasLots(organization.profilMetier);
+  const showSerial = profileHasSerialNumbers(organization.profilMetier);
+  // Capturé une seule fois : un Date.now() appelé pendant le rendu (JSX)
+  // est une fonction impure interdite par la règle react-hooks/purity,
+  // même côté serveur.
+  const now = new Date();
+
+  const [levels, movements, variants, expiringLots] = await withTenantContext(
     { organizationId: ctx.organizationId, shopId },
     async (tx) => {
       const levels = await tx.stockLevel.findMany({
@@ -48,7 +56,20 @@ export default async function StockMovementsPage() {
         include: { product: true },
         orderBy: { product: { designation: "asc" } },
       });
-      return [levels, movements, variants] as const;
+      // Alerte configurable à J-30 (section 5.1) — les lots déjà à 0 ne
+      // sont plus pertinents à afficher.
+      const expiringLots = showLots
+        ? await tx.lot.findMany({
+            where: {
+              shopId,
+              quantite: { gt: 0 },
+              datePeremption: { lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) },
+            },
+            include: { variant: { include: { product: true } } },
+            orderBy: { datePeremption: "asc" },
+          })
+        : [];
+      return [levels, movements, variants, expiringLots] as const;
     },
   );
 
@@ -99,9 +120,39 @@ export default async function StockMovementsPage() {
         </div>
       </section>
 
+      {showLots && expiringLots.length > 0 && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-sm font-medium text-foreground">
+            Alertes péremption (30 jours)
+          </h2>
+          <div className="rounded-xl border border-warning/30 bg-warning/10 p-4">
+            <ul className="flex flex-col gap-1 text-sm">
+              {expiringLots.map((l) => {
+                const joursRestants = l.datePeremption
+                  ? Math.ceil((l.datePeremption.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+                  : null;
+                return (
+                  <li
+                    key={l.id}
+                    className={joursRestants !== null && joursRestants <= 7 ? "text-destructive" : "text-foreground"}
+                  >
+                    {l.variant.product.designation} — lot {l.numero} — {l.quantite.toString()} unité(s) —
+                    {joursRestants !== null && joursRestants < 0
+                      ? " périmé"
+                      : ` J-${joursRestants}`}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </section>
+      )}
+
       {canWrite && (
         <>
           <ReceiveStockForm
+            showLots={showLots}
+            showSerial={showSerial}
             variants={variants.map((v) => ({
               id: v.id,
               label: `${v.product.designation}${v.codeBarres ? ` (${v.codeBarres})` : ""}`,

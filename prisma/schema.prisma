@@ -81,8 +81,21 @@ enum CustomerLedgerType {
   PAIEMENT
   AJUSTEMENT
   ANNULATION_VENTE
+  // Paiement en caisse par bon d'achat (Phase 3, M21) : mécaniquement
+  // identique à VENTE_ARDOISE (montant positif, consomme le solde du
+  // client), distingué pour ne pas polluer les libellés "vente à crédit"
+  // des rapports avec des rédemptions de fidélité.
+  UTILISATION_BON_ACHAT
 
   @@map("customer_ledger_type")
+}
+
+enum LoyaltyLedgerType {
+  GAGNE
+  CONVERTI
+  AJUSTEMENT
+
+  @@map("loyalty_ledger_type")
 }
 
 enum PurchaseOrderStatus {
@@ -134,6 +147,22 @@ enum InventorySessionStatus {
   @@map("inventory_session_status")
 }
 
+enum StockTransferStatus {
+  DEMANDE
+  EXPEDIE
+  RECU
+  ANNULE
+
+  @@map("stock_transfer_status")
+}
+
+enum SerialNumberStatus {
+  EN_STOCK
+  VENDU
+
+  @@map("serial_number_status")
+}
+
 model Organization {
   id           String             @id @default(uuid()) @db.Uuid
   nom          String
@@ -157,8 +186,66 @@ model Organization {
   importBatches  ImportBatch[]
   customers      Customer[]
   suppliers      Supplier[]
+  platformPayments PlatformPayment[]
 
   @@map("organizations")
+}
+
+// Espace admin plateforme (Phase 3, M25) : authentification et rôle
+// entièrement séparés des organisations clientes — un opérateur côté
+// Tacynt, jamais un Propriétaire de boutique qui se paierait à lui-même.
+// Ni ce modèle ni PlatformAdminSession/PlatformPayment ne portent
+// organization_id comme limite d'isolement au sens RLS : ce sont des vues
+// délibérément cross-organisation. Isolation réelle = absence totale de
+// policy RLS + absence de GRANT au rôle runtime applicatif (tacynt_app),
+// posée à la main dans la migration (voir prisma/rls-manifest.sql) — seul
+// le rôle propriétaire des migrations y accède, via lib/db/platform-client.ts,
+// jamais lib/db/client.ts (le client tenant, RLS).
+model PlatformAdmin {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @unique
+  hash      String
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  sessions PlatformAdminSession[]
+  payments PlatformPayment[]
+
+  @@map("platform_admins")
+}
+
+model PlatformAdminSession {
+  id              String   @id @default(uuid()) @db.Uuid
+  platformAdminId String   @map("platform_admin_id") @db.Uuid
+  tokenHash       String   @unique @map("token_hash")
+  expiresAt       DateTime @map("expires_at")
+  ip              String?
+  userAgent       String?  @map("user_agent")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  platformAdmin PlatformAdmin @relation(fields: [platformAdminId], references: [id])
+
+  @@map("platform_admin_sessions")
+}
+
+// Constat manuel d'un paiement perçu hors ligne (section 9 : "c'est l'admin
+// qui gère les abonnements après avoir perçu en espèces") — pas une
+// transaction réelle, aucune intégration de paiement derrière.
+model PlatformPayment {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  montant           Decimal  @db.Decimal(12, 2)
+  devise            String
+  periodeDebut      DateTime @map("periode_debut")
+  periodeFin        DateTime @map("periode_fin")
+  recordedByAdminId String   @map("recorded_by_admin_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  organization      Organization  @relation(fields: [organizationId], references: [id])
+  recordedByAdmin   PlatformAdmin @relation(fields: [recordedByAdminId], references: [id])
+
+  @@index([organizationId])
+  @@map("platform_payments")
 }
 
 model Shop {
@@ -184,6 +271,10 @@ model Shop {
   expenses       Expense[]
   cashMovements  CashMovement[]
   inventorySessions InventorySession[]
+  transfersEnvoyes  StockTransfer[] @relation("StockTransferFromShop")
+  transfersRecus    StockTransfer[] @relation("StockTransferToShop")
+  lots              Lot[]
+  serialNumbers     SerialNumber[]
 
   @@index([organizationId])
   @@map("shops")
@@ -268,6 +359,15 @@ model Product {
   unite          String   @default("piece")
   tauxTaxe       Decimal  @default(0) @map("taux_taxe") @db.Decimal(5, 2)
   suiviStock     Boolean  @default(true) @map("suivi_stock")
+  // Activable seulement si le profil métier de l'organisation le permet
+  // (épicerie/pharmacie — section 6, Phase 3 M22). Sortie de stock en FEFO
+  // quand actif ; lib/stock/lots.ts.
+  suiviLots      Boolean  @default(false) @map("suivi_lots")
+  // Activable seulement pour le profil "électronique" (section 6, Phase 3
+  // M23). Traçabilité unité par unité, affectation à la vente en FIFO ;
+  // lib/stock/serial-numbers.ts. Mutuellement exclusif de suiviLots en
+  // pratique (aucun profil n'active les deux), jamais forcé par le schéma.
+  suiviSerie     Boolean  @default(false) @map("suivi_serie")
   actif          Boolean  @default(true)
   createdAt      DateTime @default(now()) @map("created_at")
 
@@ -303,10 +403,13 @@ model ProductVariant {
   saleLines      SaleLine[]
   stockAlerts    StockAlert[]
   customerCategoryPrices CustomerCategoryPrice[]
+  lots               Lot[]
+  serialNumbers      SerialNumber[]
   supplierProducts   SupplierProduct[]
   purchaseOrderLines PurchaseOrderLine[]
   goodsReceiptLines  GoodsReceiptLine[]
   inventoryCounts    InventoryCount[]
+  stockTransferLines StockTransferLine[]
 
   @@unique([organizationId, codeBarres])
   @@index([organizationId])
@@ -369,6 +472,10 @@ model StockMovement {
   coutUnitaire   Decimal           @map("cout_unitaire") @db.Decimal(14, 4)
   documentType   String?           @map("document_type")
   documentId     String?           @map("document_id") @db.Uuid
+  // Optionnel : renseigné uniquement pour un variant à suiviLots=true
+  // (Phase 3, M22) — une sortie FEFO peut générer plusieurs mouvements pour
+  // une même ligne de vente, un par lot consommé.
+  lotId          String?           @map("lot_id") @db.Uuid
   userId         String?           @map("user_id") @db.Uuid
   motif          String?
   createdAt      DateTime          @default(now()) @map("created_at")
@@ -376,6 +483,7 @@ model StockMovement {
   organization Organization   @relation(fields: [organizationId], references: [id])
   shop         Shop           @relation(fields: [shopId], references: [id])
   variant      ProductVariant @relation(fields: [variantId], references: [id])
+  lot          Lot?           @relation(fields: [lotId], references: [id])
 
   @@index([organizationId])
   @@index([shopId, variantId])
@@ -470,6 +578,7 @@ model SaleLine {
 
   sale    Sale           @relation(fields: [saleId], references: [id])
   variant ProductVariant @relation(fields: [variantId], references: [id])
+  serialNumbers SerialNumber[]
 
   @@index([organizationId])
   @@index([saleId])
@@ -546,6 +655,7 @@ model Customer {
   organization  Organization     @relation(fields: [organizationId], references: [id])
   sales         Sale[]
   ledgerEntries CustomerLedger[]
+  loyaltyEntries LoyaltyLedger[]
 
   @@index([organizationId])
   @@map("customers")
@@ -573,6 +683,29 @@ model CustomerLedger {
   @@index([organizationId])
   @@index([customerId])
   @@map("customer_ledger")
+}
+
+// Journal append-only, même moule que customer_ledger (Phase 3, M21) : le
+// solde de points est SUM(points), jamais un compteur mutable. La
+// conversion en crédit (CONVERTI) génère en parallèle une écriture
+// customer_ledger — deux journaux séparés, jamais une seule "valeur" à
+// synchroniser entre points et argent.
+model LoyaltyLedger {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  customerId     String            @map("customer_id") @db.Uuid
+  type           LoyaltyLedgerType
+  // Signé : positif = points gagnés, négatif = points convertis/retirés.
+  points         Int
+  documentType   String?           @map("document_type")
+  documentId     String?           @map("document_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@map("loyalty_ledger")
 }
 
 // Surcouche optionnelle sur shop_prices (section M13) : prix spécifique à
@@ -835,6 +968,119 @@ model InventoryCount {
   @@index([organizationId])
   @@index([inventorySessionId])
   @@map("inventory_counts")
+}
+
+// Flux en trois temps (section 5.2, Phase 3 M19) : demande -> expédition
+// (sortie du stock émetteur) -> réception (entrée dans le stock
+// destinataire, écart possible constaté, jamais silencieux). Touche deux
+// boutiques à la fois — cas particulier dans le modèle RLS, policy dédiée
+// dans prisma/rls-manifest.sql plutôt que le groupe générique à un seul
+// shop_id.
+model StockTransfer {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  fromShopId     String               @map("from_shop_id") @db.Uuid
+  toShopId       String               @map("to_shop_id") @db.Uuid
+  numero         String
+  statut         StockTransferStatus  @default(DEMANDE)
+  userId         String               @map("user_id") @db.Uuid
+  createdAt      DateTime             @default(now()) @map("created_at")
+
+  fromShop Shop                @relation("StockTransferFromShop", fields: [fromShopId], references: [id])
+  toShop   Shop                @relation("StockTransferToShop", fields: [toShopId], references: [id])
+  lines    StockTransferLine[]
+
+  @@unique([organizationId, numero])
+  @@index([organizationId])
+  @@index([fromShopId])
+  @@index([toShopId])
+  @@map("stock_transfers")
+}
+
+model StockTransferLine {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  // Dénormalisés depuis le transfert parent, même règle que sale_lines —
+  // les deux sont nécessaires pour la policy RLS dédiée (visible depuis
+  // l'une ou l'autre boutique).
+  fromShopId     String  @map("from_shop_id") @db.Uuid
+  toShopId       String  @map("to_shop_id") @db.Uuid
+  stockTransferId String @map("stock_transfer_id") @db.Uuid
+  variantId      String  @map("variant_id") @db.Uuid
+  quantiteDemandee       Decimal  @map("quantite_demandee") @db.Decimal(14, 3)
+  // Figés au moment de l'expédition : le coût hérité par la boutique
+  // destinataire est celui, réel, de la boutique émettrice — jamais un prix
+  // d'achat arbitraire.
+  quantiteExpediee       Decimal? @map("quantite_expediee") @db.Decimal(14, 3)
+  coutUnitaireExpedition Decimal? @map("cout_unitaire_expedition") @db.Decimal(14, 4)
+  quantiteRecue          Decimal? @map("quantite_recue") @db.Decimal(14, 3)
+
+  stockTransfer StockTransfer  @relation(fields: [stockTransferId], references: [id])
+  variant       ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([organizationId])
+  @@index([stockTransferId])
+  @@map("stock_transfer_lines")
+}
+
+// Lots et péremption (section 5.1, Phase 3 M22) : activable par profil
+// métier (épicerie/pharmacie, lib/tenant/profile.ts). Un lot porte un
+// numéro, une date de péremption optionnelle et une quantité — décrémentée
+// directement ici par la consommation FEFO (lib/stock/lots.ts), pas
+// reconstruite depuis les mouvements comme stock_levels : contrairement au
+// stock total, il n'y a pas de risque de divergence puisque seule la
+// consommation FEFO écrit cette quantité (jamais le formulaire de réception
+// directement, jamais une vente hors-FEFO).
+model Lot {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  shopId         String    @map("shop_id") @db.Uuid
+  variantId      String    @map("variant_id") @db.Uuid
+  numero         String
+  datePeremption DateTime? @map("date_peremption")
+  quantite       Decimal   @db.Decimal(14, 3)
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  shop      Shop            @relation(fields: [shopId], references: [id])
+  variant   ProductVariant  @relation(fields: [variantId], references: [id])
+  movements StockMovement[]
+
+  @@unique([variantId, shopId, numero])
+  @@index([organizationId])
+  @@index([shopId])
+  @@map("lots")
+}
+
+// Traçabilité unité par unité pour le profil "électronique" (section 6,
+// Phase 3 M23) : contrairement aux lots (une quantité par lot), chaque ligne
+// est une unité physique précise, créée à la réception. L'affectation à la
+// vente se fait automatiquement en FIFO (lib/stock/serial-numbers.ts) — la
+// caisse hors ligne ne scanne pas de numéro au point de vente, seule la
+// traçabilité après-coup (recherche par numéro, support garantie) est
+// exigée par le cahier des charges.
+model SerialNumber {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  shopId         String             @map("shop_id") @db.Uuid
+  variantId      String             @map("variant_id") @db.Uuid
+  numero         String
+  statut         SerialNumberStatus @default(EN_STOCK)
+  saleLineId     String?            @map("sale_line_id") @db.Uuid
+  receivedAt     DateTime           @default(now()) @map("received_at")
+  soldAt         DateTime?          @map("sold_at")
+
+  shop     Shop           @relation(fields: [shopId], references: [id])
+  variant  ProductVariant @relation(fields: [variantId], references: [id])
+  saleLine SaleLine?      @relation(fields: [saleLineId], references: [id])
+
+  // Unique par organisation, pas par boutique : un numéro de série
+  // matérielle identifie une unité physique unique, quelle que soit la
+  // boutique où elle a été reçue (cf. la même règle pour codeBarres).
+  @@unique([organizationId, numero])
+  @@index([organizationId])
+  @@index([shopId])
+  @@index([variantId, shopId, statut])
+  @@map("serial_numbers")
 }
 
 // Append-only : aucune méthode d'update/delete côté code (lib/audit.ts).

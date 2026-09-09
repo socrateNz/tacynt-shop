@@ -33,6 +33,7 @@ export type PosCustomer = {
   categorieTarif: string;
   plafondCredit: number;
   solde: number;
+  pointsFidelite: number;
 };
 
 export type CategoryPrice = {

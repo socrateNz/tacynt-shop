@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
+import { shopScope } from "./scope";
+
 export type VentesReport = {
   totalCa: number;
   totalTickets: number;
@@ -11,17 +13,17 @@ export type VentesReport = {
 };
 
 // "Par période, boutique, vendeur, catégorie, mode de paiement" (section
-// 5.7). La boutique est déjà le périmètre de la requête (shopId) ; les
+// 5.7). shopId=null consolide toute l'organisation (Phase 3, M20). Les
 // quatre autres dimensions sont chacune une table de répartition séparée
 // plutôt qu'un seul pivot multi-dimensionnel, plus simple à lire.
 export async function getVentesReport(
   tx: Prisma.TransactionClient,
-  shopId: string,
+  shopId: string | null,
   from: Date,
   to: Date,
 ): Promise<VentesReport> {
   const sales = await tx.sale.findMany({
-    where: { shopId, statut: "VALIDEE", createdAt: { gte: from, lt: to } },
+    where: { ...shopScope(shopId), statut: "VALIDEE", createdAt: { gte: from, lt: to } },
     include: {
       lines: { include: { variant: { include: { product: { include: { category: true } } } } } },
       payments: true,

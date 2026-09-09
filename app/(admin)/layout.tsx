@@ -3,22 +3,47 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { systemPrisma } from "@/lib/db/system-client";
+import { withTenantContext } from "@/lib/db/tenant-context";
+import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
+
+import { ShopSwitcher } from "./shops/shop-switcher";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const ctx = await getTenantContext();
-  const organization = await systemPrisma.organization.findUnique({
-    where: { id: ctx.organizationId },
-  });
+  const [organization, activeShopId, userShops] = await Promise.all([
+    systemPrisma.organization.findUnique({ where: { id: ctx.organizationId } }),
+    getActiveShopId(ctx.organizationId, ctx.userId),
+    withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
+      tx.userShop.findMany({
+        where: { userId: ctx.userId },
+        include: { shop: true },
+        orderBy: { shop: { nom: "asc" } },
+      }),
+    ),
+  ]);
 
   return (
     <div className="flex flex-1 flex-col bg-background">
       <header className="no-print flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-6">
           <span className="text-sm font-semibold text-foreground">{organization?.nom}</span>
+          <ShopSwitcher
+            shops={userShops.map((us) => ({ id: us.shop.id, nom: us.shop.nom }))}
+            activeShopId={activeShopId}
+          />
           <nav className="flex items-center gap-4 text-sm text-muted-foreground">
             <Link href="/" className="hover:text-foreground">
               Accueil
+            </Link>
+            <Link href="/shops" className="hover:text-foreground">
+              Boutiques
+            </Link>
+            <Link href="/settings" className="hover:text-foreground">
+              Paramètres
+            </Link>
+            <Link href="/transfers" className="hover:text-foreground">
+              Transferts
             </Link>
             <Link href="/catalog/categories" className="hover:text-foreground">
               Catégories
@@ -70,6 +95,18 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </Button>
         </form>
       </header>
+      {ctx.organizationStatus === "GRACE_PERIOD" && (
+        <div className="no-print border-b border-warning/30 bg-warning/10 px-6 py-2 text-sm text-foreground">
+          Abonnement en attente de paiement — période de grâce en cours. La caisse et
+          l&apos;administration restent pleinement fonctionnelles.
+        </div>
+      )}
+      {ctx.organizationStatus === "SUSPENDED" && (
+        <div className="no-print border-b border-destructive/30 bg-destructive/10 px-6 py-2 text-sm text-foreground">
+          Abonnement suspendu (impayé) — les actions d&apos;administration sont bloquées. La
+          caisse (vente, encaissement) reste utilisable.
+        </div>
+      )}
       <main className="flex flex-1 flex-col px-6 py-10">
         <div className="mx-auto w-full max-w-4xl">{children}</div>
       </main>

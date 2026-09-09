@@ -15,7 +15,7 @@ export async function startInventorySession(
   formData: FormData,
 ): Promise<InventorySessionFormState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "inventory:manage");
+  await assertCapability(ctx.role, "inventory:manage");
 
   const type = String(formData.get("type") ?? "");
   const categoryId = String(formData.get("categoryId") ?? "") || null;

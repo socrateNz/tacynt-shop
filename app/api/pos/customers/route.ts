@@ -11,10 +11,10 @@ import { getTenantContext } from "@/lib/tenant/context";
 // — cohérent avec le reste du système hors-ligne-tolérant).
 export async function GET() {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "pos:sell");
+  await assertCapability(ctx.role, "pos:sell");
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
 
-  const [customers, balances, categoryPrices] = await withTenantContext(
+  const [customers, balances, pointsBalances, categoryPrices] = await withTenantContext(
     { organizationId: ctx.organizationId, shopId },
     async (tx) => {
       const customers = await tx.customer.findMany({ where: { actif: true } });
@@ -22,13 +22,20 @@ export async function GET() {
         by: ["customerId"],
         _sum: { montant: true },
       });
+      const pointsBalances = await tx.loyaltyLedger.groupBy({
+        by: ["customerId"],
+        _sum: { points: true },
+      });
       const categoryPrices = await tx.customerCategoryPrice.findMany({ where: { shopId } });
-      return [customers, balances, categoryPrices] as const;
+      return [customers, balances, pointsBalances, categoryPrices] as const;
     },
   );
 
   const balanceByCustomer = new Map(
     balances.map((b) => [b.customerId, Number(b._sum.montant ?? 0)]),
+  );
+  const pointsByCustomer = new Map(
+    pointsBalances.map((p) => [p.customerId, p._sum.points ?? 0]),
   );
 
   return NextResponse.json({
@@ -40,6 +47,7 @@ export async function GET() {
       categorieTarif: c.categorieTarif,
       plafondCredit: Number(c.plafondCredit),
       solde: balanceByCustomer.get(c.id) ?? 0,
+      pointsFidelite: pointsByCustomer.get(c.id) ?? 0,
     })),
     categoryPrices: categoryPrices.map((p) => ({
       variantId: p.variantId,

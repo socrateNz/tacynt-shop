@@ -10,7 +10,15 @@ import { receiveStock, type ReceiveStockState } from "./actions";
 
 const initialState: ReceiveStockState = { error: null };
 
-export function ReceiveStockForm({ variants }: { variants: { id: string; label: string }[] }) {
+export function ReceiveStockForm({
+  variants,
+  showLots,
+  showSerial,
+}: {
+  variants: { id: string; label: string }[];
+  showLots: boolean;
+  showSerial: boolean;
+}) {
   const [state, formAction, isPending] = useActionState(receiveStock, initialState);
 
   return (
@@ -55,7 +63,34 @@ export function ReceiveStockForm({ variants }: { variants: { id: string; label: 
           <Label htmlFor="motif">Motif / document (optionnel)</Label>
           <Input id="motif" name="motif" placeholder="BR-2026-004" />
         </div>
+        {showLots && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="lotNumero">N° de lot (si applicable)</Label>
+              <Input id="lotNumero" name="lotNumero" placeholder="LOT-2026-04" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="datePeremption">Date de péremption</Label>
+              <Input id="datePeremption" name="datePeremption" type="date" />
+            </div>
+          </>
+        )}
       </div>
+
+      {showSerial && (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="serialNumbers">
+            Numéros de série (si applicable — un par ligne, autant que la quantité reçue)
+          </Label>
+          <textarea
+            id="serialNumbers"
+            name="serialNumbers"
+            rows={4}
+            placeholder={"SN-000123\nSN-000124"}
+            className="rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
+          />
+        </div>
+      )}
 
       <Button type="submit" className="self-start" disabled={isPending}>
         {isPending ? "Enregistrement..." : "Enregistrer la réception"}

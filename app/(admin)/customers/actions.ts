@@ -14,7 +14,7 @@ export async function createCustomer(
   formData: FormData,
 ): Promise<CustomerFormState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "customers:manage");
+  await assertCapability(ctx.role, "customers:manage");
 
   const nom = String(formData.get("nom") ?? "").trim();
   const telephone = String(formData.get("telephone") ?? "").trim() || null;

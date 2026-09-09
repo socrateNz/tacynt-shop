@@ -19,7 +19,7 @@ export async function cancelSale(
   formData: FormData,
 ): Promise<CancelSaleState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "pos:cancel_ticket");
+  await assertCapability(ctx.role, "pos:cancel_ticket");
 
   const saleId = String(formData.get("saleId") ?? "");
   const motif = String(formData.get("motif") ?? "").trim();

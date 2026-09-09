@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { findSessionByToken, SESSION_COOKIE_NAME } from "@/lib/auth/session";
+import {
+  findPlatformSessionByToken,
+  PLATFORM_SESSION_COOKIE_NAME,
+} from "@/lib/auth/platform-session";
 import { extractSlugFromHost, resolveOrganizationBySlug } from "@/lib/tenant/resolve";
 
 // Pages ET routes accessibles sans session valide, une fois le sous-domaine
@@ -17,10 +21,22 @@ const PUBLIC_PATHS = new Set([
   "/api/auth/mfa/verify",
 ]);
 
+// Même principe pour l'espace admin plateforme (Phase 3, M25), servi sur le
+// domaine racine — voir la branche `!slug` ci-dessous.
+const PLATFORM_PUBLIC_PATHS = new Set([
+  "/platform/login",
+  "/api/platform/auth/login",
+  "/api/platform/auth/logout",
+]);
+
 // Anti-spoofing : ces headers ne doivent jamais venir du client. proxy.ts
 // est la seule source autorisée à les poser (cahier des charges 4.3 :
 // "jamais transmis par le client dans le corps de la requête").
-const SPOOFABLE_HEADER_PREFIXES = ["x-tenant-", "x-user-"];
+const SPOOFABLE_HEADER_PREFIXES = ["x-tenant-", "x-user-", "x-platform-"];
+
+function isPlatformPath(pathname: string): boolean {
+  return pathname.startsWith("/platform") || pathname.startsWith("/api/platform");
+}
 
 export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
@@ -34,7 +50,35 @@ export async function proxy(request: NextRequest) {
   const slug = extractSlugFromHost(host);
   const { pathname } = request.nextUrl;
 
+  // /platform/* n'existe QUE sur le domaine racine (pas de sous-domaine
+  // résolu) — sur le sous-domaine d'une boutique, le chemin est introuvable
+  // plutôt que de retomber silencieusement sur le flux d'authentification
+  // tenant (qui ne sait de toute façon rien faire de x-platform-admin-id).
+  if (slug && isPlatformPath(pathname)) {
+    return new NextResponse("Introuvable.", { status: 404 });
+  }
+
   if (!slug) {
+    if (isPlatformPath(pathname)) {
+      if (PLATFORM_PUBLIC_PATHS.has(pathname)) {
+        return NextResponse.next({ request: { headers: requestHeaders } });
+      }
+
+      const platformToken = request.cookies.get(PLATFORM_SESSION_COOKIE_NAME)?.value;
+      const platformSession = platformToken
+        ? await findPlatformSessionByToken(platformToken)
+        : null;
+
+      if (!platformSession) {
+        const loginUrl = request.nextUrl.clone();
+        loginUrl.pathname = "/platform/login";
+        return NextResponse.redirect(loginUrl);
+      }
+
+      requestHeaders.set("x-platform-admin-id", platformSession.platformAdminId);
+      return NextResponse.next({ request: { headers: requestHeaders } });
+    }
+
     // Domaine racine (pas de sous-domaine résolu) : marketing/inscription
     // uniquement, aucun contexte tenant à établir ici.
     return NextResponse.next({ request: { headers: requestHeaders } });
@@ -61,6 +105,7 @@ export async function proxy(request: NextRequest) {
   }
 
   requestHeaders.set("x-tenant-org-id", organization.id);
+  requestHeaders.set("x-tenant-org-status", organization.statut);
   requestHeaders.set("x-user-id", session.userId);
   requestHeaders.set("x-user-role", session.user.role);
 

@@ -25,7 +25,7 @@ export async function createProduct(
   formData: FormData,
 ): Promise<ProductFormState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "catalog:write");
+  await assertCapability(ctx.role, "catalog:write");
 
   const reference = String(formData.get("reference") ?? "").trim();
   const designation = String(formData.get("designation") ?? "").trim();
@@ -33,6 +33,8 @@ export async function createProduct(
   const unite = String(formData.get("unite") ?? "piece").trim() || "piece";
   const tauxTaxe = Number(formData.get("tauxTaxe") ?? 0);
   const suiviStock = formData.get("suiviStock") === "on";
+  const suiviLots = formData.get("suiviLots") === "on";
+  const suiviSerie = formData.get("suiviSerie") === "on";
   const codeBarres = String(formData.get("codeBarres") ?? "").trim() || null;
   const prixAchatRef = Number(formData.get("prixAchatRef") ?? 0);
   const prixVente = Number(formData.get("prixVente") ?? 0);
@@ -63,6 +65,8 @@ export async function createProduct(
           unite,
           tauxTaxe,
           suiviStock,
+          suiviLots,
+          suiviSerie,
         },
       });
 

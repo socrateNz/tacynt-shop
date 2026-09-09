@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions";
-import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 // Rapprochement (section 5.6) : espèces théoriques = fond + ventes espèces
@@ -15,7 +14,7 @@ export async function POST(
   { params }: { params: Promise<{ sessionId: string }> },
 ) {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "cash_session:manage");
+  await assertCapability(ctx.role, "cash_session:manage");
 
   const { sessionId } = await params;
   const body = await request.json();
@@ -25,11 +24,11 @@ export async function POST(
     return NextResponse.json({ error: "Comptage final (valide) requis." }, { status: 400 });
   }
 
-  const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
-
   try {
+    // La boutique de la session ferme, jamais celle "active" de l'appelant
+    // (même raison que sessions/open et sync/sales, Phase 3 M18/M20).
     const result = await withTenantContext(
-      { organizationId: ctx.organizationId, shopId },
+      { organizationId: ctx.organizationId },
       async (tx) => {
         const session = await tx.cashSession.findUniqueOrThrow({ where: { id: sessionId } });
         if (session.closedAt) {

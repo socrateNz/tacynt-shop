@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
+import { shopScope } from "./scope";
+
 export type TresorerieReport = {
   encaissementsParMode: { mode: string; montant: number }[];
   totalEncaissements: number;
@@ -16,15 +18,17 @@ export type TresorerieReport = {
 // compter tout l'argent physiquement sorti quel que soit son statut.
 export async function getTresorerieReport(
   tx: Prisma.TransactionClient,
-  shopId: string,
+  shopId: string | null,
   from: Date,
   to: Date,
 ): Promise<TresorerieReport> {
   const [payments, expenses] = await Promise.all([
     tx.payment.findMany({
-      where: { shopId, sale: { statut: "VALIDEE", createdAt: { gte: from, lt: to } } },
+      where: { ...shopScope(shopId), sale: { statut: "VALIDEE", createdAt: { gte: from, lt: to } } },
     }),
-    tx.expense.findMany({ where: { shopId, statut: "VALIDEE", createdAt: { gte: from, lt: to } } }),
+    tx.expense.findMany({
+      where: { ...shopScope(shopId), statut: "VALIDEE", createdAt: { gte: from, lt: to } },
+    }),
   ]);
 
   const parModeMap = new Map<string, number>();

@@ -17,7 +17,7 @@ export async function receiveGoods(
   formData: FormData,
 ): Promise<ReceiveGoodsState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "purchasing:manage");
+  await assertCapability(ctx.role, "purchasing:manage");
 
   const purchaseOrderId = String(formData.get("purchaseOrderId") ?? "");
   const variantIds = formData.getAll("lineVariantId") as string[];

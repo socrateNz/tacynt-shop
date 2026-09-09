@@ -10,7 +10,15 @@ import { createProduct, type ProductFormState } from "./actions";
 
 const initialState: ProductFormState = { error: null };
 
-export function ProductForm({ categories }: { categories: { id: string; nom: string }[] }) {
+export function ProductForm({
+  categories,
+  showLots,
+  showSerial,
+}: {
+  categories: { id: string; nom: string }[];
+  showLots: boolean;
+  showSerial: boolean;
+}) {
   const [state, formAction, isPending] = useActionState(createProduct, initialState);
 
   return (
@@ -89,6 +97,20 @@ export function ProductForm({ categories }: { categories: { id: string; nom: str
         <input type="checkbox" name="suiviStock" defaultChecked className="size-4" />
         Suivi de stock (décocher pour un service)
       </label>
+
+      {showLots && (
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <input type="checkbox" name="suiviLots" className="size-4" />
+          Suivi par lots et péremption (sortie FEFO)
+        </label>
+      )}
+
+      {showSerial && (
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <input type="checkbox" name="suiviSerie" className="size-4" />
+          Suivi par numéro de série (traçabilité unité par unité)
+        </label>
+      )}
 
       <Button type="submit" className="self-start" disabled={isPending}>
         {isPending ? "Création..." : "Créer le produit"}

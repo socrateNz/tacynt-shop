@@ -6,6 +6,7 @@ export type TenantContext = {
   organizationId: string;
   userId: string;
   role: Role;
+  organizationStatus: string;
 };
 
 // Lit les headers posés par proxy.ts (jamais transmis par le client dans le
@@ -16,12 +17,13 @@ export async function getTenantContext(): Promise<TenantContext> {
   const organizationId = h.get("x-tenant-org-id");
   const userId = h.get("x-user-id");
   const role = h.get("x-user-role") as Role | null;
+  const organizationStatus = h.get("x-tenant-org-status");
 
-  if (!organizationId || !userId || !role) {
+  if (!organizationId || !userId || !role || !organizationStatus) {
     throw new Error(
       "Contexte tenant manquant : cette requête n'est pas passée par proxy.ts avec une session valide.",
     );
   }
 
-  return { organizationId, userId, role };
+  return { organizationId, userId, role, organizationStatus };
 }

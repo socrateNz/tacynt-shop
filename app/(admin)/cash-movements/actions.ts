@@ -3,7 +3,6 @@
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions";
-import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 export type CashMovementState = { error: string | null };
@@ -16,7 +15,7 @@ export async function recordCashMovement(
   formData: FormData,
 ): Promise<CashMovementState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "cash_session:manage");
+  await assertCapability(ctx.role, "cash_session:manage");
 
   const cashSessionId = String(formData.get("cashSessionId") ?? "");
   const type = String(formData.get("type") ?? "");
@@ -33,14 +32,15 @@ export async function recordCashMovement(
     return { error: "Type, montant (positif) et motif sont requis." };
   }
 
-  const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
-
-  const session = await withTenantContext({ organizationId: ctx.organizationId, shopId }, (tx) =>
+  // La boutique de la session, jamais celle "active" de l'appelant (même
+  // raison que sessions/open et sync/sales, Phase 3 M18/M20).
+  const session = await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
     tx.cashSession.findUniqueOrThrow({ where: { id: cashSessionId } }),
   );
   if (session.closedAt) {
     return { error: "Cette session de caisse est déjà fermée." };
   }
+  const shopId = session.shopId;
 
   await withTenantContext({ organizationId: ctx.organizationId, shopId }, async (tx) => {
     const movement = await tx.cashMovement.create({

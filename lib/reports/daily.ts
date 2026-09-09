@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
+import { shopScope } from "./scope";
+
 export type DailyReport = {
   caDuJour: number;
   nombreTickets: number;
@@ -23,7 +25,7 @@ function startOfDay(date: Date): Date {
 // (marges/rotation filtrables) sont Phase 2 — ceci reste la vue du jour.
 export async function getDailyReport(
   tx: Prisma.TransactionClient,
-  shopId: string,
+  shopId: string | null,
 ): Promise<DailyReport> {
   const now = new Date();
   const todayStart = startOfDay(now);
@@ -33,15 +35,15 @@ export async function getDailyReport(
 
   const [todaySales, lastWeekSales, openSessions, ruptures] = await Promise.all([
     tx.sale.findMany({
-      where: { shopId, statut: "VALIDEE", createdAt: { gte: todayStart, lt: todayEnd } },
+      where: { ...shopScope(shopId), statut: "VALIDEE", createdAt: { gte: todayStart, lt: todayEnd } },
       include: { lines: true, payments: true },
     }),
     tx.sale.aggregate({
-      where: { shopId, statut: "VALIDEE", createdAt: { gte: lastWeekStart, lt: lastWeekEnd } },
+      where: { ...shopScope(shopId), statut: "VALIDEE", createdAt: { gte: lastWeekStart, lt: lastWeekEnd } },
       _sum: { totalTtc: true },
     }),
-    tx.cashSession.findMany({ where: { shopId, closedAt: null } }),
-    tx.stockLevel.count({ where: { shopId, quantite: { lte: 0 } } }),
+    tx.cashSession.findMany({ where: { ...shopScope(shopId), closedAt: null } }),
+    tx.stockLevel.count({ where: { ...shopScope(shopId), quantite: { lte: 0 } } }),
   ]);
 
   const caDuJour = todaySales.reduce((sum, s) => sum + Number(s.totalTtc), 0);

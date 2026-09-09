@@ -11,6 +11,10 @@ type CreditStockParams = {
   documentId?: string | null;
   userId?: string | null;
   motif?: string | null;
+  // Renseigné par l'appelant pour un variant à suiviLots=true (Phase 3,
+  // M22) : le lot est créé/mis à jour avant l'appel, ce helper se contente
+  // de tamponner l'id sur le mouvement, aucune logique de lot ici.
+  lotId?: string | null;
 };
 
 // Entrée de stock valorisée (CUMP recalculé) : réception manuelle (M4),
@@ -31,6 +35,7 @@ export async function creditStock(tx: Prisma.TransactionClient, params: CreditSt
     documentId = null,
     userId = null,
     motif = null,
+    lotId = null,
   } = params;
 
   const movement = await tx.stockMovement.create({
@@ -45,6 +50,7 @@ export async function creditStock(tx: Prisma.TransactionClient, params: CreditSt
       documentId,
       userId,
       motif,
+      lotId,
     },
   });
 

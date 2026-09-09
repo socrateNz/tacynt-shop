@@ -11,17 +11,23 @@ import {
 import { getCustomerBalance } from "@/lib/customers/ledger";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
+import { getLoyaltyBalance } from "@/lib/loyalty/ledger";
 import { formatMoney } from "@/lib/money";
 import { hasCapability } from "@/lib/permissions";
 import { getTenantContext } from "@/lib/tenant/context";
 
-import { CustomerSettingsForm, PaymentForm } from "./customer-detail-forms";
+import {
+  CustomerSettingsForm,
+  LoyaltyConversionForm,
+  PaymentForm,
+} from "./customer-detail-forms";
 
 const LEDGER_TYPE_LABELS: Record<string, string> = {
   VENTE_ARDOISE: "Vente à crédit",
   PAIEMENT: "Paiement",
   AJUSTEMENT: "Ajustement",
   ANNULATION_VENTE: "Annulation de vente",
+  UTILISATION_BON_ACHAT: "Utilisation bon d'achat",
 };
 
 export default async function CustomerDetailPage({
@@ -39,7 +45,7 @@ export default async function CustomerDetailPage({
     where: { id: ctx.organizationId },
   });
 
-  const [customer, ledgerEntries, solde] = await withTenantContext(
+  const [customer, ledgerEntries, solde, pointsBalance] = await withTenantContext(
     { organizationId: ctx.organizationId },
     async (tx) => {
       const customer = await tx.customer.findUniqueOrThrow({ where: { id: customerId } });
@@ -49,7 +55,8 @@ export default async function CustomerDetailPage({
         take: 50,
       });
       const solde = await getCustomerBalance(tx, customerId);
-      return [customer, ledgerEntries, solde] as const;
+      const pointsBalance = await getLoyaltyBalance(tx, customerId);
+      return [customer, ledgerEntries, solde, pointsBalance] as const;
     },
   );
 
@@ -83,6 +90,8 @@ export default async function CustomerDetailPage({
       </div>
 
       <PaymentForm customerId={customer.id} />
+
+      <LoyaltyConversionForm customerId={customer.id} pointsBalance={pointsBalance} />
 
       <CustomerSettingsForm
         customerId={customer.id}

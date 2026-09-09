@@ -30,7 +30,7 @@ export async function createUser(
   formData: FormData,
 ): Promise<UserFormState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "users:manage");
+  await assertCapability(ctx.role, "users:manage");
 
   const email = String(formData.get("email") ?? "")
     .trim()

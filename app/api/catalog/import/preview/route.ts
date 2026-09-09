@@ -11,7 +11,7 @@ import { getTenantContext } from "@/lib/tenant/context";
 // dépasser le plafond de 1 Mo des Server Actions.
 export async function POST(request: Request) {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "catalog:import");
+  await assertCapability(ctx.role, "catalog:import");
 
   const formData = await request.formData();
   const file = formData.get("file");

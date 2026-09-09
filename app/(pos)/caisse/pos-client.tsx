@@ -755,6 +755,9 @@ export function PosClient({
                   <div>
                     <p className="text-foreground">{c.nom}</p>
                     {c.telephone && <p className="text-xs text-muted-foreground">{c.telephone}</p>}
+                    {c.pointsFidelite > 0 && (
+                      <p className="num text-xs text-muted-foreground">{c.pointsFidelite} pts</p>
+                    )}
                   </div>
                   <span
                     className={`num text-xs ${c.solde > c.plafondCredit ? "text-destructive" : "text-muted-foreground"}`}

@@ -24,7 +24,7 @@ export async function createPurchaseOrder(
   formData: FormData,
 ): Promise<PurchaseOrderFormState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "purchasing:manage");
+  await assertCapability(ctx.role, "purchasing:manage");
 
   const supplierId = String(formData.get("supplierId") ?? "");
   const variantIds = formData.getAll("lineVariantId") as string[];
@@ -98,7 +98,7 @@ export async function createPurchaseOrder(
 
 export async function sendPurchaseOrder(formData: FormData) {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "purchasing:manage");
+  await assertCapability(ctx.role, "purchasing:manage");
 
   const purchaseOrderId = String(formData.get("purchaseOrderId") ?? "");
   const supplierId = String(formData.get("supplierId") ?? "");

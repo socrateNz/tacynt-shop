@@ -24,7 +24,7 @@ export async function createVariant(
   formData: FormData,
 ): Promise<VariantFormState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "catalog:write");
+  await assertCapability(ctx.role, "catalog:write");
 
   const productId = String(formData.get("productId") ?? "");
   const attributeNames = formData.getAll("attributeName") as string[];
@@ -97,7 +97,7 @@ export async function createVariant(
 
 export async function deactivateVariant(formData: FormData) {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "catalog:write");
+  await assertCapability(ctx.role, "catalog:write");
 
   const variantId = String(formData.get("variantId") ?? "");
   const productId = String(formData.get("productId") ?? "");

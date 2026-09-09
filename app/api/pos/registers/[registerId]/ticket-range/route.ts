@@ -15,7 +15,7 @@ export async function POST(
   { params }: { params: Promise<{ registerId: string }> },
 ) {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "pos:sell");
+  await assertCapability(ctx.role, "pos:sell");
 
   const { registerId } = await params;
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);

@@ -11,7 +11,7 @@ import { getTenantContext } from "@/lib/tenant/context";
 // curseur de version deviendra utile à plus grande échelle (Phase 2+).
 export async function GET() {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "pos:sell");
+  await assertCapability(ctx.role, "pos:sell");
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
 
   const products = await withTenantContext(

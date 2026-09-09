@@ -19,25 +19,33 @@ import { getTenantContext } from "@/lib/tenant/context";
 
 import { ExportButtons } from "../export-buttons";
 import { PeriodFilter } from "../period-filter";
+import { ShopFilter } from "../shop-filter";
 
 export default async function StockReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; shop?: string }>;
 }) {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "reports:read")) {
     redirect("/");
   }
 
-  const period = parsePeriod(await searchParams);
-  const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
-  const organization = await systemPrisma.organization.findUniqueOrThrow({
-    where: { id: ctx.organizationId },
-  });
+  const sp = await searchParams;
+  const period = parsePeriod(sp);
+  const consolidated = sp.shop === "all";
+  const activeShopId = await getActiveShopId(ctx.organizationId, ctx.userId);
+  const shopId = consolidated ? null : activeShopId;
+
+  const [organization, shopCount] = await Promise.all([
+    systemPrisma.organization.findUniqueOrThrow({ where: { id: ctx.organizationId } }),
+    withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
+      tx.shop.count({ where: { actif: true } }),
+    ),
+  ]);
 
   const report = await withTenantContext(
-    { organizationId: ctx.organizationId, shopId },
+    shopId ? { organizationId: ctx.organizationId, shopId } : { organizationId: ctx.organizationId },
     (tx) => getStockReport(tx, shopId, period.from, period.to),
   );
 
@@ -50,7 +58,8 @@ export default async function StockReportPage({
             Écarts et mouvements du {period.fromInput} au {period.toInput}
           </p>
         </div>
-        <div className="no-print">
+        <div className="no-print flex items-center gap-2">
+          {shopCount > 1 && <ShopFilter consolidated={consolidated} />}
           <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
         </div>
       </header>

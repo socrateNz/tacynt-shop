@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
+import { shopScope } from "./scope";
+
 export type StockReport = {
   valorisationTotale: number;
   ecartsInventaire: {
@@ -18,15 +20,15 @@ export type StockReport = {
 // sur la période choisie.
 export async function getStockReport(
   tx: Prisma.TransactionClient,
-  shopId: string,
+  shopId: string | null,
   from: Date,
   to: Date,
 ): Promise<StockReport> {
   const [stockLevels, counts, movements] = await Promise.all([
-    tx.stockLevel.findMany({ where: { shopId } }),
+    tx.stockLevel.findMany({ where: shopScope(shopId) }),
     tx.inventoryCount.findMany({
       where: {
-        inventorySession: { shopId },
+        ...shopScope(shopId),
         quantiteComptee: { not: null },
         comptedAt: { gte: from, lt: to },
       },
@@ -34,7 +36,7 @@ export async function getStockReport(
       orderBy: { comptedAt: "desc" },
     }),
     tx.stockMovement.findMany({
-      where: { shopId, createdAt: { gte: from, lt: to } },
+      where: { ...shopScope(shopId), createdAt: { gte: from, lt: to } },
       include: { variant: { include: { product: true } } },
       orderBy: { createdAt: "desc" },
       take: 200,

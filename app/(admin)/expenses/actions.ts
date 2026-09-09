@@ -9,7 +9,7 @@ import { getTenantContext } from "@/lib/tenant/context";
 
 async function setExpenseStatus(expenseId: string, statut: "VALIDEE" | "REJETEE") {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "expenses:approve");
+  await assertCapability(ctx.role, "expenses:approve");
 
   await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
     const expense = await tx.expense.findUniqueOrThrow({ where: { id: expenseId } });

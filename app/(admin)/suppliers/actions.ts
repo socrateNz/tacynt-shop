@@ -14,7 +14,7 @@ export async function createSupplier(
   formData: FormData,
 ): Promise<SupplierFormState> {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "suppliers:manage");
+  await assertCapability(ctx.role, "suppliers:manage");
 
   const nom = String(formData.get("nom") ?? "").trim();
   const telephone = String(formData.get("telephone") ?? "").trim() || null;

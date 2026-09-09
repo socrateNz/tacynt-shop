@@ -9,7 +9,7 @@ import { getTenantContext } from "@/lib/tenant/context";
 
 export async function createCategory(formData: FormData) {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "catalog:write");
+  await assertCapability(ctx.role, "catalog:write");
 
   const nom = String(formData.get("nom") ?? "").trim();
   const parentId = String(formData.get("parentId") ?? "") || null;

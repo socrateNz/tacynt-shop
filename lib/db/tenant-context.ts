@@ -33,3 +33,18 @@ export async function withSystemContext<T>(
 ): Promise<T> {
   return systemPrisma.$transaction((tx) => fn(tx));
 }
+
+// Rôle propriétaire, écriture ponctuelle sur UNE organisation depuis un
+// contexte hors tenant (admin plateforme, Phase 3 M25 — changement de
+// plan/statut, journal d'audit de l'organisation) : même précaution que
+// l'inscription (app/api/auth/signup/route.ts), organizations et les
+// tables dépendantes étant FORCE ROW LEVEL SECURITY.
+export async function withSystemTenantContext<T>(
+  organizationId: string,
+  fn: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  return systemPrisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.tenant_id', ${organizationId}, true)`;
+    return fn(tx);
+  });
+}

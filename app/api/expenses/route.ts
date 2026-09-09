@@ -17,7 +17,7 @@ const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 // l'import catalogue, section M12).
 export async function POST(request: Request) {
   const ctx = await getTenantContext();
-  assertCapability(ctx.role, "expenses:manage");
+  await assertCapability(ctx.role, "expenses:manage");
 
   const formData = await request.formData();
   const categorie = String(formData.get("categorie") ?? "").trim();

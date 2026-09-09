@@ -7,14 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import {
+  convertLoyaltyPoints,
   recordPayment,
   updateCustomer,
   type CustomerUpdateState,
+  type LoyaltyConversionState,
   type PaymentFormState,
 } from "./actions";
 
 const paymentInitialState: PaymentFormState = { error: null };
 const updateInitialState: CustomerUpdateState = { error: null };
+const loyaltyInitialState: LoyaltyConversionState = { error: null };
 
 export function PaymentForm({ customerId }: { customerId: string }) {
   const [state, formAction, isPending] = useActionState(recordPayment, paymentInitialState);
@@ -42,6 +45,41 @@ export function PaymentForm({ customerId }: { customerId: string }) {
         </div>
         <Button type="submit" disabled={isPending}>
           {isPending ? "Enregistrement..." : "Enregistrer"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+export function LoyaltyConversionForm({
+  customerId,
+  pointsBalance,
+}: {
+  customerId: string;
+  pointsBalance: number;
+}) {
+  const [state, formAction, isPending] = useActionState(convertLoyaltyPoints, loyaltyInitialState);
+
+  return (
+    <form
+      action={formAction}
+      className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
+    >
+      <h2 className="text-sm font-medium text-foreground">Convertir des points en crédit</h2>
+      <p className="text-sm text-muted-foreground">Solde de points : {pointsBalance}</p>
+      {state.error && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {state.error}
+        </p>
+      )}
+      <input type="hidden" name="customerId" value={customerId} />
+      <div className="flex items-end gap-2">
+        <div className="flex flex-1 flex-col gap-1.5">
+          <Label htmlFor="points">Points à convertir</Label>
+          <Input id="points" name="points" type="number" step="1" max={pointsBalance} required />
+        </div>
+        <Button type="submit" disabled={isPending || pointsBalance <= 0}>
+          {isPending ? "Conversion..." : "Convertir"}
         </Button>
       </div>
     </form>

@@ -11,7 +11,6 @@ import { getMargesReport } from "@/lib/reports/marges";
 import { parsePeriod } from "@/lib/reports/period";
 import { getTresorerieReport } from "@/lib/reports/tresorerie";
 import { getVentesReport } from "@/lib/reports/ventes";
-import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 // "Vue propriétaire" (section 2.2 : le propriétaire n'est pas dans la
@@ -20,25 +19,29 @@ import { getTenantContext } from "@/lib/tenant/context";
 // Décision verrouillée avec l'utilisateur : une page dédiée dans cette même
 // appli Next.js, gérée par reports:read (pas de rôle codé en dur), pas une
 // app native séparée. Réutilise les mêmes agrégations que /reports.
+//
+// Toujours consolidée sur toute l'organisation (shopId=null, Phase 3 M20) :
+// vérifier "comment va mon affaire" depuis son téléphone n'a de sens qu'à
+// l'échelle de l'organisation entière, pas d'une seule boutique — pour une
+// organisation à une seule boutique, ça revient exactement au même résultat.
 export default async function MobileOwnerViewPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "reports:read")) {
     redirect("/");
   }
 
-  const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
   const organization = await systemPrisma.organization.findUniqueOrThrow({
     where: { id: ctx.organizationId },
   });
   const monthPeriod = parsePeriod({});
 
   const [daily, ventesMois, margesMois, tresorerieMois, creances] = await withTenantContext(
-    { organizationId: ctx.organizationId, shopId },
+    { organizationId: ctx.organizationId },
     async (tx) => {
-      const daily = await getDailyReport(tx, shopId);
-      const ventesMois = await getVentesReport(tx, shopId, monthPeriod.from, monthPeriod.to);
-      const margesMois = await getMargesReport(tx, shopId, monthPeriod.from, monthPeriod.to);
-      const tresorerieMois = await getTresorerieReport(tx, shopId, monthPeriod.from, monthPeriod.to);
+      const daily = await getDailyReport(tx, null);
+      const ventesMois = await getVentesReport(tx, null, monthPeriod.from, monthPeriod.to);
+      const margesMois = await getMargesReport(tx, null, monthPeriod.from, monthPeriod.to);
+      const tresorerieMois = await getTresorerieReport(tx, null, monthPeriod.from, monthPeriod.to);
       const creances = await getCreancesReport(tx, ctx.organizationId);
       return [daily, ventesMois, margesMois, tresorerieMois, creances] as const;
     },
