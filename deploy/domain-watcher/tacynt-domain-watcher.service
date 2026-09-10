@@ -1,0 +1,6 @@
+[Unit]
+Description=Étend le certificat TLS de tacynt-shop avec les boutiques nouvellement créées
+
+[Service]
+Type=oneshot
+ExecStart=/opt/tacynt-shop/deploy/domain-watcher/sync-certs.sh

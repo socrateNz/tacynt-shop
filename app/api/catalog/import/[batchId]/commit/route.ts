@@ -6,7 +6,7 @@ import { recordAuditLog } from "@/lib/audit";
 import type { ImportRow } from "@/lib/catalog/import";
 import { revalidateRows } from "@/lib/catalog/import";
 import { withTenantContext } from "@/lib/db/tenant-context";
-import { assertCapability } from "@/lib/permissions";
+import { assertCapability } from "@/lib/permissions-server";
 import { assertWithinQuota, QuotaExceededError } from "@/lib/quotas";
 import { creditStock } from "@/lib/stock/movements";
 import { getActiveShopId } from "@/lib/tenant/active-shop";

@@ -6,6 +6,7 @@ import { recordAuditLog } from "@/lib/audit";
 import { hashPassword } from "@/lib/auth/password";
 import { withSystemContext } from "@/lib/db/tenant-context";
 import { requestOrigin } from "@/lib/http/request-origin";
+import { requestCertRefresh } from "@/lib/tenant/request-cert-refresh";
 
 // Plage Unicode des diacritiques combinants (U+0300–U+036F), pour retirer
 // les accents après normalize("NFD").
@@ -93,6 +94,12 @@ export async function POST(request: Request) {
     url.searchParams.set("error", "conflict");
     return NextResponse.redirect(url, { status: 303 });
   }
+
+  // Nouveau sous-domaine ({slug}.shop.tacynt.com) : le certificat TLS de
+  // production (Certbot HTTP-01, pas de wildcard) doit être étendu pour le
+  // couvrir — voir lib/tenant/request-cert-refresh.ts et
+  // deploy/domain-watcher/. Best-effort, ne bloque jamais l'inscription.
+  await requestCertRefresh();
 
   const protocol = requestOrigin(request).split("://")[0];
   const rootDomain = process.env.APP_ROOT_DOMAIN ?? "localhost:3000";

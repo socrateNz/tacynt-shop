@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
-import { assertCapability } from "@/lib/permissions";
+import { assertCapability } from "@/lib/permissions-server";
 import { creditStock } from "@/lib/stock/movements";
 import { recordSupplierLedgerEntry } from "@/lib/suppliers/ledger";
 import { getActiveShopId } from "@/lib/tenant/active-shop";

@@ -1,0 +1,30 @@
+name: Deploy
+
+# Pas de build en CI, pas de registre d'images (décision verrouillée du plan
+# de déploiement) : la CI se contente de déclencher un build + redémarrage
+# directement sur le serveur Contabo via SSH. Secrets requis dans les
+# paramètres du dépôt (Settings > Secrets and variables > Actions) :
+# SSH_HOST, SSH_USER, SSH_PRIVATE_KEY. Voir docs/deployment.md.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy on Contabo via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/tacynt-shop
+            git pull --ff-only origin main
+            docker compose -f docker-compose.prod.yml --env-file .env.production build app
+            docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+            docker compose -f docker-compose.prod.yml --env-file .env.production exec -T app npx prisma migrate deploy
+            docker compose -f docker-compose.prod.yml --env-file .env.production exec -T app npx tsx scripts/ensure-runtime-role-password.ts

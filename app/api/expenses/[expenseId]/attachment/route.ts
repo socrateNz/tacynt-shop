@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { withTenantContext } from "@/lib/db/tenant-context";
-import { assertCapability } from "@/lib/permissions";
+import { assertCapability } from "@/lib/permissions-server";
 import { getTenantContext } from "@/lib/tenant/context";
 
 // L'isolation tenant est héritée de RLS : un expenseId d'une autre

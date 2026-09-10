@@ -7,7 +7,7 @@ import { recordCustomerLedgerEntry } from "@/lib/customers/ledger";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { getLoyaltyBalance, recordLoyaltyEntry } from "@/lib/loyalty/ledger";
-import { assertCapability } from "@/lib/permissions";
+import { assertCapability } from "@/lib/permissions-server";
 import { getTenantContext } from "@/lib/tenant/context";
 import { parseOrgSettings } from "@/lib/tenant/settings";
 

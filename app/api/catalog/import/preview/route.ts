@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 
 import { parseWorkbook, revalidateRows } from "@/lib/catalog/import";
 import { withTenantContext } from "@/lib/db/tenant-context";
-import { assertCapability } from "@/lib/permissions";
+import { assertCapability } from "@/lib/permissions-server";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 

@@ -8,7 +8,7 @@ import type { PaymentMode } from "@prisma/client";
 import { recordAuditLog } from "@/lib/audit";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
-import { assertCapability } from "@/lib/permissions";
+import { assertCapability } from "@/lib/permissions-server";
 import { applySale } from "@/lib/sales/apply-sale";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";

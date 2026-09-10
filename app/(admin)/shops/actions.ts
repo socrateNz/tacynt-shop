@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
-import { assertCapability } from "@/lib/permissions";
+import { assertCapability } from "@/lib/permissions-server";
 import { assertWithinQuota, QuotaExceededError } from "@/lib/quotas";
 import { ACTIVE_SHOP_COOKIE_NAME } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";

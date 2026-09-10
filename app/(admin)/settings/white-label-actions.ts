@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { systemPrisma } from "@/lib/db/system-client";
-import { assertCapability } from "@/lib/permissions";
+import { assertCapability } from "@/lib/permissions-server";
 import { organizationCanUseWhiteLabel } from "@/lib/tenant/entitlements";
 import { getTenantContext } from "@/lib/tenant/context";
 import { parseOrgSettings } from "@/lib/tenant/settings";

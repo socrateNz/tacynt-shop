@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import type { TenantContext } from "@/lib/tenant/context";
-import { assertCapability } from "@/lib/permissions";
+import { assertCapability } from "@/lib/permissions-server";
 import { applySale } from "@/lib/sales/apply-sale";
 import { getTenantContext } from "@/lib/tenant/context";
 import { parseOrgSettings } from "@/lib/tenant/settings";

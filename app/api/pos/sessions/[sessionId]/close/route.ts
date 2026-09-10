@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
-import { assertCapability } from "@/lib/permissions";
+import { assertCapability } from "@/lib/permissions-server";
 import { getTenantContext } from "@/lib/tenant/context";
 
 // Rapprochement (section 5.6) : espèces théoriques = fond + ventes espèces

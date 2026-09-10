@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
-import { assertCapability } from "@/lib/permissions";
+import { assertCapability } from "@/lib/permissions-server";
 import { getTenantContext } from "@/lib/tenant/context";
 
 async function setExpenseStatus(expenseId: string, statut: "VALIDEE" | "REJETEE") {
