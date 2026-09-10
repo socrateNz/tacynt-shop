@@ -12,7 +12,14 @@
 # ici (aucune boutique n'approche ce volume à ce stade).
 set -eu
 
-PENDING_DIR="/opt/tacynt-shop/run/pending-domains"
+# Calculé depuis l'emplacement du script lui-même (deploy/domain-watcher/) —
+# jamais un chemin de dépôt codé en dur ici, contrairement à
+# tacynt-domain-watcher.path/.service qui doivent rester des chemins
+# absolus littéraux (exigence de systemd, unités copiées telles quelles
+# dans /etc/systemd/system).
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+REPO_DIR="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
+PENDING_DIR="$REPO_DIR/run/pending-domains"
 REQUEST_FILE="$PENDING_DIR/refresh.request"
 PROCESSING_FILE="$REQUEST_FILE.processing"
 CERT_NAME="shop-tacynt-com"

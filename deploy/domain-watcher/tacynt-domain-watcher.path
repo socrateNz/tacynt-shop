@@ -2,7 +2,7 @@
 Description=Surveille les demandes de rafraîchissement de certificat TLS de tacynt-shop
 
 [Path]
-PathChanged=/opt/tacynt-shop/run/pending-domains
+PathChanged=/home/etarcos/apps/tacynt-shop/run/pending-domains
 Unit=tacynt-domain-watcher.service
 
 [Install]
