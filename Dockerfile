@@ -43,7 +43,12 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
+# 127.0.0.1 explicite, pas "localhost" : dans cette image, "localhost"
+# résout en IPv6 (::1) d'abord et wget échoue en "connection refused" — le
+# serveur Next.js (HOSTNAME=0.0.0.0) n'écoute qu'en IPv4 (constaté en
+# production : conteneur marqué "unhealthy" alors que l'app répondait
+# normalement).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -q --spider http://localhost:3000/ || exit 1
+  CMD wget -q --spider http://127.0.0.1:3000/ || exit 1
 
 CMD ["node", "server.js"]
