@@ -22,8 +22,8 @@ comme pour les autres sites du serveur.
 Docker est déjà installé (prérequis de ce document).
 
 ```bash
-git clone <url-du-depot> /opt/tacynt-shop
-cd /opt/tacynt-shop
+git clone <url-du-depot> /home/etarcos/apps/tacynt-shop
+cd /home/etarcos/apps/tacynt-shop
 cp .env.production.example .env.production
 # Éditer .env.production : générer POSTGRES_OWNER_PASSWORD et
 # POSTGRES_APP_PASSWORD (ex. openssl rand -base64 32 pour chacun), les
@@ -32,12 +32,15 @@ cp .env.production.example .env.production
 
 # Répertoire partagé avec deploy/domain-watcher/ (section 3) — uid 1001 =
 # utilisateur "nextjs" du Dockerfile (conteneur non-root).
-mkdir -p /opt/tacynt-shop/run/pending-domains
-chown 1001:1001 /opt/tacynt-shop/run/pending-domains
+mkdir -p /home/etarcos/apps/tacynt-shop/run/pending-domains
+chown 1001:1001 /home/etarcos/apps/tacynt-shop/run/pending-domains
 
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d
-docker compose -f docker-compose.prod.yml --env-file .env.production exec -T app npx prisma migrate deploy
-docker compose -f docker-compose.prod.yml --env-file .env.production exec -T app npx tsx scripts/ensure-runtime-role-password.ts
+# "migrate" réutilise l'étape de build complète (node_modules entier, avec le
+# vrai CLI Prisma et le dossier prisma/) — jamais l'image "app" allégée
+# (.next/standalone), qui n'embarque ni l'un ni l'autre.
+docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate npx prisma migrate deploy
+docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate npx tsx scripts/ensure-runtime-role-password.ts
 ```
 
 Vérifier : `curl -I http://127.0.0.1:3005/` répond `200`, et
@@ -61,7 +64,7 @@ directement sur le serveur.
 
 ```bash
 mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
-cp /opt/tacynt-shop/deploy/nginx/shop.tacynt.com.conf /etc/nginx/sites-available/
+cp /home/etarcos/apps/tacynt-shop/deploy/nginx/shop.tacynt.com.conf /etc/nginx/sites-available/
 ln -s /etc/nginx/sites-available/shop.tacynt.com.conf /etc/nginx/sites-enabled/
 nginx -t && systemctl reload nginx
 ```
@@ -90,9 +93,9 @@ Un service systemd sur l'hôte surveille ce fichier et relance
 un certificat valide en quelques secondes, sans attente.
 
 ```bash
-chmod +x /opt/tacynt-shop/deploy/domain-watcher/sync-certs.sh
-cp /opt/tacynt-shop/deploy/domain-watcher/tacynt-domain-watcher.path /etc/systemd/system/
-cp /opt/tacynt-shop/deploy/domain-watcher/tacynt-domain-watcher.service /etc/systemd/system/
+chmod +x /home/etarcos/apps/tacynt-shop/deploy/domain-watcher/sync-certs.sh
+cp /home/etarcos/apps/tacynt-shop/deploy/domain-watcher/tacynt-domain-watcher.path /etc/systemd/system/
+cp /home/etarcos/apps/tacynt-shop/deploy/domain-watcher/tacynt-domain-watcher.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now tacynt-domain-watcher.path
 ```
@@ -112,7 +115,7 @@ Dans les paramètres du dépôt (Settings > Secrets and variables > Actions),
 ajouter :
 
 - `SSH_HOST` — IP ou nom d'hôte du serveur Contabo.
-- `SSH_USER` — utilisateur SSH ayant accès à `/opt/tacynt-shop` et à Docker.
+- `SSH_USER` — utilisateur SSH ayant accès à `/home/etarcos/apps/tacynt-shop` et à Docker.
 - `SSH_PRIVATE_KEY` — clé privée correspondante (une clé dédiée au
   déploiement, pas ta clé personnelle — sa clé publique doit être dans
   `~/.ssh/authorized_keys` de `SSH_USER` sur le serveur).

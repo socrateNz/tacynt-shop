@@ -50,6 +50,26 @@ services:
       # du premier déploiement — voir docs/deployment.md section 3.
       - ./run/pending-domains:/pending-domains
 
+  # Image "app" volontairement allégée (.next/standalone) : ni le dossier
+  # prisma/ (migrations) ni le CLI Prisma lui-même n'y sont copiés — un
+  # `npx prisma` dedans irait chercher la dernière version sur le registre
+  # npm au lieu de celle du projet (bug constaté au premier déploiement).
+  # Ce service réutilise l'étape "builder" du même Dockerfile (node_modules
+  # complet, déjà construit) uniquement pour les migrations et le script de
+  # mot de passe — jamais démarré par `up`, seulement via `run --rm`.
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    profiles: ["tools"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://tacynt_owner:${POSTGRES_OWNER_PASSWORD}@postgres:5432/tacynt_shop?schema=public
+      RUNTIME_DATABASE_URL: postgresql://tacynt_app:${POSTGRES_APP_PASSWORD}@postgres:5432/tacynt_shop?schema=public
+
 volumes:
   # Nom distinct du volume dev (tacynt-shop-pgdata) — pas de collision
   # possible si jamais testé sur la même machine.
