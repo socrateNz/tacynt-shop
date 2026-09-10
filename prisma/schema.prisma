@@ -173,6 +173,20 @@ model Organization {
   fuseau       String             @default("Africa/Douala")
   profilMetier String             @default("generique") @map("profil_metier")
   settings     Json               @default("{}")
+  // Marketplace de modules (Phase 4, M26) : tableau de clés (lib/tenant/modules.ts
+  // MODULE_CATALOG), activé exclusivement par l'admin plateforme (jamais en
+  // self-service) — même mécanique que plan/statut (M25).
+  enabledModules Json             @default("[]") @map("enabled_modules")
+  // White label — domaine personnalisé (Phase 4, M27). Colonnes réelles
+  // (pas settings Json) : lues à CHAQUE requête entrante par proxy.ts avant
+  // même la résolution de session, comme `slug` — doivent être indexées.
+  // Disponibilité gouvernée par le plan (lib/tenant/entitlements.ts,
+  // ENTERPRISE uniquement), pas par le marketplace de modules (M26) : c'est
+  // un avantage de palier d'abonnement, pas un module payant à l'unité.
+  customDomain                  String?   @unique @map("custom_domain")
+  customDomainVerified          Boolean   @default(false) @map("custom_domain_verified")
+  customDomainVerificationToken String?   @map("custom_domain_verification_token")
+  customDomainVerifiedAt        DateTime? @map("custom_domain_verified_at")
   createdAt    DateTime           @default(now()) @map("created_at")
 
   shops      Shop[]
@@ -187,8 +201,25 @@ model Organization {
   customers      Customer[]
   suppliers      Supplier[]
   platformPayments PlatformPayment[]
+  branding         OrganizationBranding?
+  onlineOrders     OnlineOrder[]
 
   @@map("organizations")
+}
+
+// Logo stocké en base (bytea), même précédent qu'Expense.justificatifData —
+// séparé d'Organization (Phase 4, M27) pour ne jamais alourdir le
+// organization.findUnique() relu à chaque page admin de chaque organisation.
+// Consulté uniquement par la page de paramétrage white-label et par la
+// route de service du logo (/api/branding/logo).
+model OrganizationBranding {
+  organizationId String  @id @map("organization_id") @db.Uuid
+  logoData       Bytes?  @map("logo_data")
+  logoMimeType   String? @map("logo_mime_type")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("organization_branding")
 }
 
 // Espace admin plateforme (Phase 3, M25) : authentification et rôle
@@ -275,6 +306,7 @@ model Shop {
   transfersRecus    StockTransfer[] @relation("StockTransferToShop")
   lots              Lot[]
   serialNumbers     SerialNumber[]
+  onlineOrders      OnlineOrder[]
 
   @@index([organizationId])
   @@map("shops")
@@ -410,6 +442,7 @@ model ProductVariant {
   goodsReceiptLines  GoodsReceiptLine[]
   inventoryCounts    InventoryCount[]
   stockTransferLines StockTransferLine[]
+  onlineOrderLines   OnlineOrderLine[]
 
   @@unique([organizationId, codeBarres])
   @@index([organizationId])
@@ -555,6 +588,7 @@ model Sale {
   customer     Customer?    @relation(fields: [customerId], references: [id])
   lines        SaleLine[]
   payments     Payment[]
+  onlineOrder  OnlineOrder?
 
   @@unique([shopId, numero])
   @@index([organizationId])
@@ -599,6 +633,88 @@ model Payment {
   @@index([organizationId])
   @@index([saleId])
   @@map("payments")
+}
+
+enum OnlineOrderStatus {
+  EN_ATTENTE
+  CONFIRMEE
+  PRETE
+  RECUPEREE
+  ANNULEE
+
+  @@map("online_order_status")
+}
+
+enum OnlineOrderFulfillmentMode {
+  RETRAIT_BOUTIQUE
+  LIVRAISON
+
+  @@map("online_order_fulfillment_mode")
+}
+
+// Commande en ligne (Phase 4, M30) : jamais une Sale — sale_id est une FK
+// optionnelle vers une session de caisse physique qu'une commande en ligne
+// n'a pas tant qu'elle n'est pas récupérée/encaissée en boutique (paiement
+// au retrait/à la livraison, décision verrouillée Phase 4). Le stock n'est
+// PAS décrémenté avant RECUPEREE : entre EN_ATTENTE/CONFIRMEE/PRETE la
+// commande est purement informationnelle — même garantie que stock_transfers
+// au statut DEMANDE, qui ne touche pas non plus le stock avant expédition.
+model OnlineOrder {
+  id               String                     @id @default(uuid()) @db.Uuid
+  organizationId   String                     @map("organization_id") @db.Uuid
+  shopId           String                     @map("shop_id") @db.Uuid
+  numero           String
+  customerId       String?                    @map("customer_id") @db.Uuid
+  // Dénormalisés : identité de contact au moment de la commande, jamais
+  // recalculés même si la fiche customer change ensuite — même règle que
+  // sale_lines qui fige son propre coût.
+  nomClient        String                     @map("nom_client")
+  telephoneClient  String                     @map("telephone_client")
+  modeRetrait      OnlineOrderFulfillmentMode @default(RETRAIT_BOUTIQUE) @map("mode_retrait")
+  adresseLivraison String?                    @map("adresse_livraison")
+  notes            String?
+  statut           OnlineOrderStatus          @default(EN_ATTENTE)
+  totalHt          Decimal                    @map("total_ht") @db.Decimal(14, 2)
+  totalTaxe        Decimal                    @map("total_taxe") @db.Decimal(14, 2)
+  totalTtc         Decimal                    @map("total_ttc") @db.Decimal(14, 2)
+  // Renseigné uniquement au passage RECUPEREE : la vente réelle générée à
+  // l'encaissement en boutique (lib/sales/apply-sale.ts, extrait de
+  // processOneSale, M31). Une commande ne génère jamais plus d'une vente.
+  saleId           String?                    @unique @map("sale_id") @db.Uuid
+  createdAt        DateTime                   @default(now()) @map("created_at")
+  confirmedAt      DateTime?                  @map("confirmed_at")
+  cancelledAt      DateTime?                  @map("cancelled_at")
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  shop         Shop              @relation(fields: [shopId], references: [id])
+  customer     Customer?         @relation(fields: [customerId], references: [id])
+  sale         Sale?             @relation(fields: [saleId], references: [id])
+  lines        OnlineOrderLine[]
+
+  @@unique([shopId, numero])
+  @@index([organizationId])
+  @@index([shopId])
+  @@map("online_orders")
+}
+
+model OnlineOrderLine {
+  organizationId String  @map("organization_id") @db.Uuid
+  shopId         String  @map("shop_id") @db.Uuid
+  id             String  @id @default(uuid()) @db.Uuid
+  onlineOrderId  String  @map("online_order_id") @db.Uuid
+  variantId      String  @map("variant_id") @db.Uuid
+  quantite       Decimal @db.Decimal(14, 3)
+  // Snapshot du prix affiché au client au moment de la commande — jamais
+  // recalculé, même règle que sale_lines.prixUnitaire.
+  prixUnitaire   Decimal @map("prix_unitaire") @db.Decimal(12, 2)
+  remise         Decimal @default(0) @db.Decimal(12, 2)
+
+  onlineOrder OnlineOrder    @relation(fields: [onlineOrderId], references: [id])
+  variant     ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([organizationId])
+  @@index([onlineOrderId])
+  @@map("online_order_lines")
 }
 
 // Cas "stock négatif après resynchronisation" (cahier des charges 7.3) :
@@ -656,6 +772,7 @@ model Customer {
   sales         Sale[]
   ledgerEntries CustomerLedger[]
   loyaltyEntries LoyaltyLedger[]
+  onlineOrders   OnlineOrder[]
 
   @@index([organizationId])
   @@map("customers")

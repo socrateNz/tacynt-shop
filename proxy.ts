@@ -5,7 +5,12 @@ import {
   findPlatformSessionByToken,
   PLATFORM_SESSION_COOKIE_NAME,
 } from "@/lib/auth/platform-session";
-import { extractSlugFromHost, resolveOrganizationBySlug } from "@/lib/tenant/resolve";
+import { organizationCanUseWhiteLabel } from "@/lib/tenant/entitlements";
+import {
+  extractSlugFromHost,
+  resolveOrganizationByCustomDomain,
+  resolveOrganizationBySlug,
+} from "@/lib/tenant/resolve";
 
 // Pages ET routes accessibles sans session valide, une fois le sous-domaine
 // résolu. Sans /api/auth/login ici, le POST de connexion serait lui-même
@@ -20,6 +25,23 @@ const PUBLIC_PATHS = new Set([
   "/api/auth/logout",
   "/api/auth/mfa/verify",
 ]);
+
+// Chemins publics UNIQUEMENT pour certaines méthodes — /api/branding/logo
+// sert (GET, anonyme, résout l'organisation par host lui-même comme
+// login/page.tsx) ET reçoit l'upload (POST, exige une vraie session +
+// white_label:manage) sur le MÊME chemin, contrairement aux entrées de
+// PUBLIC_PATHS ci-dessus qui n'ont chacune qu'une seule méthode utile.
+function isPublicForMethod(pathname: string, method: string): boolean {
+  return pathname === "/api/branding/logo" && method === "GET";
+}
+
+// Vitrine e-commerce (Phase 4, M29) : entièrement anonyme, aucune session
+// tenant requise — resolveStorefrontOrganization (lib/storefront/context.ts)
+// refait sa propre résolution par host et répond 404 elle-même si le module
+// "ecommerce" n'est pas actif, jamais confiance au client sur ce point ici.
+function isStorefrontPath(pathname: string): boolean {
+  return pathname === "/boutique" || pathname.startsWith("/boutique/") || pathname.startsWith("/api/storefront/");
+}
 
 // Même principe pour l'espace admin plateforme (Phase 3, M25), servi sur le
 // domaine racine — voir la branche `!slug` ci-dessous.
@@ -50,15 +72,34 @@ export async function proxy(request: NextRequest) {
   const slug = extractSlugFromHost(host);
   const { pathname } = request.nextUrl;
 
-  // /platform/* n'existe QUE sur le domaine racine (pas de sous-domaine
-  // résolu) — sur le sous-domaine d'une boutique, le chemin est introuvable
-  // plutôt que de retomber silencieusement sur le flux d'authentification
-  // tenant (qui ne sait de toute façon rien faire de x-platform-admin-id).
-  if (slug && isPlatformPath(pathname)) {
+  let organization = slug ? await resolveOrganizationBySlug(slug) : null;
+  let resolvedByCustomDomain = false;
+
+  // White label — domaine personnalisé (Phase 4, M27) : uniquement quand
+  // aucun sous-domaine n'a été résolu. organizationCanUseWhiteLabel revérifié
+  // ICI (pas seulement à la vérification DNS) : un plan rétrogradé après
+  // coup désactive silencieusement l'ancien domaine plutôt que de continuer
+  // à le servir indéfiniment.
+  if (!slug) {
+    const customDomainOrg = await resolveOrganizationByCustomDomain(host);
+    if (customDomainOrg && organizationCanUseWhiteLabel(customDomainOrg.plan)) {
+      organization = customDomainOrg;
+      resolvedByCustomDomain = true;
+    }
+  }
+
+  const isTenantHost = slug !== null || resolvedByCustomDomain;
+
+  // /platform/* n'existe QUE sur le vrai domaine racine — ni un sous-domaine
+  // de boutique ni un domaine personnalisé white-label ne doivent y donner
+  // accès, plutôt que de retomber silencieusement sur le flux
+  // d'authentification tenant (qui ne sait de toute façon rien faire de
+  // x-platform-admin-id).
+  if (isTenantHost && isPlatformPath(pathname)) {
     return new NextResponse("Introuvable.", { status: 404 });
   }
 
-  if (!slug) {
+  if (!isTenantHost) {
     if (isPlatformPath(pathname)) {
       if (PLATFORM_PUBLIC_PATHS.has(pathname)) {
         return NextResponse.next({ request: { headers: requestHeaders } });
@@ -79,17 +120,20 @@ export async function proxy(request: NextRequest) {
       return NextResponse.next({ request: { headers: requestHeaders } });
     }
 
-    // Domaine racine (pas de sous-domaine résolu) : marketing/inscription
-    // uniquement, aucun contexte tenant à établir ici.
+    // Domaine racine (ni sous-domaine ni domaine personnalisé résolu) :
+    // marketing/inscription uniquement, aucun contexte tenant à établir ici.
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  const organization = await resolveOrganizationBySlug(slug);
   if (!organization) {
     return new NextResponse("Boutique introuvable.", { status: 404 });
   }
 
-  if (PUBLIC_PATHS.has(pathname)) {
+  if (
+    PUBLIC_PATHS.has(pathname) ||
+    isPublicForMethod(pathname, request.method) ||
+    isStorefrontPath(pathname)
+  ) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 

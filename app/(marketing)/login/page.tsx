@@ -3,7 +3,12 @@ import { headers } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { extractSlugFromHost, resolveOrganizationBySlug } from "@/lib/tenant/resolve";
+import { organizationCanUseWhiteLabel } from "@/lib/tenant/entitlements";
+import {
+  extractSlugFromHost,
+  resolveOrganizationByCustomDomain,
+  resolveOrganizationBySlug,
+} from "@/lib/tenant/resolve";
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid: "Identifiants incorrects.",
@@ -16,8 +21,18 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const [{ error }, h] = await Promise.all([searchParams, headers()]);
-  const slug = extractSlugFromHost(h.get("host") ?? "");
-  const organization = slug ? await resolveOrganizationBySlug(slug) : null;
+  const host = h.get("host") ?? "";
+  const slug = extractSlugFromHost(host);
+  // Domaine personnalisé (Phase 4, M27) : mêmes règles de résolution ET la
+  // même revérification de plan que proxy.ts — sinon un plan rétrogradé
+  // laisserait la page afficher le nom de l'organisation alors que la
+  // soumission du formulaire échouerait silencieusement en 404.
+  let organization = slug
+    ? await resolveOrganizationBySlug(slug)
+    : await resolveOrganizationByCustomDomain(host);
+  if (!slug && organization && !organizationCanUseWhiteLabel(organization.plan)) {
+    organization = null;
+  }
 
   return (
     <div className="flex flex-1 items-center justify-center bg-background px-6 py-16">

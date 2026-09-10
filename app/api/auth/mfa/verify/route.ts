@@ -4,7 +4,11 @@ import { finishLogin } from "@/lib/auth/finish-login";
 import { MFA_PENDING_COOKIE_NAME, verifyTotp } from "@/lib/auth/mfa";
 import { systemPrisma } from "@/lib/db/system-client";
 import { requestOrigin } from "@/lib/http/request-origin";
-import { extractSlugFromHost } from "@/lib/tenant/resolve";
+import { organizationCanUseWhiteLabel } from "@/lib/tenant/entitlements";
+import {
+  extractSlugFromHost,
+  resolveOrganizationByCustomDomain,
+} from "@/lib/tenant/resolve";
 
 export async function POST(request: NextRequest) {
   const pendingUserId = request.cookies.get(MFA_PENDING_COOKIE_NAME)?.value;
@@ -18,11 +22,22 @@ export async function POST(request: NextRequest) {
   const token = String(form.get("token") ?? "").trim();
 
   const user = await systemPrisma.user.findUnique({ where: { id: pendingUserId } });
-  const organization = slug ? await systemPrisma.organization.findUnique({ where: { slug } }) : null;
+  // Domaine personnalisé (Phase 4, M27) : même résolution que proxy.ts/
+  // login/route.ts.
+  const organization = slug
+    ? await systemPrisma.organization.findUnique({ where: { slug } })
+    : await resolveOrganizationByCustomDomain(host);
 
   // La session en attente doit correspondre à l'organisation du sous-domaine
-  // visité — même logique anti-réutilisation cross-tenant que proxy.ts.
-  if (!user || !organization || user.organizationId !== organization.id || !user.mfaSecret) {
+  // (ou domaine personnalisé) visité — même logique anti-réutilisation
+  // cross-tenant que proxy.ts.
+  if (
+    !user ||
+    !organization ||
+    user.organizationId !== organization.id ||
+    !user.mfaSecret ||
+    (!slug && !organizationCanUseWhiteLabel(organization.plan))
+  ) {
     const url = new URL("/login", requestOrigin(request));
     url.searchParams.set("error", "invalid");
     return NextResponse.redirect(url, { status: 303 });

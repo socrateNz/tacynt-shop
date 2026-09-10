@@ -7,6 +7,7 @@ import { recordAuditLog } from "@/lib/audit";
 import { withSystemTenantContext } from "@/lib/db/tenant-context";
 import { platformPrisma } from "@/lib/db/platform-client";
 import { getPlatformAdminContext } from "@/lib/platform/context";
+import { MODULE_CATALOG, type ModuleKey } from "@/lib/tenant/modules";
 
 const VALID_PLANS: OrganizationPlan[] = ["STARTER", "BUSINESS", "PRO", "ENTERPRISE"];
 const VALID_STATUSES: OrganizationStatus[] = ["ACTIVE", "GRACE_PERIOD", "SUSPENDED"];
@@ -116,6 +117,56 @@ export async function recordPlatformPayment(
       entite: "organization",
       entiteId: organizationId,
       apres: { montant, devise, periodeDebut, periodeFin, platformAdminEmail: admin.email },
+    });
+  });
+
+  revalidatePath(`/platform/${organizationId}`);
+  return { error: null };
+}
+
+export type UpdateModulesState = { error: string | null };
+
+const VALID_MODULE_KEYS = MODULE_CATALOG.map((m) => m.key);
+
+// Marketplace de modules (Phase 4, M26) : activation exclusivement
+// platform-admin, aucune bascule self-service côté organisation (décision
+// verrouillée) — même mécanique que updateOrganizationPlanStatus ci-dessus.
+export async function updateOrganizationModules(
+  _prevState: UpdateModulesState,
+  formData: FormData,
+): Promise<UpdateModulesState> {
+  const ctx = await getPlatformAdminContext();
+
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const enabledModules = formData
+    .getAll("modules")
+    .map((v) => String(v))
+    .filter((key): key is ModuleKey => (VALID_MODULE_KEYS as string[]).includes(key));
+
+  if (!organizationId) {
+    return { error: "Organisation requise." };
+  }
+
+  const admin = await platformPrisma.platformAdmin.findUniqueOrThrow({
+    where: { id: ctx.platformAdminId },
+  });
+
+  await withSystemTenantContext(organizationId, async (tx) => {
+    const before = await tx.organization.findUniqueOrThrow({ where: { id: organizationId } });
+
+    await tx.organization.update({
+      where: { id: organizationId },
+      data: { enabledModules },
+    });
+
+    await recordAuditLog(tx, {
+      organizationId,
+      userId: null,
+      action: "PLATFORM_MODULES_UPDATED",
+      entite: "organization",
+      entiteId: organizationId,
+      avant: { enabledModules: before.enabledModules },
+      apres: { enabledModules, platformAdminEmail: admin.email },
     });
   });
 

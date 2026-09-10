@@ -12,7 +12,7 @@ import { platformPrisma } from "@/lib/db/platform-client";
 import { systemPrisma } from "@/lib/db/system-client";
 import { formatMoney } from "@/lib/money";
 
-import { PlanStatusForm, RecordPaymentForm } from "./organization-forms";
+import { ModulesForm, PlanStatusForm, RecordPaymentForm } from "./organization-forms";
 
 export default async function PlatformOrganizationDetailPage({
   params,
@@ -47,6 +47,15 @@ export default async function PlatformOrganizationDetailPage({
         organizationId={organization.id}
         plan={organization.plan}
         statut={organization.statut}
+      />
+
+      <ModulesForm
+        organizationId={organization.id}
+        enabledModules={
+          Array.isArray(organization.enabledModules)
+            ? organization.enabledModules.filter((m): m is string => typeof m === "string")
+            : []
+        }
       />
 
       <RecordPaymentForm organizationId={organization.id} devise={organization.devise} />

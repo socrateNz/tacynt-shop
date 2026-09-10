@@ -5,7 +5,11 @@ import { finishLogin } from "@/lib/auth/finish-login";
 import { MFA_PENDING_COOKIE_NAME, MFA_PENDING_DURATION_MS } from "@/lib/auth/mfa";
 import { systemPrisma } from "@/lib/db/system-client";
 import { requestOrigin } from "@/lib/http/request-origin";
-import { extractSlugFromHost } from "@/lib/tenant/resolve";
+import { organizationCanUseWhiteLabel } from "@/lib/tenant/entitlements";
+import {
+  extractSlugFromHost,
+  resolveOrganizationByCustomDomain,
+} from "@/lib/tenant/resolve";
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
@@ -17,14 +21,16 @@ function redirectWithError(request: Request, code: string, status = 303) {
 }
 
 export async function POST(request: Request) {
+  // Domaine personnalisé (Phase 4, M27) : même résolution que proxy.ts —
+  // sinon un client white-label verrait la page de connexion (corrigée) mais
+  // sa soumission échouerait toujours en 404.
   const host = request.headers.get("host") ?? "";
   const slug = extractSlugFromHost(host);
-  if (!slug) {
-    return NextResponse.json({ error: "Boutique introuvable." }, { status: 404 });
-  }
+  const organization = slug
+    ? await systemPrisma.organization.findUnique({ where: { slug } })
+    : await resolveOrganizationByCustomDomain(host);
 
-  const organization = await systemPrisma.organization.findUnique({ where: { slug } });
-  if (!organization) {
+  if (!organization || (!slug && !organizationCanUseWhiteLabel(organization.plan))) {
     return NextResponse.json({ error: "Boutique introuvable." }, { status: 404 });
   }
 

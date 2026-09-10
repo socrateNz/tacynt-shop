@@ -6,10 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { MODULE_CATALOG } from "@/lib/tenant/modules";
+
 import {
   recordPlatformPayment,
+  updateOrganizationModules,
   updateOrganizationPlanStatus,
   type RecordPaymentState,
+  type UpdateModulesState,
   type UpdatePlanStatusState,
 } from "./actions";
 
@@ -140,6 +144,60 @@ export function RecordPaymentForm({
       </div>
       <Button type="submit" className="self-start" disabled={isPending}>
         {isPending ? "Enregistrement..." : "Enregistrer le paiement"}
+      </Button>
+    </form>
+  );
+}
+
+const initialModulesState: UpdateModulesState = { error: null };
+
+export function ModulesForm({
+  organizationId,
+  enabledModules,
+}: {
+  organizationId: string;
+  enabledModules: string[];
+}) {
+  const [state, formAction, isPending] = useActionState(
+    updateOrganizationModules,
+    initialModulesState,
+  );
+
+  return (
+    <form
+      action={formAction}
+      className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
+    >
+      <h2 className="text-sm font-medium text-foreground">Modules premium</h2>
+      <p className="text-sm text-muted-foreground">
+        Activation manuelle après encaissement — aucune bascule en libre-service côté
+        organisation.
+      </p>
+      {state.error && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {state.error}
+        </p>
+      )}
+      <input type="hidden" name="organizationId" value={organizationId} />
+      <div className="flex flex-col gap-2">
+        {MODULE_CATALOG.map((m) => (
+          <label key={m.key} className="flex items-start gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              name="modules"
+              value={m.key}
+              defaultChecked={enabledModules.includes(m.key)}
+              className="mt-0.5 size-4"
+            />
+            <span>
+              <span className="font-medium">{m.label}</span>
+              <span className="block text-xs text-muted-foreground">{m.desc}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      <Button type="submit" className="self-start" disabled={isPending}>
+        {isPending ? "Enregistrement..." : "Enregistrer les modules"}
       </Button>
     </form>
   );

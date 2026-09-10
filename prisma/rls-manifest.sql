@@ -73,7 +73,8 @@ BEGIN
     'shops', 'users', 'user_shops', 'categories', 'products',
     'product_variants', 'audit_logs', 'sessions', 'import_batches',
     'customers', 'customer_ledger', 'loyalty_ledger',
-    'suppliers', 'supplier_products', 'supplier_ledger'
+    'suppliers', 'supplier_products', 'supplier_ledger',
+    'organization_branding'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
@@ -107,7 +108,8 @@ BEGIN
     'purchase_orders', 'purchase_order_lines', 'goods_receipts', 'goods_receipt_lines',
     'expenses', 'cash_movements',
     'inventory_sessions', 'inventory_counts',
-    'lots', 'serial_numbers'
+    'lots', 'serial_numbers',
+    'online_orders', 'online_order_lines'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);

@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { PaymentMode, Prisma } from "@prisma/client";
 
 export type OrgSettings = {
   vendeurDiscountCeiling?: number;
@@ -17,6 +17,22 @@ export type OrgSettings = {
   // Valeur d'un point converti en crédit client (montant = points ×
   // loyaltyPointValue). Non configuré ou <= 0 => conversion désactivée.
   loyaltyPointValue?: number;
+  // White label (Phase 4, M27) : cosmétique, jamais filtré en WHERE — même
+  // profil que les clés ci-dessus. hasLogo évite de lire
+  // organization_branding juste pour décider d'afficher une balise <img>.
+  branding?: {
+    primaryColor?: string;
+    hasLogo?: boolean;
+  };
+  // Connecteur comptable (Phase 4, M28) : surcharge optionnelle du mapping
+  // par défaut (lib/reports/accounting-mapping.ts) — un point de départ
+  // éditable, jamais une garantie de conformité comptable certifiée.
+  accountingMapping?: {
+    ventesCompte?: string;
+    tvaCompte?: string;
+    paiementComptes?: Partial<Record<PaymentMode, string>>;
+    chargesCompteParDefaut?: string;
+  };
 };
 
 // organizations.settings est un Json libre — jamais fait confiance sans

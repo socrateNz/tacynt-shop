@@ -33,7 +33,10 @@ export type Capability =
   | "reports:read"
   | "users:manage"
   | "billing:manage"
-  | "audit:read";
+  | "audit:read"
+  | "accounting:manage"
+  | "ecommerce:manage"
+  | "white_label:manage";
 
 const ALL_CAPABILITIES: Capability[] = [
   "shops:manage",
@@ -58,6 +61,9 @@ const ALL_CAPABILITIES: Capability[] = [
   "users:manage",
   "billing:manage",
   "audit:read",
+  "accounting:manage",
+  "ecommerce:manage",
+  "white_label:manage",
 ];
 
 const CAPABILITIES_BY_ROLE: Record<Role, Capability[]> = {
@@ -85,8 +91,10 @@ const CAPABILITIES_BY_ROLE: Record<Role, Capability[]> = {
   // rapprochement de caisse à la fermeture soit exact — jamais
   // expenses:approve, une dépense au-delà du seuil reste EN_ATTENTE.
   VENDEUR: ["pos:sell", "cash_session:manage", "expenses:manage"],
-  // Lecture seule sur ventes, achats, dépenses, exports.
-  COMPTABLE: ["reports:read"],
+  // Lecture seule sur ventes, achats, dépenses, exports — plus la gestion de
+  // l'export/mapping comptable (Phase 4, M28), qui est littéralement sa
+  // fonction, pas une exception au principe "lecture seule".
+  COMPTABLE: ["reports:read", "accounting:manage"],
 };
 
 export function hasCapability(role: Role, capability: Capability): boolean {

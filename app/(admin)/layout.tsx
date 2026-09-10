@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
+import { parseOrgSettings } from "@/lib/tenant/settings";
 
 import { ShopSwitcher } from "./shops/shop-switcher";
 
@@ -23,11 +24,24 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     ),
   ]);
 
+  // White label (Phase 4, M27) : hasLogo évite de relire organization_branding
+  // ici juste pour décider d'afficher une balise <img> — le fichier lui-même
+  // n'est servi que par /api/branding/logo (public, résolu par host).
+  const branding = organization ? parseOrgSettings(organization.settings).branding : undefined;
+
   return (
-    <div className="flex flex-1 flex-col bg-background">
+    <div
+      className="flex flex-1 flex-col bg-background"
+      style={branding?.primaryColor ? ({ "--primary": branding.primaryColor } as CSSProperties) : undefined}
+    >
       <header className="no-print flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-6">
-          <span className="text-sm font-semibold text-foreground">{organization?.nom}</span>
+          {branding?.hasLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- logo servi dynamiquement par organisation, pas un asset statique optimisable par next/image
+            <img src="/api/branding/logo" alt={organization?.nom ?? ""} className="h-6 w-auto" />
+          ) : (
+            <span className="text-sm font-semibold text-foreground">{organization?.nom}</span>
+          )}
           <ShopSwitcher
             shops={userShops.map((us) => ({ id: us.shop.id, nom: us.shop.nom }))}
             activeShopId={activeShopId}
@@ -74,6 +88,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             </Link>
             <Link href="/sales" className="hover:text-foreground">
               Ventes
+            </Link>
+            <Link href="/online-orders" className="hover:text-foreground">
+              Commandes en ligne
             </Link>
             <Link href="/reports" className="hover:text-foreground">
               Rapports

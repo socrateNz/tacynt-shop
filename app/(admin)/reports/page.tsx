@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { systemPrisma } from "@/lib/db/system-client";
 import { hasCapability } from "@/lib/permissions";
 import { getTenantContext } from "@/lib/tenant/context";
+import { organizationHasModule } from "@/lib/tenant/modules";
 
 const REPORTS = [
   { href: "/reports/ventes", label: "Ventes", desc: "Par période, vendeur, catégorie, mode de paiement" },
@@ -20,6 +22,24 @@ export default async function ReportsPage() {
     redirect("/");
   }
 
+  const organization = await systemPrisma.organization.findUniqueOrThrow({
+    where: { id: ctx.organizationId },
+  });
+  const showComptabilite =
+    hasCapability(ctx.role, "accounting:manage") &&
+    organizationHasModule(organization.enabledModules, "accounting_connectors");
+
+  const reports = showComptabilite
+    ? [
+        ...REPORTS,
+        {
+          href: "/reports/comptabilite",
+          label: "Comptabilité",
+          desc: "Journal débit/crédit exportable (module premium)",
+        },
+      ]
+    : REPORTS;
+
   return (
     <div className="flex flex-col gap-8">
       <header>
@@ -30,7 +50,7 @@ export default async function ReportsPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {REPORTS.map((r) => (
+        {reports.map((r) => (
           <Link
             key={r.href}
             href={r.href}
