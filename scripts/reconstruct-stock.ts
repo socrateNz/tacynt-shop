@@ -7,8 +7,16 @@
 // une passe, ce qu'aucune requête applicative normale ne doit jamais faire.
 //
 // Usage : npx tsx scripts/reconstruct-stock.ts
-
-process.loadEnvFile();
+//
+// Pas de .env dans le conteneur Docker (exclu par .dockerignore) — les
+// variables y viennent de docker-compose.prod.yml, jamais d'un fichier.
+try {
+  process.loadEnvFile();
+} catch (error) {
+  if (!(error instanceof Error) || (error as NodeJS.ErrnoException).code !== "ENOENT") {
+    throw error;
+  }
+}
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";

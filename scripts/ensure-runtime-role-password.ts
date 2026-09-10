@@ -9,7 +9,16 @@
 //
 // Usage : npx tsx scripts/ensure-runtime-role-password.ts (après `prisma
 // migrate deploy`, voir .github/workflows/deploy.yml)
-process.loadEnvFile();
+//
+// Pas de .env dans le conteneur Docker (exclu par .dockerignore) — les
+// variables y viennent de docker-compose.prod.yml, jamais d'un fichier.
+try {
+  process.loadEnvFile();
+} catch (error) {
+  if (!(error instanceof Error) || (error as NodeJS.ErrnoException).code !== "ENOENT") {
+    throw error;
+  }
+}
 
 import { Client } from "pg";
 

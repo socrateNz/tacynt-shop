@@ -9,7 +9,16 @@
 // hoistés, importer le singleton avant process.loadEnvFile() le construirait
 // avec DATABASE_URL encore undefined (piège déjà évité dans
 // scripts/reconstruct-stock.ts de la même façon).
-process.loadEnvFile();
+//
+// Pas de .env dans le conteneur Docker (exclu par .dockerignore) — les
+// variables y viennent de docker-compose.prod.yml, jamais d'un fichier.
+try {
+  process.loadEnvFile();
+} catch (error) {
+  if (!(error instanceof Error) || (error as NodeJS.ErrnoException).code !== "ENOENT") {
+    throw error;
+  }
+}
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
