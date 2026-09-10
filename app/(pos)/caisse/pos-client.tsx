@@ -483,8 +483,8 @@ export function PosClient({
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <header className="flex items-center justify-between border-b border-border px-6 py-3">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex shrink-0 items-center justify-between border-b border-border px-6 py-3">
         <div>
           <p className="text-sm font-semibold text-foreground">
             {organizationNom} — {registerNom}
@@ -509,12 +509,12 @@ export function PosClient({
       </header>
 
       {error && (
-        <p className="mx-6 mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p className="mx-6 mt-3 shrink-0 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </p>
       )}
 
-      <div className="grid flex-1 grid-cols-1 gap-4 p-6 lg:grid-cols-3">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-6 lg:grid-cols-3">
         <div className="flex flex-col gap-3 lg:col-span-2">
           <div className="relative">
             <Input

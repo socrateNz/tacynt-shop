@@ -4,5 +4,5 @@ import type { ReactNode } from "react";
 // l'écran qui décide de l'adoption du produit (section 5.3), elle doit
 // rester rapide et sans distraction.
 export default function PosLayout({ children }: { children: ReactNode }) {
-  return <div className="flex min-h-full flex-1 flex-col bg-background">{children}</div>;
+  return <div className="flex min-h-0 flex-1 flex-col bg-background">{children}</div>;
 }

@@ -22,12 +22,7 @@ export function ProductForm({
   const [state, formAction, isPending] = useActionState(createProduct, initialState);
 
   return (
-    <form
-      action={formAction}
-      className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6"
-    >
-      <h2 className="text-sm font-medium text-foreground">Nouveau produit</h2>
-
+    <form action={formAction} className="flex flex-col gap-4">
       {state.error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}
