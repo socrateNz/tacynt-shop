@@ -26,9 +26,11 @@ git clone <url-du-depot> /home/etarcos/apps/tacynt-shop
 cd /home/etarcos/apps/tacynt-shop
 cp .env.production.example .env.production
 # Éditer .env.production : générer POSTGRES_OWNER_PASSWORD et
-# POSTGRES_APP_PASSWORD (ex. openssl rand -base64 32 pour chacun), les
-# reporter aussi dans DATABASE_URL/RUNTIME_DATABASE_URL au même endroit du
-# fichier.
+# POSTGRES_APP_PASSWORD avec `openssl rand -hex 32` (hexadécimal, jamais
+# base64 — un mot de passe base64 peut contenir "/", "+" ou "=", des
+# caractères qui cassent le parsing d'une URL postgresql://user:motdepasse@...),
+# les reporter aussi dans DATABASE_URL/RUNTIME_DATABASE_URL au même endroit
+# du fichier (le mot de passe DOIT être identique aux deux endroits).
 
 # Répertoire partagé avec deploy/domain-watcher/ (section 3) — uid 1001 =
 # utilisateur "nextjs" du Dockerfile (conteneur non-root).
@@ -38,7 +40,11 @@ chown 1001:1001 /home/etarcos/apps/tacynt-shop/run/pending-domains
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d
 # "migrate" réutilise l'étape de build complète (node_modules entier, avec le
 # vrai CLI Prisma et le dossier prisma/) — jamais l'image "app" allégée
-# (.next/standalone), qui n'embarque ni l'un ni l'autre.
+# (.next/standalone), qui n'embarque ni l'un ni l'autre. Contrairement à
+# "app", cette image ne se reconstruit PAS automatiquement à chaque
+# `docker compose up` — refaire le `build` ci-dessous à chaque fois que le
+# code a changé (après un `git pull`) avant de relancer une commande dessus.
+docker compose -f docker-compose.prod.yml --env-file .env.production build migrate
 docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate npx prisma migrate deploy
 docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate npx tsx scripts/ensure-runtime-role-password.ts
 ```
@@ -129,8 +135,14 @@ migrations + redémarrage sur le serveur.
 - Une inscription crée une organisation joignable en HTTPS valide sur
   `https://{slug}.shop.tacynt.com` en quelques secondes (domain-watcher).
 - `https://shop.tacynt.com/platform/login` → espace admin plateforme
-  (nécessite `npx tsx scripts/create-platform-admin.ts` une fois pour créer
-  le premier compte, voir ce script).
+  (nécessite de créer le premier compte une fois, via le service `migrate` —
+  voir les variables attendues dans scripts/create-platform-admin.ts) :
+  ```bash
+  docker compose -f docker-compose.prod.yml --env-file .env.production build migrate
+  docker compose -f docker-compose.prod.yml --env-file .env.production run --rm \
+    -e PLATFORM_ADMIN_EMAIL=... -e PLATFORM_ADMIN_PASSWORD=... \
+    migrate npx tsx scripts/create-platform-admin.ts
+  ```
 - Un push sur `main` met le nouveau code en ligne sans intervention.
 
 ## Hors périmètre de ce document
