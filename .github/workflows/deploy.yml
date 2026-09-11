@@ -10,6 +10,16 @@ on:
     branches: [main]
   workflow_dispatch: {}
 
+# Deux push rapprochés déclenchaient deux runs en parallèle, tous deux faisant
+# `git pull` sur le MÊME dossier serveur en même temps — l'un des deux perdait
+# la course avec "cannot lock ref ... unable to update local ref" (constaté en
+# production). File d'attente plutôt qu'annulation : on ne veut jamais couper
+# un déploiement déjà en train de builder/migrer, juste éviter le
+# chevauchement du prochain.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
