@@ -36,9 +36,9 @@ export async function withSystemContext<T>(
 
 // Rôle propriétaire, écriture ponctuelle sur UNE organisation depuis un
 // contexte hors tenant (admin plateforme, Phase 3 M25 — changement de
-// plan/statut, journal d'audit de l'organisation) : même précaution que
-// l'inscription (app/api/auth/signup/route.ts), organizations et les
-// tables dépendantes étant FORCE ROW LEVEL SECURITY.
+// plan/statut, journal d'audit de l'organisation) : même précaution que la
+// création d'organisation (app/platform/(authenticated)/new/actions.ts),
+// organizations et les tables dépendantes étant FORCE ROW LEVEL SECURITY.
 export async function withSystemTenantContext<T>(
   organizationId: string,
   fn: (tx: Prisma.TransactionClient) => Promise<T>,

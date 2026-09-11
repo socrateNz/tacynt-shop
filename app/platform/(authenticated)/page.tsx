@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -23,12 +24,15 @@ export default async function PlatformOrganizationsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Organisations</h1>
-        <p className="text-sm text-muted-foreground">
-          {organizations.length} organisation{organizations.length > 1 ? "s" : ""} — plan et
-          statut d&apos;abonnement gérés manuellement après encaissement hors ligne.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Organisations</h1>
+          <p className="text-sm text-muted-foreground">
+            {organizations.length} organisation{organizations.length > 1 ? "s" : ""} — plan et
+            statut d&apos;abonnement gérés manuellement après encaissement hors ligne.
+          </p>
+        </div>
+        <Button render={<Link href="/platform/new" />}>Nouvelle organisation</Button>
       </header>
 
       <div className="rounded-xl border border-border bg-card">

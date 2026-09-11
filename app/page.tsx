@@ -1,5 +1,14 @@
-import Link from "next/link";
+import {
+  BarChart3,
+  Boxes,
+  ShoppingBag,
+  ShoppingCart,
+  Store,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { headers } from "next/headers";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { systemPrisma } from "@/lib/db/system-client";
@@ -9,18 +18,102 @@ import { hasCapability, type Role } from "@/lib/permissions";
 import { getDailyReport } from "@/lib/reports/daily";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 
+import { ContactForm } from "./contact-form";
+
+type Feature = { icon: LucideIcon; title: string; description: string };
+
+// Fonctionnalités réellement livrées (pas de promesse marketing en avance
+// sur le produit) — reprises des sections déjà construites (Phases 1-4).
+const FEATURES: Feature[] = [
+  {
+    icon: ShoppingCart,
+    title: "Caisse hors ligne",
+    description:
+      "Encaissez même sans connexion internet — synchronisation automatique au retour du réseau.",
+  },
+  {
+    icon: Store,
+    title: "Multi-boutique",
+    description: "Gérez plusieurs boutiques et postes de caisse depuis un seul compte.",
+  },
+  {
+    icon: Boxes,
+    title: "Stock avancé",
+    description:
+      "Suivi de stock, lots et péremption (FEFO), numéros de série — selon votre métier.",
+  },
+  {
+    icon: Users,
+    title: "Fidélité & clients",
+    description: "Programme de fidélité, ardoise, historique d'achats par client.",
+  },
+  {
+    icon: ShoppingBag,
+    title: "E-commerce",
+    description: "Vitrine en ligne connectée à votre stock, retrait en boutique.",
+  },
+  {
+    icon: BarChart3,
+    title: "Rapports",
+    description: "Chiffre d'affaires, marges, trésorerie, en temps réel.",
+  },
+];
+
 async function MarketingHome() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 bg-background px-6 py-16 text-center">
-      <p className="text-xs font-medium tracking-widest text-subtle-foreground uppercase">
-        Tacynt Shop
-      </p>
-      <h1 className="max-w-xl text-3xl font-semibold text-foreground">
-        Le SaaS de gestion de boutique qui encaisse même hors ligne.
-      </h1>
-      <Button render={<Link href="/signup" />} nativeButton={false}>
-        Créer ma boutique
-      </Button>
+    <div className="flex flex-1 flex-col bg-background">
+      <section className="flex flex-col items-center gap-6 px-6 py-20 text-center">
+        <p className="text-xs font-medium tracking-widest text-subtle-foreground uppercase">
+          Tacynt Shop
+        </p>
+        <h1 className="max-w-xl text-3xl font-semibold text-foreground sm:text-4xl">
+          Le SaaS de gestion de boutique qui encaisse même hors ligne.
+        </h1>
+        <p className="max-w-lg text-muted-foreground">
+          Caisse, stock, clients et rapports pour les commerces qui ne peuvent pas se permettre
+          une connexion instable.
+        </p>
+        <Button render={<Link href="#contact" />} nativeButton={false}>
+          Nous contacter
+        </Button>
+      </section>
+
+      <section className="border-t border-border bg-card px-6 py-16">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((feature) => {
+            const Icon = feature.icon;
+            return (
+              <div
+                key={feature.title}
+                className="flex flex-col gap-3 rounded-xl border border-border bg-background p-6"
+              >
+                <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
+                  <Icon className="size-4.5" />
+                </span>
+                <h2 className="font-semibold text-foreground">{feature.title}</h2>
+                <p className="text-sm text-muted-foreground">{feature.description}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section id="contact" className="px-6 py-16">
+        <div className="mx-auto flex max-w-lg flex-col gap-6">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-foreground">Ouvrir votre boutique</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Les comptes sont créés par notre équipe — parlez-nous de votre projet et nous
+              revenons vers vous.
+            </p>
+          </div>
+          <ContactForm />
+        </div>
+      </section>
+
+      <footer className="border-t border-border px-6 py-6 text-center text-xs text-subtle-foreground">
+        © {new Date().getFullYear()} Tacynt Shop
+      </footer>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { platformPrisma } from "@/lib/db/platform-client";
 import { getPlatformAdminContext } from "@/lib/platform/context";
@@ -10,9 +11,10 @@ import { getPlatformAdminContext } from "@/lib/platform/context";
 // aucune organisation.
 export default async function PlatformLayout({ children }: { children: ReactNode }) {
   const ctx = await getPlatformAdminContext();
-  const admin = await platformPrisma.platformAdmin.findUnique({
-    where: { id: ctx.platformAdminId },
-  });
+  const [admin, pendingRequests] = await Promise.all([
+    platformPrisma.platformAdmin.findUnique({ where: { id: ctx.platformAdminId } }),
+    platformPrisma.contactRequest.count({ where: { traite: false } }),
+  ]);
 
   return (
     <div className="flex flex-1 flex-col bg-background">
@@ -22,6 +24,10 @@ export default async function PlatformLayout({ children }: { children: ReactNode
           <nav className="flex items-center gap-4 text-sm text-muted-foreground">
             <Link href="/platform" className="hover:text-foreground">
               Organisations
+            </Link>
+            <Link href="/platform/requests" className="flex items-center gap-1.5 hover:text-foreground">
+              Demandes
+              {pendingRequests > 0 && <Badge variant="secondary">{pendingRequests}</Badge>}
             </Link>
           </nav>
         </div>

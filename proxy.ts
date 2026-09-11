@@ -19,9 +19,7 @@ import {
 const PUBLIC_PATHS = new Set([
   "/login",
   "/login/mfa",
-  "/signup",
   "/api/auth/login",
-  "/api/auth/signup",
   "/api/auth/logout",
   "/api/auth/mfa/verify",
 ]);

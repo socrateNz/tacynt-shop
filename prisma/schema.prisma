@@ -279,6 +279,22 @@ model PlatformPayment {
   @@map("platform_payments")
 }
 
+// Formulaire de contact de la landing page publique (app/page.tsx) —
+// visiteur anonyme, aucun contexte tenant. Table cross-organisation comme
+// PlatformAdmin/PlatformPayment ci-dessus : aucune policy RLS, aucun accès
+// au rôle applicatif runtime (voir le bloc REVOKE de prisma/rls-manifest.sql),
+// seul le rôle propriétaire (lib/db/platform-client.ts) y touche.
+model ContactRequest {
+  id        String   @id @default(uuid()) @db.Uuid
+  nom       String
+  email     String
+  message   String
+  traite    Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("contact_requests")
+}
+
 model Shop {
   id             String  @id @default(uuid()) @db.Uuid
   organizationId String  @map("organization_id") @db.Uuid

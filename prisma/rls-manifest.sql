@@ -175,11 +175,13 @@ $$;
 -- STRICTEMENT AUCUN accès, malgré le GRANT/ALTER DEFAULT PRIVILEGES par
 -- défaut plus haut dans ce fichier. Seul le rôle propriétaire des
 -- migrations y accède (lib/db/platform-client.ts, jamais lib/db/client.ts).
+-- contact_requests (formulaire de contact public, app/page.tsx) suit le
+-- même principe : visiteur anonyme, aucun contexte tenant.
 DO $$
 DECLARE
   t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['platform_admins', 'platform_admin_sessions', 'platform_payments']
+  FOREACH t IN ARRAY ARRAY['platform_admins', 'platform_admin_sessions', 'platform_payments', 'contact_requests']
   LOOP
     EXECUTE format('REVOKE ALL ON %I FROM tacynt_app', t);
   END LOOP;
