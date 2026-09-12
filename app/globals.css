@@ -65,6 +65,28 @@
   html {
     @apply font-sans;
   }
+
+  /* Scrollbar fine (1px) et violette (couleur de marque) — référence le
+     rôle --primary plutôt qu'une valeur figée, donc reste cohérente avec le
+     branding par organisation qui peut le surcharger en inline style
+     (app/(admin)/layout.tsx). */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 1px;
+    height: 1px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--primary);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklch, var(--primary), black 15%);
+  }
 }
 
 /* Ticket de caisse imprimable (58/80mm) — décision verrouillée : impression
