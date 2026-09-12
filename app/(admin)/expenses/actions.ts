@@ -30,6 +30,7 @@ async function setExpenseStatus(expenseId: string, statut: "VALIDEE" | "REJETEE"
   });
 
   revalidatePath("/expenses");
+  revalidatePath(`/expenses/${expenseId}`);
 }
 
 export async function approveExpense(formData: FormData) {

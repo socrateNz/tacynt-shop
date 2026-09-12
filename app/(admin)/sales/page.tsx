@@ -1,6 +1,9 @@
+import { Eye } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -56,7 +59,8 @@ export default async function SalesPage() {
               <TableHead>Date</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead>Statut</TableHead>
-              {canCancel && <TableHead>Action</TableHead>}
+              {canCancel && <TableHead>Annuler</TableHead>}
+              <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -77,11 +81,22 @@ export default async function SalesPage() {
                 {canCancel && (
                   <TableCell>{s.statut === "VALIDEE" && <CancelSaleForm saleId={s.id} />}</TableCell>
                 )}
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    nativeButton={false}
+                    render={<Link href={`/sales/${s.id}`} />}
+                  >
+                    <Eye className="size-3.5" />
+                    <span className="sr-only">Voir</span>
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
             {sales.length === 0 && (
               <TableRow>
-                <TableCell colSpan={canCancel ? 5 : 4} className="text-center text-muted-foreground">
+                <TableCell colSpan={canCancel ? 6 : 5} className="text-center text-muted-foreground">
                   Aucune vente pour l&apos;instant.
                 </TableCell>
               </TableRow>

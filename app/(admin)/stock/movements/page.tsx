@@ -1,5 +1,8 @@
+import { Eye } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -178,6 +181,7 @@ export default async function StockMovementsPage() {
                 <TableHead>Type</TableHead>
                 <TableHead className="text-right">Quantité</TableHead>
                 <TableHead className="text-right">Coût unitaire</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -194,11 +198,22 @@ export default async function StockMovementsPage() {
                   <TableCell className="num text-right">
                     {formatMoney(m.coutUnitaire, organization.devise)}
                   </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      nativeButton={false}
+                      render={<Link href={`/stock/movements/${m.id}`} />}
+                    >
+                      <Eye className="size-3.5" />
+                      <span className="sr-only">Voir</span>
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
               {movements.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Aucun mouvement pour l&apos;instant.
                   </TableCell>
                 </TableRow>
