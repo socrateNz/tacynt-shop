@@ -6,10 +6,13 @@ import {
   ArrowLeftRight,
   BarChart3,
   Boxes,
+  Building2,
   ClipboardList,
   FileUp,
   Home,
+  Mail,
   Package,
+  PlusCircle,
   Receipt,
   ReceiptText,
   Settings,
@@ -25,66 +28,41 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type NavLink = { href: string; label: string; icon: LucideIcon };
-type NavGroup = { label: string; links: NavLink[] };
+// Un composant Server (les deux layouts qui utilisent cette sidebar en sont)
+// ne peut pas passer une référence de composant React à un Client Component
+// — seulement des données sérialisables. D'où cette table : les appelants
+// passent une CLÉ (string), jamais l'icône elle-même.
+const ICONS = {
+  ArrowLeftRight,
+  BarChart3,
+  Boxes,
+  Building2,
+  ClipboardList,
+  FileUp,
+  Home,
+  Mail,
+  Package,
+  PlusCircle,
+  Receipt,
+  ReceiptText,
+  Settings,
+  Shield,
+  ShoppingBag,
+  ShoppingCart,
+  Smartphone,
+  Store,
+  Tags,
+  Truck,
+  UserCog,
+  Users,
+} satisfies Record<string, LucideIcon>;
 
-const TOP_LINK: NavLink = { href: "/", label: "Accueil", icon: Home };
-
-// Même 17 liens que l'ancienne nav horizontale (app/(admin)/layout.tsx),
-// simplement regroupés pour la lisibilité en sidebar verticale — aucune
-// route ajoutée, retirée ou renommée.
-const GROUPS: NavGroup[] = [
-  {
-    label: "Ventes",
-    links: [
-      { href: "/caisse", label: "Caisse", icon: ShoppingCart },
-      { href: "/sales", label: "Ventes", icon: ReceiptText },
-      { href: "/online-orders", label: "Commandes en ligne", icon: ShoppingBag },
-    ],
-  },
-  {
-    label: "Catalogue",
-    links: [
-      { href: "/catalog/products", label: "Produits", icon: Package },
-      { href: "/catalog/categories", label: "Catégories", icon: Tags },
-      { href: "/catalog/import", label: "Import", icon: FileUp },
-    ],
-  },
-  {
-    label: "Stock",
-    links: [
-      { href: "/stock/movements", label: "Mouvements", icon: Boxes },
-      { href: "/transfers", label: "Transferts", icon: ArrowLeftRight },
-      { href: "/inventory", label: "Inventaire", icon: ClipboardList },
-    ],
-  },
-  {
-    label: "Partenaires",
-    links: [
-      { href: "/customers", label: "Clients", icon: Users },
-      { href: "/suppliers", label: "Fournisseurs", icon: Truck },
-    ],
-  },
-  {
-    label: "Pilotage",
-    links: [
-      { href: "/expenses", label: "Dépenses", icon: Receipt },
-      { href: "/reports", label: "Rapports", icon: BarChart3 },
-      { href: "/mobile", label: "Vue propriétaire", icon: Smartphone },
-    ],
-  },
-  {
-    label: "Organisation",
-    links: [
-      { href: "/shops", label: "Boutiques", icon: Store },
-      { href: "/users", label: "Utilisateurs", icon: UserCog },
-      { href: "/security", label: "Sécurité", icon: Shield },
-      { href: "/settings", label: "Paramètres", icon: Settings },
-    ],
-  },
-];
+export type IconKey = keyof typeof ICONS;
+export type NavLink = { href: string; label: string; icon: IconKey; badge?: number };
+export type NavGroup = { label: string; links: NavLink[] };
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
@@ -93,7 +71,7 @@ function isActive(pathname: string, href: string): boolean {
 
 function NavItem({ link, pathname }: { link: NavLink; pathname: string }) {
   const active = isActive(pathname, link.href);
-  const Icon = link.icon;
+  const Icon = ICONS[link.icon];
   return (
     <Link
       href={link.href}
@@ -106,11 +84,29 @@ function NavItem({ link, pathname }: { link: NavLink; pathname: string }) {
     >
       <Icon className="size-4 shrink-0" />
       {link.label}
+      {!!link.badge && (
+        <Badge variant={active ? "secondary" : "default"} className="ml-auto">
+          {link.badge}
+        </Badge>
+      )}
     </Link>
   );
 }
 
-export function SidebarNav() {
+// Coquille de sidebar partagée entre l'admin tenant (app/(admin)/layout.tsx)
+// et l'admin plateforme (app/platform/(authenticated)/layout.tsx) — même
+// largeur, même confinement de scroll, mêmes règles d'état actif ; seuls les
+// liens diffèrent (passés par l'appelant), pour rester deux espaces
+// visuellement cohérents sans dupliquer la mécanique de la sidebar.
+export function SidebarNav({
+  brand = "Tacynt Shop",
+  topLinks = [],
+  groups = [],
+}: {
+  brand?: string;
+  topLinks?: NavLink[];
+  groups?: NavGroup[];
+}) {
   const pathname = usePathname();
 
   return (
@@ -119,12 +115,18 @@ export function SidebarNav() {
         <span className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
           <Package className="size-3.5" />
         </span>
-        <span className="text-sm font-semibold text-sidebar-foreground">Tacynt Shop</span>
+        <span className="text-sm font-semibold text-sidebar-foreground">{brand}</span>
       </div>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 pb-4">
-        <NavItem link={TOP_LINK} pathname={pathname} />
-        {GROUPS.map((group) => (
+        {topLinks.length > 0 && (
+          <div className="flex flex-col gap-1">
+            {topLinks.map((link) => (
+              <NavItem key={link.href} link={link} pathname={pathname} />
+            ))}
+          </div>
+        )}
+        {groups.map((group) => (
           <div key={group.label} className="flex flex-col gap-1">
             <span className="px-3 text-xs font-medium tracking-wide text-subtle-foreground uppercase">
               {group.label}

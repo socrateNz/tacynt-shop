@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SidebarNav } from "@/components/ui/sidebar-nav";
+import { SidebarNav, type NavGroup, type NavLink } from "@/components/ui/sidebar-nav";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
@@ -20,6 +20,65 @@ import { getTenantContext } from "@/lib/tenant/context";
 import { parseOrgSettings } from "@/lib/tenant/settings";
 
 import { ShopSwitcher } from "./shops/shop-switcher";
+
+const TOP_LINKS: NavLink[] = [{ href: "/", label: "Accueil", icon: "Home" }];
+
+// Même 17 liens que l'ancienne nav horizontale, simplement regroupés pour la
+// lisibilité en sidebar verticale — aucune route ajoutée, retirée ou renommée.
+// icon: clé (string), jamais la référence du composant — voir le commentaire
+// dans components/ui/sidebar-nav.tsx (ce fichier est un Server Component,
+// une icône lucide ne peut pas traverser la frontière vers le Client
+// Component SidebarNav).
+const GROUPS: NavGroup[] = [
+  {
+    label: "Ventes",
+    links: [
+      { href: "/caisse", label: "Caisse", icon: "ShoppingCart" },
+      { href: "/sales", label: "Ventes", icon: "ReceiptText" },
+      { href: "/online-orders", label: "Commandes en ligne", icon: "ShoppingBag" },
+    ],
+  },
+  {
+    label: "Catalogue",
+    links: [
+      { href: "/catalog/products", label: "Produits", icon: "Package" },
+      { href: "/catalog/categories", label: "Catégories", icon: "Tags" },
+      { href: "/catalog/import", label: "Import", icon: "FileUp" },
+    ],
+  },
+  {
+    label: "Stock",
+    links: [
+      { href: "/stock/movements", label: "Mouvements", icon: "Boxes" },
+      { href: "/transfers", label: "Transferts", icon: "ArrowLeftRight" },
+      { href: "/inventory", label: "Inventaire", icon: "ClipboardList" },
+    ],
+  },
+  {
+    label: "Partenaires",
+    links: [
+      { href: "/customers", label: "Clients", icon: "Users" },
+      { href: "/suppliers", label: "Fournisseurs", icon: "Truck" },
+    ],
+  },
+  {
+    label: "Pilotage",
+    links: [
+      { href: "/expenses", label: "Dépenses", icon: "Receipt" },
+      { href: "/reports", label: "Rapports", icon: "BarChart3" },
+      { href: "/mobile", label: "Vue propriétaire", icon: "Smartphone" },
+    ],
+  },
+  {
+    label: "Organisation",
+    links: [
+      { href: "/shops", label: "Boutiques", icon: "Store" },
+      { href: "/users", label: "Utilisateurs", icon: "UserCog" },
+      { href: "/security", label: "Sécurité", icon: "Shield" },
+      { href: "/settings", label: "Paramètres", icon: "Settings" },
+    ],
+  },
+];
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const ctx = await getTenantContext();
@@ -51,7 +110,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <div className="flex min-h-0 flex-1" style={brandingStyle}>
-      <SidebarNav />
+      <SidebarNav topLinks={TOP_LINKS} groups={GROUPS} />
       <div className="flex min-h-0 flex-1 flex-col bg-background">
         <header className="no-print flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-4">
