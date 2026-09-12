@@ -1,3 +1,4 @@
+import { Eye } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -109,7 +110,7 @@ export default async function SupplierPurchaseOrdersPage({
               <TableHead>Numéro</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead>Date</TableHead>
-              <TableHead />
+              <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -139,6 +140,15 @@ export default async function SupplierPurchaseOrdersPage({
                       </Button>
                     </Link>
                   )}
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    nativeButton={false}
+                    render={<Link href={`/purchase-orders/${po.id}/receive`} />}
+                  >
+                    <Eye className="size-3.5" />
+                    <span className="sr-only">Voir</span>
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}

@@ -1,6 +1,8 @@
+import { Eye } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -85,6 +87,7 @@ export default async function TransfersPage() {
               <TableHead>Vers</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead>Date</TableHead>
+              <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -106,11 +109,22 @@ export default async function TransfersPage() {
                 <TableCell className="text-muted-foreground">
                   {t.createdAt.toLocaleDateString("fr-FR")}
                 </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    nativeButton={false}
+                    render={<Link href={`/transfers/${t.id}`} />}
+                  >
+                    <Eye className="size-3.5" />
+                    <span className="sr-only">Voir</span>
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
             {transfers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   Aucun transfert pour l&apos;instant.
                 </TableCell>
               </TableRow>

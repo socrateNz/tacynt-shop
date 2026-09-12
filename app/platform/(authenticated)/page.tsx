@@ -1,3 +1,4 @@
+import { Eye } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ export default async function PlatformOrganizationsPage() {
               <TableHead>Plan</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead>Créée le</TableHead>
+              <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -69,11 +71,22 @@ export default async function PlatformOrganizationsPage() {
                 <TableCell className="text-muted-foreground">
                   {org.createdAt.toLocaleDateString("fr-FR")}
                 </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    nativeButton={false}
+                    render={<Link href={`/platform/${org.id}`} />}
+                  >
+                    <Eye className="size-3.5" />
+                    <span className="sr-only">Voir</span>
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
             {organizations.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   Aucune organisation pour l&apos;instant.
                 </TableCell>
               </TableRow>

@@ -1,7 +1,9 @@
+import { Eye } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -72,6 +74,7 @@ export default async function CustomersPage() {
               <TableHead className="text-right">Solde</TableHead>
               <TableHead className="text-right">Points</TableHead>
               <TableHead>Statut</TableHead>
+              <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -107,12 +110,23 @@ export default async function CustomersPage() {
                       {c.actif ? "Actif" : "Inactif"}
                     </Badge>
                   </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      nativeButton={false}
+                      render={<Link href={`/customers/${c.id}`} />}
+                    >
+                      <Eye className="size-3.5" />
+                      <span className="sr-only">Voir</span>
+                    </Button>
+                  </TableCell>
                 </TableRow>
               );
             })}
             {customers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={8} className="text-center text-muted-foreground">
                   Aucun client pour l&apos;instant.
                 </TableCell>
               </TableRow>
