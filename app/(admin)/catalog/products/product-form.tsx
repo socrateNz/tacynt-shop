@@ -5,6 +5,14 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SALE_UNITS } from "@/lib/tenant/units";
 
 import { createProduct, type ProductFormState } from "./actions";
 
@@ -56,7 +64,18 @@ export function ProductForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="unite">Unité de vente</Label>
-          <Input id="unite" name="unite" defaultValue="piece" />
+          <Select name="unite" defaultValue="piece">
+            <SelectTrigger id="unite" className="w-full">
+              <SelectValue placeholder="Unité de vente" />
+            </SelectTrigger>
+            <SelectContent>
+              {SALE_UNITS.map((u) => (
+                <SelectItem key={u.value} value={u.value}>
+                  {u.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="codeBarres">Code-barres</Label>

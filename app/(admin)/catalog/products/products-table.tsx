@@ -300,7 +300,12 @@ export function ProductsTable({
                   </TableCell>
                 )}
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon-sm" render={<Link href={`/catalog/products/${p.id}/variants`} />}>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    nativeButton={false}
+                    render={<Link href={`/catalog/products/${p.id}/variants`} />}
+                  >
                     <Pencil className="size-3.5" />
                     <span className="sr-only">Modifier</span>
                   </Button>
