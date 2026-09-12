@@ -32,7 +32,7 @@ export default async function PlatformLayout({ children }: { children: ReactNode
   ];
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className="flex h-dvh min-h-0">
       <SidebarNav brand="Tacynt Shop" topLinks={topLinks} />
       <div className="flex min-h-0 flex-1 flex-col bg-background">
         <header className="no-print flex shrink-0 items-center justify-between border-b border-border px-6 py-4">

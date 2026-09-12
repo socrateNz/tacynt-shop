@@ -101,15 +101,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const branding = organization ? parseOrgSettings(organization.settings).branding : undefined;
   const brandingStyle = branding?.primaryColor
     ? ({
-        "--primary": branding.primaryColor,
-        "--sidebar-primary": branding.primaryColor,
-        "--sidebar-ring": branding.primaryColor,
-        "--ring": branding.primaryColor,
-      } as CSSProperties)
+      "--primary": branding.primaryColor,
+      "--sidebar-primary": branding.primaryColor,
+      "--sidebar-ring": branding.primaryColor,
+      "--ring": branding.primaryColor,
+    } as CSSProperties)
     : undefined;
 
   return (
-    <div className="flex min-h-0 flex-1" style={brandingStyle}>
+    <div className="flex h-dvh min-h-0" style={brandingStyle}>
       <SidebarNav topLinks={TOP_LINKS} groups={GROUPS} />
       <div className="flex min-h-0 flex-1 flex-col bg-background">
         <header className="no-print flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
@@ -121,7 +121,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               <span className="text-sm font-semibold text-foreground">{organization?.nom}</span>
             )}
             <ShopSwitcher
-              shops={userShops.map((us) => ({ id: us.shop.id, nom: us.shop.nom }))}
+              shops={userShops.map((us: { shop: { id: string; nom: string; }; }) => ({ id: us.shop.id, nom: us.shop.nom }))}
               activeShopId={activeShopId}
             />
           </div>
