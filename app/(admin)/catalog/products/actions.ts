@@ -27,7 +27,6 @@ export async function createProduct(
   const ctx = await getTenantContext();
   await assertCapability(ctx.role, "catalog:write");
 
-  const reference = String(formData.get("reference") ?? "").trim();
   const designation = String(formData.get("designation") ?? "").trim();
   const categoryId = String(formData.get("categoryId") ?? "") || null;
   const unite = String(formData.get("unite") ?? "piece").trim() || "piece";
@@ -43,8 +42,8 @@ export async function createProduct(
   const seuilAlerteRaw = String(formData.get("seuilAlerte") ?? "").trim();
   const seuilAlerte = seuilAlerteRaw ? Number(seuilAlerteRaw) : null;
 
-  if (!reference || !designation || !Number.isFinite(prixVente) || prixVente < 0) {
-    return { error: "Référence, désignation et prix de vente (valide) sont requis." };
+  if (!designation || !Number.isFinite(prixVente) || prixVente < 0) {
+    return { error: "Désignation et prix de vente (valide) sont requis." };
   }
 
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
@@ -55,6 +54,12 @@ export async function createProduct(
         where: { id: ctx.organizationId },
       });
       await assertWithinQuota(tx, ctx.organizationId, organization.plan, "products");
+
+      // Référence auto-générée (même patron que les numéros de transfert,
+      // bon de commande, réception... — voir app/(admin)/transfers/actions.ts)
+      // : plus de saisie manuelle, jamais de doublon à gérer côté utilisateur.
+      const count = await tx.product.count({ where: { organizationId: ctx.organizationId } });
+      const reference = `REF-${String(count + 1).padStart(6, "0")}`;
 
       const product = await tx.product.create({
         data: {
@@ -108,7 +113,7 @@ export async function createProduct(
       return { error: error.message };
     }
     if (isUniqueViolation(error)) {
-      return { error: "Cette référence ou ce code-barres existe déjà." };
+      return { error: "Ce code-barres existe déjà, ou une erreur temporaire est survenue — réessayez." };
     }
     throw error;
   }
