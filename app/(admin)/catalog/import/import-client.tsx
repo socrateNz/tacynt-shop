@@ -14,7 +14,6 @@ import {
 
 type ImportRow = {
   ligne: number;
-  reference: string;
   designation: string;
   categorie: string | null;
   codeBarres: string | null;
@@ -33,7 +32,7 @@ type PreviewResult = {
 
 type CommitResult = {
   created: number;
-  skipped: { ligne: number; reference: string; motif: string }[];
+  skipped: { ligne: number; designation: string; motif: string }[];
 };
 
 export function ImportClient() {
@@ -96,9 +95,10 @@ export function ImportClient() {
       <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6">
         <h2 className="text-sm font-medium text-foreground">Fichier catalogue</h2>
         <p className="text-sm text-muted-foreground">
-          Colonnes attendues : reference, designation, categorie (optionnel), codeBarres
-          (optionnel), prixAchat, prixVente, quantiteInitiale (optionnel), unite (optionnel),
-          tauxTaxe (optionnel), suiviStock (oui/non, optionnel).
+          Colonnes attendues : designation, categorie (optionnel), codeBarres (optionnel),
+          prixAchat, prixVente, quantiteInitiale (optionnel), unite (optionnel), tauxTaxe
+          (optionnel), suiviStock (oui/non, optionnel). La référence est générée
+          automatiquement, inutile de la fournir.
         </p>
         <input
           type="file"
@@ -141,7 +141,6 @@ export function ImportClient() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Ligne</TableHead>
-                  <TableHead>Référence</TableHead>
                   <TableHead>Désignation</TableHead>
                   <TableHead className="text-right">Prix vente</TableHead>
                   <TableHead>Erreurs</TableHead>
@@ -151,7 +150,6 @@ export function ImportClient() {
                 {preview.rows.map((row) => (
                   <TableRow key={row.ligne} className={row.errors.length > 0 ? "bg-destructive/5" : ""}>
                     <TableCell className="num text-muted-foreground">{row.ligne}</TableCell>
-                    <TableCell className="text-foreground">{row.reference}</TableCell>
                     <TableCell className="text-foreground">{row.designation}</TableCell>
                     <TableCell className="num text-right">{row.prixVente}</TableCell>
                     <TableCell className="text-sm text-destructive">
@@ -186,7 +184,7 @@ export function ImportClient() {
               <ul className="list-inside list-disc text-sm text-muted-foreground">
                 {commitResult.skipped.map((s) => (
                   <li key={s.ligne}>
-                    Ligne {s.ligne} ({s.reference || "—"}) : {s.motif}
+                    Ligne {s.ligne} ({s.designation || "—"}) : {s.motif}
                   </li>
                 ))}
               </ul>

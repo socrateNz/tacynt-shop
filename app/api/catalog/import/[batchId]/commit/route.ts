@@ -12,7 +12,7 @@ import { creditStock } from "@/lib/stock/movements";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
-type SkippedRow = { ligne: number; reference: string; motif: string };
+type SkippedRow = { ligne: number; designation: string; motif: string };
 
 export async function POST(
   _request: Request,
@@ -39,20 +39,21 @@ export async function POST(
 
         // Ne jamais committer sur la base d'une validation devenue obsolète
         // depuis la prévisualisation — on rejoue tout contre l'état courant.
-        const [existingProducts, existingVariants] = await Promise.all([
-          tx.product.findMany({ select: { reference: true } }),
-          tx.productVariant.findMany({
-            where: { codeBarres: { not: null } },
-            select: { codeBarres: true },
-          }),
-        ]);
-        const existingReferences = new Set(
-          existingProducts.map((p) => p.reference.toLowerCase()),
-        );
+        const existingVariants = await tx.productVariant.findMany({
+          where: { codeBarres: { not: null } },
+          select: { codeBarres: true },
+        });
         const existingBarcodes = new Set(
           existingVariants.map((v) => v.codeBarres!.toLowerCase()),
         );
-        revalidateRows(rows, existingReferences, existingBarcodes);
+        revalidateRows(rows, existingBarcodes);
+
+        // Référence auto-générée, jamais lue dans le fichier (même patron que
+        // la création manuelle — app/(admin)/catalog/products/actions.ts) :
+        // un seul comptage au départ, puis incrémenté localement à chaque
+        // produit réellement créé (les lignes ignorées ne consomment pas de
+        // numéro).
+        let referenceCount = await tx.product.count({ where: { organizationId: ctx.organizationId } });
 
         const organization = await tx.organization.findUniqueOrThrow({
           where: { id: ctx.organizationId },
@@ -70,7 +71,7 @@ export async function POST(
           if (row.errors.length > 0) {
             skipped.push({
               ligne: row.ligne,
-              reference: row.reference,
+              designation: row.designation,
               motif: row.errors.join(" "),
             });
             continue;
@@ -80,7 +81,7 @@ export async function POST(
             await assertWithinQuota(tx, ctx.organizationId, organization.plan, "products");
           } catch (error) {
             if (error instanceof QuotaExceededError) {
-              skipped.push({ ligne: row.ligne, reference: row.reference, motif: error.message });
+              skipped.push({ ligne: row.ligne, designation: row.designation, motif: error.message });
               continue;
             }
             throw error;
@@ -99,10 +100,13 @@ export async function POST(
             }
           }
 
+          referenceCount += 1;
+          const reference = `REF-${String(referenceCount).padStart(6, "0")}`;
+
           const product = await tx.product.create({
             data: {
               organizationId: ctx.organizationId,
-              reference: row.reference,
+              reference,
               designation: row.designation,
               categoryId,
               unite: row.unite,

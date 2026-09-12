@@ -2,7 +2,6 @@ import * as XLSX from "xlsx";
 
 export type ImportRow = {
   ligne: number;
-  reference: string;
   designation: string;
   categorie: string | null;
   codeBarres: string | null;
@@ -18,8 +17,6 @@ export type ImportRow = {
 type MappedKey = Exclude<keyof ImportRow, "ligne" | "errors">;
 
 const COLUMN_KEYS: Record<string, MappedKey> = {
-  reference: "reference",
-  ref: "reference",
   designation: "designation",
   categorie: "categorie",
   codebarres: "codeBarres",
@@ -72,7 +69,6 @@ export function parseWorkbook(buffer: Buffer): ImportRow[] {
 
     return {
       ligne: index + 2, // +1 pour l'en-tête, +1 pour l'index 0-based
-      reference: String(mapped.reference ?? "").trim(),
       designation: String(mapped.designation ?? "").trim(),
       categorie: String(mapped.categorie ?? "").trim() || null,
       codeBarres: String(mapped.codeBarres ?? "").trim() || null,
@@ -89,7 +85,6 @@ export function parseWorkbook(buffer: Buffer): ImportRow[] {
 
 function checkFieldInvariants(row: ImportRow): string[] {
   const errors: string[] = [];
-  if (!row.reference) errors.push("Référence manquante.");
   if (!row.designation) errors.push("Désignation manquante.");
   if (!Number.isFinite(row.prixVente) || row.prixVente <= 0) {
     errors.push("Prix de vente manquant ou invalide.");
@@ -109,29 +104,16 @@ function checkFieldInvariants(row: ImportRow): string[] {
 // Rejoue la validation complète (champs + doublons intra-fichier + doublons
 // base) contre l'état courant de la base. Appelée à la fois à la
 // prévisualisation et juste avant le commit : entre les deux, un autre
-// produit a pu être créé avec la même référence — on ne fait jamais
-// confiance à un état validé qui peut être devenu obsolète.
-export function revalidateRows(
-  rows: ImportRow[],
-  existingReferences: Set<string>,
-  existingBarcodes: Set<string>,
-): void {
-  const seenRef = new Map<string, number>();
+// produit a pu être créé avec le même code-barres — on ne fait jamais
+// confiance à un état validé qui peut être devenu obsolète. La référence
+// n'est jamais lue dans le fichier — toujours générée à la volée au commit
+// (même patron que la création manuelle, lib/catalog/import n'a donc rien à
+// valider dessus).
+export function revalidateRows(rows: ImportRow[], existingBarcodes: Set<string>): void {
   const seenBarcode = new Map<string, number>();
 
   for (const row of rows) {
     row.errors = checkFieldInvariants(row);
-
-    const refKey = row.reference.toLowerCase();
-    if (refKey) {
-      if (existingReferences.has(refKey)) {
-        row.errors.push("Référence déjà utilisée dans le catalogue.");
-      } else if (seenRef.has(refKey)) {
-        row.errors.push(`Référence en double avec la ligne ${seenRef.get(refKey)}.`);
-      } else {
-        seenRef.set(refKey, row.ligne);
-      }
-    }
 
     const barcodeKey = row.codeBarres?.toLowerCase() ?? null;
     if (barcodeKey) {

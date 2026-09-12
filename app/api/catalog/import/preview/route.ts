@@ -42,19 +42,15 @@ export async function POST(request: Request) {
   const batch = await withTenantContext(
     { organizationId: ctx.organizationId, shopId },
     async (tx) => {
-      const [existingProducts, existingVariants] = await Promise.all([
-        tx.product.findMany({ select: { reference: true } }),
-        tx.productVariant.findMany({
-          where: { codeBarres: { not: null } },
-          select: { codeBarres: true },
-        }),
-      ]);
-      const existingReferences = new Set(existingProducts.map((p) => p.reference.toLowerCase()));
+      const existingVariants = await tx.productVariant.findMany({
+        where: { codeBarres: { not: null } },
+        select: { codeBarres: true },
+      });
       const existingBarcodes = new Set(
         existingVariants.map((v) => v.codeBarres!.toLowerCase()),
       );
 
-      revalidateRows(rows, existingReferences, existingBarcodes);
+      revalidateRows(rows, existingBarcodes);
 
       return tx.importBatch.create({
         data: {
