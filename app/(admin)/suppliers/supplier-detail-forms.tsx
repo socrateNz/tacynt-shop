@@ -13,7 +13,7 @@ import {
   type SupplierPaymentState,
   type SupplierProductState,
   type SupplierUpdateState,
-} from "./actions";
+} from "./supplier-detail-actions";
 
 const paymentInitialState: SupplierPaymentState = { error: null };
 const updateInitialState: SupplierUpdateState = { error: null };

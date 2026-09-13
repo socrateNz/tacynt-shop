@@ -1,9 +1,6 @@
-import { Eye } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -18,6 +15,7 @@ import { formatMoney } from "@/lib/money";
 import { hasCapability } from "@/lib/permissions";
 import { getTenantContext } from "@/lib/tenant/context";
 
+import { CustomerDetailDialog } from "./customer-detail-dialog";
 import { CustomerForm } from "./customer-form";
 
 export default async function CustomersPage() {
@@ -30,7 +28,7 @@ export default async function CustomersPage() {
     where: { id: ctx.organizationId },
   });
 
-  const [customers, balances, pointsBalances] = await withTenantContext(
+  const [customers, balances, pointsBalances, ledgerByCustomer] = await withTenantContext(
     { organizationId: ctx.organizationId },
     async (tx) => {
       const customers = await tx.customer.findMany({ orderBy: { nom: "asc" } });
@@ -42,7 +40,17 @@ export default async function CustomersPage() {
         by: ["customerId"],
         _sum: { points: true },
       });
-      return [customers, balances, pointsBalances] as const;
+      const ledgerEntries = await Promise.all(
+        customers.map((c) =>
+          tx.customerLedger.findMany({
+            where: { customerId: c.id },
+            orderBy: { createdAt: "desc" },
+            take: 20,
+          }),
+        ),
+      );
+      const ledgerByCustomer = new Map(customers.map((c, i) => [c.id, ledgerEntries[i]]));
+      return [customers, balances, pointsBalances, ledgerByCustomer] as const;
     },
   );
 
@@ -80,16 +88,18 @@ export default async function CustomersPage() {
           <TableBody>
             {customers.map((c) => {
               const solde = balanceByCustomer.get(c.id) ?? 0;
+              const overLimit = solde > Number(c.plafondCredit);
+              const ledgerEntries = (ledgerByCustomer.get(c.id) ?? []).map((entry) => ({
+                id: entry.id,
+                createdAtLabel: entry.createdAt.toLocaleString("fr-FR"),
+                type: entry.type,
+                montant: Number(entry.montant),
+                montantLabel: formatMoney(entry.montant, organization.devise),
+                motif: entry.motif,
+              }));
               return (
                 <TableRow key={c.id}>
-                  <TableCell>
-                    <Link
-                      href={`/customers/${c.id}`}
-                      className="text-foreground underline-offset-4 hover:underline"
-                    >
-                      {c.nom}
-                    </Link>
-                  </TableCell>
+                  <TableCell className="text-foreground">{c.nom}</TableCell>
                   <TableCell className="text-muted-foreground">{c.telephone ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {c.categorieTarif || "—"}
@@ -98,7 +108,7 @@ export default async function CustomersPage() {
                     {formatMoney(c.plafondCredit, organization.devise)}
                   </TableCell>
                   <TableCell
-                    className={`num text-right ${solde > Number(c.plafondCredit) ? "text-destructive" : "text-foreground"}`}
+                    className={`num text-right ${overLimit ? "text-destructive" : "text-foreground"}`}
                   >
                     {formatMoney(solde, organization.devise)}
                   </TableCell>
@@ -111,15 +121,19 @@ export default async function CustomersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      nativeButton={false}
-                      render={<Link href={`/customers/${c.id}`} />}
-                    >
-                      <Eye className="size-3.5" />
-                      <span className="sr-only">Voir</span>
-                    </Button>
+                    <CustomerDetailDialog
+                      customerId={c.id}
+                      nom={c.nom}
+                      telephone={c.telephone}
+                      categorieTarif={c.categorieTarif}
+                      plafondCredit={Number(c.plafondCredit)}
+                      plafondCreditLabel={formatMoney(c.plafondCredit, organization.devise)}
+                      soldeLabel={formatMoney(solde, organization.devise)}
+                      pointsBalance={pointsByCustomer.get(c.id) ?? 0}
+                      overLimit={overLimit}
+                      ledgerEntries={ledgerEntries}
+                      actif={c.actif}
+                    />
                   </TableCell>
                 </TableRow>
               );

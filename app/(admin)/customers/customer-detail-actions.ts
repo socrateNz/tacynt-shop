@@ -49,7 +49,6 @@ export async function recordPayment(
     });
   });
 
-  revalidatePath(`/customers/${customerId}`);
   revalidatePath("/customers");
   return { error: null };
 }
@@ -128,7 +127,7 @@ export async function convertLoyaltyPoints(
     throw error;
   }
 
-  revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/customers");
   return { error: null };
 }
 
@@ -166,7 +165,6 @@ export async function updateCustomer(
     });
   });
 
-  revalidatePath(`/customers/${customerId}`);
   revalidatePath("/customers");
   return { error: null };
 }

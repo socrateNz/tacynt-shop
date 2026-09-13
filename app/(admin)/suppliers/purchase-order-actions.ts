@@ -92,7 +92,7 @@ export async function createPurchaseOrder(
     throw error;
   }
 
-  revalidatePath(`/suppliers/${supplierId}/purchase-orders`);
+  revalidatePath("/suppliers");
   return { error: null };
 }
 
@@ -101,7 +101,6 @@ export async function sendPurchaseOrder(formData: FormData) {
   await assertCapability(ctx.role, "purchasing:manage");
 
   const purchaseOrderId = String(formData.get("purchaseOrderId") ?? "");
-  const supplierId = String(formData.get("supplierId") ?? "");
   if (!purchaseOrderId) return;
 
   await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
@@ -119,5 +118,5 @@ export async function sendPurchaseOrder(formData: FormData) {
     });
   });
 
-  revalidatePath(`/suppliers/${supplierId}/purchase-orders`);
+  revalidatePath("/suppliers");
 }

@@ -13,7 +13,7 @@ import {
   type CustomerUpdateState,
   type LoyaltyConversionState,
   type PaymentFormState,
-} from "./actions";
+} from "./customer-detail-actions";
 
 const paymentInitialState: PaymentFormState = { error: null };
 const updateInitialState: CustomerUpdateState = { error: null };

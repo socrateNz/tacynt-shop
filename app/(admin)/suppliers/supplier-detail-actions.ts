@@ -46,7 +46,6 @@ export async function recordSupplierPayment(
     });
   });
 
-  revalidatePath(`/suppliers/${supplierId}`);
   revalidatePath("/suppliers");
   return { error: null };
 }
@@ -86,7 +85,6 @@ export async function updateSupplier(
     });
   });
 
-  revalidatePath(`/suppliers/${supplierId}`);
   revalidatePath("/suppliers");
   return { error: null };
 }
@@ -126,6 +124,6 @@ export async function addSupplierProduct(
     });
   });
 
-  revalidatePath(`/suppliers/${supplierId}`);
+  revalidatePath("/suppliers");
   return { error: null };
 }

@@ -145,7 +145,6 @@ export async function receiveGoods(
     });
   });
 
-  revalidatePath(`/purchase-orders/${purchaseOrderId}/receive`);
-  revalidatePath(`/suppliers`);
+  revalidatePath("/suppliers");
   return { error: null };
 }
