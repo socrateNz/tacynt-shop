@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import { ChevronLeft, ChevronRight, Pencil, Plus, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +30,12 @@ import {
 } from "@/components/ui/table";
 
 import { ProductForm } from "./product-form";
+import { ProductLotsDialog, type ProductLotRow } from "./product-lots-dialog";
+import {
+  ProductSerialNumbersDialog,
+  type ProductSerialNumberRow,
+} from "./product-serial-numbers-dialog";
+import { ProductVariantsDialog, type ProductVariantRow } from "./product-variants-dialog";
 
 export type ProductRow = {
   id: string;
@@ -41,8 +46,11 @@ export type ProductRow = {
   priceValue: number;
   stockSuivi: boolean;
   activeVariants: number;
-  lotsHref: string | null;
-  serialHref: string | null;
+  variants: ProductVariantRow[];
+  hasLots: boolean;
+  lots: ProductLotRow[];
+  hasSerialNumbers: boolean;
+  serialNumbers: ProductSerialNumberRow[];
 };
 
 type SortKey = "designation" | "price-desc" | "variants-desc";
@@ -234,7 +242,6 @@ export function ProductsTable({
               <TableHead>Variantes</TableHead>
               {showLots && <TableHead>Lots</TableHead>}
               {showSerial && <TableHead>Numéros de série</TableHead>}
-              <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -264,22 +271,18 @@ export function ProductsTable({
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Link
-                    href={`/catalog/products/${p.id}/variants`}
-                    className="text-sm text-primary underline-offset-4 hover:underline"
-                  >
-                    {p.activeVariants} variante{p.activeVariants > 1 ? "s" : ""}
-                  </Link>
+                  <ProductVariantsDialog
+                    productId={p.id}
+                    productDesignation={p.designation}
+                    variants={p.variants}
+                    canWrite={canWrite}
+                    triggerLabel={`${p.activeVariants} variante${p.activeVariants > 1 ? "s" : ""}`}
+                  />
                 </TableCell>
                 {showLots && (
                   <TableCell>
-                    {p.lotsHref ? (
-                      <Link
-                        href={p.lotsHref}
-                        className="text-sm text-primary underline-offset-4 hover:underline"
-                      >
-                        Voir les lots
-                      </Link>
+                    {p.hasLots ? (
+                      <ProductLotsDialog productDesignation={p.designation} lots={p.lots} />
                     ) : (
                       <span className="text-sm text-muted-foreground">—</span>
                     )}
@@ -287,35 +290,22 @@ export function ProductsTable({
                 )}
                 {showSerial && (
                   <TableCell>
-                    {p.serialHref ? (
-                      <Link
-                        href={p.serialHref}
-                        className="text-sm text-primary underline-offset-4 hover:underline"
-                      >
-                        Voir les numéros
-                      </Link>
+                    {p.hasSerialNumbers ? (
+                      <ProductSerialNumbersDialog
+                        productDesignation={p.designation}
+                        serialNumbers={p.serialNumbers}
+                      />
                     ) : (
                       <span className="text-sm text-muted-foreground">—</span>
                     )}
                   </TableCell>
                 )}
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    nativeButton={false}
-                    render={<Link href={`/catalog/products/${p.id}/variants`} />}
-                  >
-                    <Pencil className="size-3.5" />
-                    <span className="sr-only">Modifier</span>
-                  </Button>
-                </TableCell>
               </TableRow>
             ))}
             {pageRows.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={7 + (showLots ? 1 : 0) + (showSerial ? 1 : 0)}
+                  colSpan={6 + (showLots ? 1 : 0) + (showSerial ? 1 : 0)}
                   className="text-center text-muted-foreground"
                 >
                   Aucun produit ne correspond à ces critères.

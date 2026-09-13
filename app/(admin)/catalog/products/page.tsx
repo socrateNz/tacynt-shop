@@ -22,7 +22,9 @@ export default async function ProductsPage() {
     where: { id: ctx.organizationId },
   });
 
-  const [products, categories] = await withTenantContext(
+  const now = new Date();
+
+  const { products, categories, lotsByProduct, serialsByProduct } = await withTenantContext(
     { organizationId: ctx.organizationId, shopId },
     async (tx) => {
       const products = await tx.product.findMany({
@@ -33,7 +35,49 @@ export default async function ProductsPage() {
         },
       });
       const categories = await tx.category.findMany({ orderBy: { nom: "asc" } });
-      return [products, categories] as const;
+
+      const variantToProduct = new Map<string, (typeof products)[number]>();
+      for (const p of products) {
+        for (const v of p.variants) variantToProduct.set(v.id, p);
+      }
+
+      const lotVariantIds = products.filter((p) => p.suiviLots).flatMap((p) => p.variants.map((v) => v.id));
+      const lots = lotVariantIds.length
+        ? await tx.lot.findMany({
+            where: { shopId, variantId: { in: lotVariantIds } },
+            include: { variant: true },
+            orderBy: [{ datePeremption: "asc" }, { numero: "asc" }],
+          })
+        : [];
+      const lotsByProduct = new Map<string, typeof lots>();
+      for (const l of lots) {
+        const product = variantToProduct.get(l.variantId);
+        if (!product) continue;
+        const list = lotsByProduct.get(product.id) ?? [];
+        list.push(l);
+        lotsByProduct.set(product.id, list);
+      }
+
+      const serialVariantIds = products
+        .filter((p) => p.suiviSerie)
+        .flatMap((p) => p.variants.map((v) => v.id));
+      const serials = serialVariantIds.length
+        ? await tx.serialNumber.findMany({
+            where: { shopId, variantId: { in: serialVariantIds } },
+            include: { variant: true, saleLine: { include: { sale: true } } },
+            orderBy: [{ statut: "asc" }, { receivedAt: "asc" }],
+          })
+        : [];
+      const serialsByProduct = new Map<string, typeof serials>();
+      for (const s of serials) {
+        const product = variantToProduct.get(s.variantId);
+        if (!product) continue;
+        const list = serialsByProduct.get(product.id) ?? [];
+        list.push(s);
+        serialsByProduct.set(product.id, list);
+      }
+
+      return { products, categories, lotsByProduct, serialsByProduct };
     },
   );
 
@@ -52,8 +96,49 @@ export default async function ProductsPage() {
       priceValue: price ? Number(price.prixVente) : 0,
       stockSuivi: p.suiviStock,
       activeVariants: p.variants.filter((v) => v.actif).length,
-      lotsHref: p.suiviLots ? `/catalog/products/${p.id}/lots` : null,
-      serialHref: p.suiviSerie ? `/catalog/products/${p.id}/serial-numbers` : null,
+      variants: p.variants.map((v) => {
+        const attrs = v.attributs as Record<string, string>;
+        const attrLabel =
+          Object.entries(attrs).length > 0
+            ? Object.entries(attrs)
+                .map(([k, val]) => `${k}: ${val}`)
+                .join(", ")
+            : "—";
+        const shopPrice = v.shopPrices[0];
+        return {
+          id: v.id,
+          attrLabel,
+          codeBarres: v.codeBarres,
+          priceLabel: shopPrice ? formatMoney(shopPrice.prixVente, organization.devise) : "—",
+          actif: v.actif,
+        };
+      }),
+      hasLots: p.suiviLots,
+      lots: (lotsByProduct.get(p.id) ?? []).map((l) => {
+        const attrs = l.variant.attributs as Record<string, string>;
+        const expired = l.datePeremption ? l.datePeremption < now : false;
+        return {
+          id: l.id,
+          attrLabel: Object.values(attrs).join(", "),
+          numero: l.numero,
+          peremptionLabel: l.datePeremption ? l.datePeremption.toLocaleDateString("fr-FR") : "—",
+          expired,
+          quantite: l.quantite.toString(),
+        };
+      }),
+      hasSerialNumbers: p.suiviSerie,
+      serialNumbers: (serialsByProduct.get(p.id) ?? []).map((s) => {
+        const attrs = s.variant.attributs as Record<string, string>;
+        return {
+          id: s.id,
+          attrLabel: Object.values(attrs).join(", "),
+          numero: s.numero,
+          statutLabel: s.statut === "VENDU" ? "Vendu" : "En stock",
+          vendu: s.statut === "VENDU",
+          receivedAtLabel: s.receivedAt.toLocaleDateString("fr-FR"),
+          saleNumero: s.saleLine ? s.saleLine.sale.numero : null,
+        };
+      }),
     };
   });
 

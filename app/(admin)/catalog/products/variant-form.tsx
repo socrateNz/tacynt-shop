@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { createVariant, type VariantFormState } from "./actions";
+import { createVariant, type VariantFormState } from "./variant-actions";
 
 const initialState: VariantFormState = { error: null };
 

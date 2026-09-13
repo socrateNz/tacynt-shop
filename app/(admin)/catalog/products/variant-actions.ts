@@ -91,7 +91,7 @@ export async function createVariant(
     throw error;
   }
 
-  revalidatePath(`/catalog/products/${productId}/variants`);
+  revalidatePath("/catalog/products");
   return { error: null };
 }
 
@@ -100,7 +100,6 @@ export async function deactivateVariant(formData: FormData) {
   await assertCapability(ctx.role, "catalog:write");
 
   const variantId = String(formData.get("variantId") ?? "");
-  const productId = String(formData.get("productId") ?? "");
   if (!variantId) return;
 
   await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
@@ -115,5 +114,5 @@ export async function deactivateVariant(formData: FormData) {
     });
   });
 
-  revalidatePath(`/catalog/products/${productId}/variants`);
+  revalidatePath("/catalog/products");
 }
