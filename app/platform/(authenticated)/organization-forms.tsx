@@ -15,7 +15,7 @@ import {
   type RecordPaymentState,
   type UpdateModulesState,
   type UpdatePlanStatusState,
-} from "./actions";
+} from "./organization-detail-actions";
 
 const PLAN_OPTIONS = ["STARTER", "BUSINESS", "PRO", "ENTERPRISE"] as const;
 const STATUS_OPTIONS = [

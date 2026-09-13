@@ -1,5 +1,3 @@
-import { Eye } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +16,7 @@ import { getTenantContext } from "@/lib/tenant/context";
 
 import { toggleShopActive } from "./actions";
 import { ShopForm } from "./shop-form";
+import { ShopUsersDialog } from "./shop-users-dialog";
 
 export default async function ShopsPage() {
   const ctx = await getTenantContext();
@@ -25,8 +24,20 @@ export default async function ShopsPage() {
     redirect("/");
   }
 
-  const shops = await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
-    tx.shop.findMany({ orderBy: { nom: "asc" } }),
+  const { shops, users, assignedByShop } = await withTenantContext(
+    { organizationId: ctx.organizationId },
+    async (tx) => {
+      const shops = await tx.shop.findMany({ orderBy: { nom: "asc" } });
+      const users = await tx.user.findMany({ orderBy: { email: "asc" } });
+      const assignments = await tx.userShop.findMany();
+      const assignedByShop = new Map<string, Set<string>>();
+      for (const a of assignments) {
+        const set = assignedByShop.get(a.shopId) ?? new Set<string>();
+        set.add(a.userId);
+        assignedByShop.set(a.shopId, set);
+      }
+      return { shops, users, assignedByShop };
+    },
   );
 
   return (
@@ -63,11 +74,6 @@ export default async function ShopsPage() {
                   </Badge>
                 </TableCell>
                 <TableCell className="flex justify-end gap-2">
-                  <Link href={`/shops/${s.id}/users`}>
-                    <Button type="button" variant="outline" size="sm">
-                      Utilisateurs
-                    </Button>
-                  </Link>
                   <form action={toggleShopActive}>
                     <input type="hidden" name="shopId" value={s.id} />
                     <Button type="submit" variant="ghost" size="sm">
@@ -76,15 +82,16 @@ export default async function ShopsPage() {
                   </form>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    nativeButton={false}
-                    render={<Link href={`/shops/${s.id}/users`} />}
-                  >
-                    <Eye className="size-3.5" />
-                    <span className="sr-only">Voir</span>
-                  </Button>
+                  <ShopUsersDialog
+                    shopId={s.id}
+                    shopNom={s.nom}
+                    users={users.map((u) => ({
+                      id: u.id,
+                      email: u.email,
+                      role: u.role,
+                      assigned: assignedByShop.get(s.id)?.has(u.id) ?? false,
+                    }))}
+                  />
                 </TableCell>
               </TableRow>
             ))}

@@ -1,5 +1,5 @@
 // Marketplace de modules (Phase 4, M26) : activation exclusivement pilotée
-// par l'admin plateforme (app/platform/[organizationId]/actions.ts), jamais
+// par l'admin plateforme (app/platform/(authenticated)/organization-detail-actions.ts), jamais
 // en self-service — même modèle économique que le plan/statut (M25),
 // "l'admin gère les abonnements après avoir perçu en espèces". Axe
 // indépendant de lib/permissions.ts (rôle) et lib/quotas.ts (limites

@@ -1,4 +1,3 @@
-import { Eye } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { platformPrisma } from "@/lib/db/platform-client";
 import { systemPrisma } from "@/lib/db/system-client";
+import { formatMoney } from "@/lib/money";
+
+import { OrganizationDetailDialog } from "./organization-detail-dialog";
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Actif",
@@ -23,6 +26,21 @@ export default async function PlatformOrganizationsPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  const organizationIds = organizations.map((o) => o.id);
+  const payments = organizationIds.length
+    ? await platformPrisma.platformPayment.findMany({
+        where: { organizationId: { in: organizationIds } },
+        include: { recordedByAdmin: true },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
+  const paymentsByOrg = new Map<string, typeof payments>();
+  for (const p of payments) {
+    const list = paymentsByOrg.get(p.organizationId) ?? [];
+    list.push(p);
+    paymentsByOrg.set(p.organizationId, list);
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <header className="flex items-start justify-between gap-4">
@@ -33,7 +51,9 @@ export default async function PlatformOrganizationsPage() {
             statut d&apos;abonnement gérés manuellement après encaissement hors ligne.
           </p>
         </div>
-        <Button render={<Link href="/platform/new" />}>Nouvelle organisation</Button>
+        <Button nativeButton={false} render={<Link href="/platform/new" />}>
+          Nouvelle organisation
+        </Button>
       </header>
 
       <div className="rounded-xl border border-border bg-card">
@@ -51,14 +71,7 @@ export default async function PlatformOrganizationsPage() {
           <TableBody>
             {organizations.map((org) => (
               <TableRow key={org.id}>
-                <TableCell>
-                  <Link
-                    href={`/platform/${org.id}`}
-                    className="text-sm text-primary underline-offset-4 hover:underline"
-                  >
-                    {org.nom}
-                  </Link>
-                </TableCell>
+                <TableCell className="text-sm text-foreground">{org.nom}</TableCell>
                 <TableCell className="text-muted-foreground">{org.slug}</TableCell>
                 <TableCell className="text-muted-foreground">{org.plan}</TableCell>
                 <TableCell
@@ -72,15 +85,27 @@ export default async function PlatformOrganizationsPage() {
                   {org.createdAt.toLocaleDateString("fr-FR")}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    nativeButton={false}
-                    render={<Link href={`/platform/${org.id}`} />}
-                  >
-                    <Eye className="size-3.5" />
-                    <span className="sr-only">Voir</span>
-                  </Button>
+                  <OrganizationDetailDialog
+                    organizationId={org.id}
+                    nom={org.nom}
+                    slug={org.slug}
+                    createdAtLabel={org.createdAt.toLocaleDateString("fr-FR")}
+                    plan={org.plan}
+                    statut={org.statut}
+                    enabledModules={
+                      Array.isArray(org.enabledModules)
+                        ? org.enabledModules.filter((m): m is string => typeof m === "string")
+                        : []
+                    }
+                    devise={org.devise}
+                    payments={(paymentsByOrg.get(org.id) ?? []).map((p) => ({
+                      id: p.id,
+                      createdAtLabel: p.createdAt.toLocaleDateString("fr-FR"),
+                      periodeLabel: `${p.periodeDebut.toLocaleDateString("fr-FR")} – ${p.periodeFin.toLocaleDateString("fr-FR")}`,
+                      montantLabel: formatMoney(p.montant, p.devise),
+                      recordedByEmail: p.recordedByAdmin.email,
+                    }))}
+                  />
                 </TableCell>
               </TableRow>
             ))}

@@ -42,9 +42,8 @@ export async function createOrganization(
   const baseSlug = slugify(nom);
   const hash = await hashPassword(password);
 
-  let organizationId: string;
   try {
-    organizationId = await withSystemContext(async (tx) => {
+    await withSystemContext(async (tx) => {
       const existing = await tx.organization.findUnique({ where: { slug: baseSlug } });
       const slug = existing ? `${baseSlug}-${randomBytes(2).toString("hex")}` : baseSlug;
 
@@ -80,8 +79,6 @@ export async function createOrganization(
         entiteId: organization.id,
         apres: { nom, slug, ownerEmail: email, platformAdminEmail: admin.email },
       });
-
-      return organization.id;
     });
   } catch {
     return { error: "Impossible de créer l'organisation, réessayez." };
@@ -93,5 +90,5 @@ export async function createOrganization(
   // deploy/domain-watcher/. Best-effort, ne bloque jamais la création.
   await requestCertRefresh();
 
-  redirect(`/platform/${organizationId}`);
+  redirect("/platform");
 }

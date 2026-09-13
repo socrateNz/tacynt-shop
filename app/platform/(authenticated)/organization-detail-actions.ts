@@ -56,7 +56,6 @@ export async function updateOrganizationPlanStatus(
     });
   });
 
-  revalidatePath(`/platform/${organizationId}`);
   revalidatePath("/platform");
   return { error: null };
 }
@@ -120,7 +119,7 @@ export async function recordPlatformPayment(
     });
   });
 
-  revalidatePath(`/platform/${organizationId}`);
+  revalidatePath("/platform");
   return { error: null };
 }
 
@@ -170,6 +169,6 @@ export async function updateOrganizationModules(
     });
   });
 
-  revalidatePath(`/platform/${organizationId}`);
+  revalidatePath("/platform");
   return { error: null };
 }

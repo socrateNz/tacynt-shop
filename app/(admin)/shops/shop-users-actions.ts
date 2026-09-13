@@ -32,7 +32,7 @@ export async function assignUserToShop(formData: FormData) {
     });
   });
 
-  revalidatePath(`/shops/${shopId}/users`);
+  revalidatePath("/shops");
 }
 
 export async function unassignUserFromShop(formData: FormData) {
@@ -62,5 +62,5 @@ export async function unassignUserFromShop(formData: FormData) {
     });
   });
 
-  revalidatePath(`/shops/${shopId}/users`);
+  revalidatePath("/shops");
 }
