@@ -1,8 +1,5 @@
-import { Eye } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -11,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ViewDetailDialog } from "@/components/ui/view-detail-dialog";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
@@ -21,6 +19,18 @@ import { profileHasLots, profileHasSerialNumbers } from "@/lib/tenant/profile";
 
 import { AdjustStockForm } from "./adjust-stock-form";
 import { ReceiveStockForm } from "./receive-stock-form";
+
+const TYPE_LABELS: Record<string, string> = {
+  RECEPTION: "Réception",
+  VENTE: "Vente",
+  RETOUR_CLIENT: "Retour client",
+  RETOUR_FOURNISSEUR: "Retour fournisseur",
+  TRANSFERT_SORTANT: "Transfert sortant",
+  TRANSFERT_ENTRANT: "Transfert entrant",
+  AJUSTEMENT: "Ajustement",
+  CASSE_PERTE_VOL: "Casse / perte / vol",
+  CONSOMMATION_INTERNE: "Consommation interne",
+};
 
 export default async function StockMovementsPage() {
   const ctx = await getTenantContext();
@@ -52,7 +62,7 @@ export default async function StockMovementsPage() {
         where: { shopId },
         orderBy: { createdAt: "desc" },
         take: 50,
-        include: { variant: { include: { product: true } } },
+        include: { variant: { include: { product: true } }, lot: true },
       });
       const variants = await tx.productVariant.findMany({
         where: { actif: true, product: { suiviStock: true } },
@@ -77,6 +87,12 @@ export default async function StockMovementsPage() {
   );
 
   const canWrite = hasCapability(ctx.role, "stock:write");
+
+  const userIds = [...new Set(movements.map((m) => m.userId).filter((id): id is string => !!id))];
+  const users = userIds.length
+    ? await systemPrisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, email: true } })
+    : [];
+  const emailByUserId = new Map(users.map((u) => [u.id, u.email]));
 
   return (
     <div className="flex flex-col gap-8">
@@ -199,15 +215,32 @@ export default async function StockMovementsPage() {
                     {formatMoney(m.coutUnitaire, organization.devise)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      nativeButton={false}
-                      render={<Link href={`/stock/movements/${m.id}`} />}
-                    >
-                      <Eye className="size-3.5" />
-                      <span className="sr-only">Voir</span>
-                    </Button>
+                    <ViewDetailDialog
+                      title="Mouvement de stock"
+                      rows={[
+                        { label: "Date", value: m.createdAt.toLocaleString("fr-FR") },
+                        { label: "Produit", value: m.variant.product.designation },
+                        { label: "Type", value: TYPE_LABELS[m.type] ?? m.type },
+                        { label: "Quantité", value: m.quantite.toString() },
+                        {
+                          label: "Coût unitaire",
+                          value: formatMoney(m.coutUnitaire, organization.devise),
+                        },
+                        ...(m.lot ? [{ label: "Lot", value: m.lot.numero }] : []),
+                        ...(m.motif ? [{ label: "Motif", value: m.motif }] : []),
+                        ...(m.userId && emailByUserId.has(m.userId)
+                          ? [{ label: "Utilisateur", value: emailByUserId.get(m.userId)! }]
+                          : []),
+                        ...(m.documentType
+                          ? [
+                              {
+                                label: "Document source",
+                                value: `${m.documentType}${m.documentId ? ` (${m.documentId})` : ""}`,
+                              },
+                            ]
+                          : []),
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

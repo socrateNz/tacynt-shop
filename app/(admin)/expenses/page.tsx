@@ -1,5 +1,3 @@
-import { Eye } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ViewDetailDialog } from "@/components/ui/view-detail-dialog";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
@@ -45,8 +44,18 @@ export default async function ExpensesPage() {
   });
 
   const expenses = await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
-    tx.expense.findMany({ orderBy: { createdAt: "desc" }, take: 50 }),
+    tx.expense.findMany({ orderBy: { createdAt: "desc" }, take: 50, include: { shop: true } }),
   );
+
+  const userIds = [
+    ...new Set(
+      expenses.flatMap((e) => [e.userId, e.approvedByUserId].filter((id): id is string => !!id)),
+    ),
+  ];
+  const users = userIds.length
+    ? await systemPrisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, email: true } })
+    : [];
+  const emailByUserId = new Map(users.map((u) => [u.id, u.email]));
 
   return (
     <div className="flex flex-col gap-8">
@@ -112,15 +121,48 @@ export default async function ExpensesPage() {
                   </TableCell>
                 )}
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    nativeButton={false}
-                    render={<Link href={`/expenses/${e.id}`} />}
+                  <ViewDetailDialog
+                    title={e.categorie}
+                    rows={[
+                      { label: "Date", value: e.createdAt.toLocaleString("fr-FR") },
+                      { label: "Boutique", value: e.shop.nom },
+                      { label: "Montant", value: formatMoney(e.montant, organization.devise) },
+                      { label: "Mode de paiement", value: e.modePaiement },
+                      { label: "Statut", value: STATUS_LABELS[e.statut] ?? e.statut },
+                      { label: "Saisie par", value: emailByUserId.get(e.userId) ?? "—" },
+                      ...(e.approvedByUserId && emailByUserId.has(e.approvedByUserId)
+                        ? [
+                            {
+                              label: e.statut === "REJETEE" ? "Rejetée par" : "Validée par",
+                              value: emailByUserId.get(e.approvedByUserId)!,
+                            },
+                          ]
+                        : []),
+                    ]}
                   >
-                    <Eye className="size-3.5" />
-                    <span className="sr-only">Voir</span>
-                  </Button>
+                    {e.justificatifMimeType && (
+                      <div className="flex flex-col gap-2">
+                        <h3 className="text-sm font-medium text-foreground">Justificatif</h3>
+                        {e.justificatifMimeType.startsWith("image/") ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- image binaire servie par la route, pas un asset statique optimisable
+                          <img
+                            src={`/api/expenses/${e.id}/attachment`}
+                            alt="Justificatif de dépense"
+                            className="max-w-full rounded-xl border border-border"
+                          />
+                        ) : (
+                          <a
+                            href={`/api/expenses/${e.id}/attachment`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sm text-primary underline-offset-4 hover:underline"
+                          >
+                            Ouvrir le justificatif
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </ViewDetailDialog>
                 </TableCell>
               </TableRow>
             ))}

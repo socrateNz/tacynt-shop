@@ -1,17 +1,5 @@
-import { Eye } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
@@ -19,7 +7,7 @@ import { hasCapability } from "@/lib/permissions";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
-import { CancelSaleForm } from "./cancel-sale-form";
+import { SalesTable, type SaleRow } from "./sales-table";
 
 export default async function SalesPage() {
   const ctx = await getTenantContext();
@@ -37,10 +25,38 @@ export default async function SalesPage() {
       where: { shopId },
       orderBy: { createdAt: "desc" },
       take: 50,
+      include: {
+        lines: { include: { variant: { include: { product: true } } } },
+        payments: true,
+        customer: true,
+      },
     }),
   );
 
   const canCancel = hasCapability(ctx.role, "pos:cancel_ticket");
+
+  const rows: SaleRow[] = sales.map((s) => ({
+    id: s.id,
+    numero: s.numero,
+    createdAtLabel: s.createdAt.toLocaleString("fr-FR"),
+    totalLabel: formatMoney(s.totalTtc, organization.devise),
+    statut: s.statut,
+    customerNom: s.customer?.nom ?? null,
+    ticket: {
+      numero: s.numero,
+      createdAt: s.createdAt.toISOString(),
+      organizationNom: organization.nom,
+      lines: s.lines.map((l) => ({
+        designation: l.variant.product.designation,
+        quantite: Number(l.quantite),
+        prixUnitaire: Number(l.prixUnitaire),
+        remise: Number(l.remise),
+      })),
+      payments: s.payments.map((p) => ({ mode: p.mode, montant: Number(p.montant) })),
+      totalTtc: Number(s.totalTtc),
+      devise: organization.devise,
+    },
+  }));
 
   return (
     <div className="flex flex-col gap-8">
@@ -51,59 +67,7 @@ export default async function SalesPage() {
         </p>
       </header>
 
-      <div className="rounded-xl border border-border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Numéro</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead>Statut</TableHead>
-              {canCancel && <TableHead>Annuler</TableHead>}
-              <TableHead className="text-right">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sales.map((s) => (
-              <TableRow key={s.id}>
-                <TableCell className="num text-foreground">{s.numero}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {s.createdAt.toLocaleString("fr-FR")}
-                </TableCell>
-                <TableCell className="num text-right">
-                  {formatMoney(s.totalTtc, organization.devise)}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={s.statut === "VALIDEE" ? "success" : "destructive"}>
-                    {s.statut === "VALIDEE" ? "Validée" : "Annulée"}
-                  </Badge>
-                </TableCell>
-                {canCancel && (
-                  <TableCell>{s.statut === "VALIDEE" && <CancelSaleForm saleId={s.id} />}</TableCell>
-                )}
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    nativeButton={false}
-                    render={<Link href={`/sales/${s.id}`} />}
-                  >
-                    <Eye className="size-3.5" />
-                    <span className="sr-only">Voir</span>
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-            {sales.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={canCancel ? 6 : 5} className="text-center text-muted-foreground">
-                  Aucune vente pour l&apos;instant.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <SalesTable sales={rows} canCancel={canCancel} />
     </div>
   );
 }
