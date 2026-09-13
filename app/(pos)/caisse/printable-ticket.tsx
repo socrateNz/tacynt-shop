@@ -20,6 +20,19 @@ const PAYMENT_LABELS: Record<string, string> = {
 };
 
 export function PrintableTicket({ ticket }: { ticket: TicketData }) {
+  // Sous-total hors taxe recalculé depuis les lignes affichées ; la taxe est
+  // la différence avec ticket.totalTtc (déjà calculé avec la taxe côté
+  // serveur, lib/sales/apply-sale.ts) — jamais l'inverse, pour ne jamais
+  // afficher un total qui ne corresponde pas à la somme des lignes visibles
+  // (bug réel constaté : le total sautait de 50 000 à 59 625 sans qu'aucune
+  // ligne n'explique l'écart).
+  const sousTotal = ticket.lines.reduce(
+    (sum, l) => sum + l.prixUnitaire * l.quantite - l.remise,
+    0,
+  );
+  const taxe = ticket.totalTtc - sousTotal;
+  const showTaxe = Math.abs(taxe) > 0.01;
+
   return (
     <div className="printable-ticket mx-auto w-full max-w-[80mm] bg-background p-3 font-mono text-xs text-foreground">
       <p className="text-center font-semibold">{ticket.organizationNom}</p>
@@ -38,6 +51,18 @@ export function PrintableTicket({ ticket }: { ticket: TicketData }) {
         </div>
       ))}
       <hr className="my-2 border-dashed border-border" />
+      {showTaxe && (
+        <>
+          <div className="flex justify-between text-muted-foreground">
+            <span>Sous-total</span>
+            <span className="num">{formatMoney(sousTotal, ticket.devise)}</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>Taxe</span>
+            <span className="num">{formatMoney(taxe, ticket.devise)}</span>
+          </div>
+        </>
+      )}
       <div className="flex justify-between font-semibold">
         <span>Total</span>
         <span className="num">{formatMoney(ticket.totalTtc, ticket.devise)}</span>

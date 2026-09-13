@@ -51,6 +51,7 @@ type CartLine = {
   prixUnitaire: number;
   quantite: number;
   remise: number;
+  tauxTaxe: number;
 };
 
 type HeldTicket = { id: string; label: string; lines: CartLine[] };
@@ -227,6 +228,7 @@ export function PosClient({
           prixUnitaire,
           quantite: 1,
           remise: 0,
+          tauxTaxe: product.tauxTaxe,
         },
       ];
     });
@@ -280,8 +282,19 @@ export function PosClient({
     setHeldTickets((prev) => prev.filter((h) => h.id !== id));
   }
 
+  // TTC (toutes taxes comprises) — même calcul que lib/sales/apply-sale.ts
+  // (ligneHt puis + taxe), jamais juste la somme des lignes : sinon le
+  // montant collecté à l'encaissement (et le ticket imprimé) sous-évalue le
+  // vrai total dès qu'un produit a un taux de taxe non nul, alors que
+  // Sale.totalTtc est calculé avec la taxe côté serveur (bug réel constaté :
+  // un ticket historique affichait un total différent de la somme des
+  // lignes affichées, faute de taxe visible nulle part).
   const cartTotal = useMemo(
-    () => cart.reduce((sum, l) => sum + l.prixUnitaire * l.quantite - l.remise, 0),
+    () =>
+      cart.reduce((sum, l) => {
+        const ligneHt = l.prixUnitaire * l.quantite - l.remise;
+        return sum + ligneHt * (1 + l.tauxTaxe / 100);
+      }, 0),
     [cart],
   );
 
