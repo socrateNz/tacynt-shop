@@ -45,7 +45,6 @@ export async function confirmOrder(formData: FormData) {
     });
   });
 
-  revalidatePath(`/online-orders/${orderId}`);
   revalidatePath("/online-orders");
 }
 
@@ -76,6 +75,5 @@ export async function cancelOrder(formData: FormData) {
     });
   });
 
-  revalidatePath(`/online-orders/${orderId}`);
   revalidatePath("/online-orders");
 }

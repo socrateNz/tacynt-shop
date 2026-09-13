@@ -1,8 +1,5 @@
-import { Eye } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -15,6 +12,7 @@ import { withTenantContext } from "@/lib/db/tenant-context";
 import { hasCapability } from "@/lib/permissions";
 import { getTenantContext } from "@/lib/tenant/context";
 
+import { TransferDialog } from "./transfer-dialog";
 import { TransferForm } from "./transfer-form";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -35,7 +33,11 @@ export default async function TransfersPage() {
     async (tx) => {
       const transfers = await tx.stockTransfer.findMany({
         orderBy: { createdAt: "desc" },
-        include: { fromShop: true, toShop: true },
+        include: {
+          fromShop: true,
+          toShop: true,
+          lines: { include: { variant: { include: { product: true } } } },
+        },
         take: 50,
       });
       const shops = await tx.shop.findMany({ where: { actif: true }, orderBy: { nom: "asc" } });
@@ -68,10 +70,7 @@ export default async function TransfersPage() {
           <ul className="mt-2 list-inside list-disc text-sm text-muted-foreground">
             {enTransit.map((t) => (
               <li key={t.id}>
-                <Link href={`/transfers/${t.id}`} className="underline-offset-4 hover:underline">
-                  {t.numero}
-                </Link>{" "}
-                — {t.fromShop.nom} → {t.toShop.nom}
+                {t.numero} — {t.fromShop.nom} → {t.toShop.nom}
               </li>
             ))}
           </ul>
@@ -93,14 +92,7 @@ export default async function TransfersPage() {
           <TableBody>
             {transfers.map((t) => (
               <TableRow key={t.id}>
-                <TableCell>
-                  <Link
-                    href={`/transfers/${t.id}`}
-                    className="text-foreground underline-offset-4 hover:underline"
-                  >
-                    {t.numero}
-                  </Link>
-                </TableCell>
+                <TableCell className="text-foreground">{t.numero}</TableCell>
                 <TableCell className="text-muted-foreground">{t.fromShop.nom}</TableCell>
                 <TableCell className="text-muted-foreground">{t.toShop.nom}</TableCell>
                 <TableCell className="text-muted-foreground">
@@ -110,15 +102,20 @@ export default async function TransfersPage() {
                   {t.createdAt.toLocaleDateString("fr-FR")}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    nativeButton={false}
-                    render={<Link href={`/transfers/${t.id}`} />}
-                  >
-                    <Eye className="size-3.5" />
-                    <span className="sr-only">Voir</span>
-                  </Button>
+                  <TransferDialog
+                    transferId={t.id}
+                    numero={t.numero}
+                    fromShopNom={t.fromShop.nom}
+                    toShopNom={t.toShop.nom}
+                    statut={t.statut}
+                    lines={t.lines.map((l) => ({
+                      id: l.id,
+                      designation: l.variant.product.designation,
+                      quantiteDemandee: Number(l.quantiteDemandee),
+                      quantiteExpediee: l.quantiteExpediee !== null ? Number(l.quantiteExpediee) : null,
+                      quantiteRecue: l.quantiteRecue !== null ? Number(l.quantiteRecue) : null,
+                    }))}
+                  />
                 </TableCell>
               </TableRow>
             ))}

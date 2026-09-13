@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { fulfillOrder, type FulfillOrderState } from "./actions";
+import { fulfillOrder, type FulfillOrderState } from "./fulfill-actions";
 
 const PAYMENT_MODE_LABELS: Record<string, string> = {
   ESPECES: "Espèces",

@@ -1,8 +1,5 @@
-import { Eye } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -17,6 +14,8 @@ import { formatMoney } from "@/lib/money";
 import { hasCapability } from "@/lib/permissions";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
+
+import { OnlineOrderDialog } from "./online-order-dialog";
 
 const STATUS_LABELS: Record<string, string> = {
   EN_ATTENTE: "En attente",
@@ -43,7 +42,7 @@ export default async function OnlineOrdersPage() {
   const orders = await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
     tx.onlineOrder.findMany({
       orderBy: { createdAt: "desc" },
-      include: { shop: true },
+      include: { shop: true, lines: { include: { variant: { include: { product: true } } } } },
       take: 100,
     }),
   );
@@ -84,14 +83,7 @@ export default async function OnlineOrdersPage() {
           <TableBody>
             {orders.map((o) => (
               <TableRow key={o.id}>
-                <TableCell>
-                  <Link
-                    href={`/online-orders/${o.id}`}
-                    className="text-foreground underline-offset-4 hover:underline"
-                  >
-                    {o.numero}
-                  </Link>
-                </TableCell>
+                <TableCell className="text-foreground">{o.numero}</TableCell>
                 <TableCell className="text-muted-foreground">{o.nomClient}</TableCell>
                 <TableCell className="text-muted-foreground">{o.shop.nom}</TableCell>
                 <TableCell className="text-muted-foreground">
@@ -104,15 +96,26 @@ export default async function OnlineOrdersPage() {
                   {o.createdAt.toLocaleDateString("fr-FR")}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    nativeButton={false}
-                    render={<Link href={`/online-orders/${o.id}`} />}
-                  >
-                    <Eye className="size-3.5" />
-                    <span className="sr-only">Voir</span>
-                  </Button>
+                  <OnlineOrderDialog
+                    orderId={o.id}
+                    numero={o.numero}
+                    statut={o.statut}
+                    shopNom={o.shop.nom}
+                    nomClient={o.nomClient}
+                    telephoneClient={o.telephoneClient}
+                    modeRetrait={o.modeRetrait}
+                    adresseLivraison={o.adresseLivraison}
+                    notes={o.notes}
+                    lines={o.lines.map((l) => ({
+                      id: l.id,
+                      designation: l.variant.product.designation,
+                      quantite: Number(l.quantite),
+                      prixUnitaireLabel: formatMoney(l.prixUnitaire, organization.devise),
+                    }))}
+                    totalTtc={Number(o.totalTtc)}
+                    totalTtcLabel={formatMoney(o.totalTtc, organization.devise)}
+                    saleId={o.saleId}
+                  />
                 </TableCell>
               </TableRow>
             ))}

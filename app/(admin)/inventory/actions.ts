@@ -29,31 +29,26 @@ export async function startInventorySession(
 
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
 
-  const session = await withTenantContext(
-    { organizationId: ctx.organizationId, shopId },
-    async (tx) => {
-      const session = await tx.inventorySession.create({
-        data: {
-          organizationId: ctx.organizationId,
-          shopId,
-          type: type as "COMPLET" | "PARTIEL",
-          categoryId: type === "PARTIEL" ? categoryId : null,
-          userId: ctx.userId,
-        },
-      });
-
-      await recordAuditLog(tx, {
+  await withTenantContext({ organizationId: ctx.organizationId, shopId }, async (tx) => {
+    const session = await tx.inventorySession.create({
+      data: {
         organizationId: ctx.organizationId,
+        shopId,
+        type: type as "COMPLET" | "PARTIEL",
+        categoryId: type === "PARTIEL" ? categoryId : null,
         userId: ctx.userId,
-        action: "INVENTORY_SESSION_STARTED",
-        entite: "inventory_session",
-        entiteId: session.id,
-        apres: { type, categoryId },
-      });
+      },
+    });
 
-      return session;
-    },
-  );
+    await recordAuditLog(tx, {
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+      action: "INVENTORY_SESSION_STARTED",
+      entite: "inventory_session",
+      entiteId: session.id,
+      apres: { type, categoryId },
+    });
+  });
 
-  redirect(`/inventory/${session.id}`);
+  redirect("/inventory");
 }

@@ -73,7 +73,6 @@ export async function shipTransfer(
     });
   });
 
-  revalidatePath(`/transfers/${transferId}`);
   revalidatePath("/transfers");
   return { error: null };
 }
@@ -159,7 +158,6 @@ export async function receiveTransfer(
     });
   });
 
-  revalidatePath(`/transfers/${transferId}`);
   revalidatePath("/transfers");
   return { error: null };
 }
@@ -186,6 +184,5 @@ export async function cancelTransfer(formData: FormData) {
     });
   });
 
-  revalidatePath(`/transfers/${transferId}`);
   revalidatePath("/transfers");
 }

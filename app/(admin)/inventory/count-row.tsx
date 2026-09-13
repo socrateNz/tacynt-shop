@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableCell, TableRow } from "@/components/ui/table";
 
-import { recordInventoryCount, type InventoryCountState } from "./actions";
+import { recordInventoryCount, type InventoryCountState } from "./session-actions";
 
 const initialState: InventoryCountState = { error: null };
 

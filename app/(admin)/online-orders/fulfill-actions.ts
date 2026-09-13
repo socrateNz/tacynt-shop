@@ -125,7 +125,6 @@ export async function fulfillOrder(
     throw error;
   }
 
-  revalidatePath(`/online-orders/${orderId}`);
   revalidatePath("/online-orders");
   return { error: null };
 }

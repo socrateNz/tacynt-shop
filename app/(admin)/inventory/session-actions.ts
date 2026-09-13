@@ -69,7 +69,7 @@ export async function recordInventoryCount(
     });
   });
 
-  revalidatePath(`/inventory/${inventorySessionId}`);
+  revalidatePath("/inventory");
   return { error: null };
 }
 
@@ -129,7 +129,6 @@ export async function validateInventorySession(formData: FormData) {
     });
   });
 
-  revalidatePath(`/inventory/${inventorySessionId}`);
   revalidatePath("/inventory");
 }
 
@@ -160,6 +159,5 @@ export async function cancelInventorySession(formData: FormData) {
     });
   });
 
-  revalidatePath(`/inventory/${inventorySessionId}`);
   revalidatePath("/inventory");
 }

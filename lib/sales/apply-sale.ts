@@ -50,7 +50,7 @@ export type ApplySaleResult = {
 // Cœur transactionnel du calcul/enregistrement d'une vente — extrait de
 // processOneSale (app/api/pos/sync/sales/route.ts, Phase 1-3) en Phase 4
 // M31 pour être réutilisé tel quel par le fulfillment e-commerce
-// (app/(admin)/online-orders/[orderId]/actions.ts). Règle non négociable du
+// (app/(admin)/online-orders/fulfill-actions.ts). Règle non négociable du
 // projet : jamais un second calcul de stock/CUMP parallèle. Le comportement
 // est identique bit à bit à l'ancien processOneSale pour l'appelant POS —
 // seule la responsabilité de résoudre le doublon (uuidClient, P2002) et de
