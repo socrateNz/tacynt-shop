@@ -6,6 +6,7 @@ export type TicketData = {
   organizationNom: string;
   lines: { designation: string; quantite: number; prixUnitaire: number; remise: number }[];
   payments: { mode: string; montant: number }[];
+  totalHt: number;
   totalTtc: number;
   devise: string;
 };
@@ -20,17 +21,15 @@ const PAYMENT_LABELS: Record<string, string> = {
 };
 
 export function PrintableTicket({ ticket }: { ticket: TicketData }) {
-  // Sous-total hors taxe recalculé depuis les lignes affichées ; la taxe est
-  // la différence avec ticket.totalTtc (déjà calculé avec la taxe côté
-  // serveur, lib/sales/apply-sale.ts) — jamais l'inverse, pour ne jamais
-  // afficher un total qui ne corresponde pas à la somme des lignes visibles
+  // ticket.totalHt vient toujours d'un calcul fait en amont avec
+  // lib/sales/tax.ts (panier caisse ou lib/sales/apply-sale.ts côté
+  // serveur) — jamais recalculé ici depuis les lignes affichées. Selon le
+  // réglage taxeRetenueSource de la boutique au moment de la vente, le prix
+  // affiché par ligne peut être HT (taxe ajoutée) ou déjà TTC (taxe
+  // retenue à la source) ; seul totalHt encode laquelle des deux s'applique
   // (bug réel constaté : le total sautait de 50 000 à 59 625 sans qu'aucune
-  // ligne n'explique l'écart).
-  const sousTotal = ticket.lines.reduce(
-    (sum, l) => sum + l.prixUnitaire * l.quantite - l.remise,
-    0,
-  );
-  const taxe = ticket.totalTtc - sousTotal;
+  // ligne n'explique l'écart, faute de sous-total correct).
+  const taxe = ticket.totalTtc - ticket.totalHt;
   const showTaxe = Math.abs(taxe) > 0.01;
 
   return (
@@ -55,7 +54,7 @@ export function PrintableTicket({ ticket }: { ticket: TicketData }) {
         <>
           <div className="flex justify-between text-muted-foreground">
             <span>Sous-total</span>
-            <span className="num">{formatMoney(sousTotal, ticket.devise)}</span>
+            <span className="num">{formatMoney(ticket.totalHt, ticket.devise)}</span>
           </div>
           <div className="flex justify-between text-muted-foreground">
             <span>Taxe</span>

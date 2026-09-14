@@ -302,6 +302,12 @@ model Shop {
   adresse        String?
   telephone      String?
   actif          Boolean @default(true)
+  // true (défaut) : le prix saisi sur chaque produit est HT, la taxe
+  // s'ajoute par-dessus pour obtenir le TTC — comportement historique.
+  // false : la taxe est déjà retenue à la source, donc déjà incluse dans le
+  // prix saisi ; le HT/la taxe affichés se retrouvent par soustraction mais
+  // le total TTC reste le prix saisi, inchangé (lib/sales/tax.ts).
+  taxeRetenueSource Boolean @default(true) @map("taxe_retenue_source")
 
   organization   Organization    @relation(fields: [organizationId], references: [id])
   userShops      UserShop[]

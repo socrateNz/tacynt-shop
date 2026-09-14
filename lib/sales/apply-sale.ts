@@ -4,6 +4,7 @@ import { recordAuditLog } from "@/lib/audit";
 import { getCustomerBalance, recordCustomerLedgerEntry } from "@/lib/customers/ledger";
 import { recordLoyaltyEntry } from "@/lib/loyalty/ledger";
 import { canApplyDiscount, type Role } from "@/lib/permissions";
+import { computeLineAmounts } from "@/lib/sales/tax";
 import { consumeLotsFefo } from "@/lib/stock/lots";
 import { assignSerialNumbersFifo } from "@/lib/stock/serial-numbers";
 
@@ -76,6 +77,7 @@ export async function applySale(
 
   const session = await tx.cashSession.findUniqueOrThrow({ where: { id: sessionId } });
   const shopId = session.shopId;
+  const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId } });
 
   // Pré-calcul : coût figé (CUMP courant) et taxe par ligne, AVANT de créer
   // la vente, pour connaître les totaux corrects dès l'insertion.
@@ -104,8 +106,13 @@ export async function applySale(
     // ni mouvement de stock à générer.
     const coutUnitaireFige = variant.product.suiviStock && stockLevel ? Number(stockLevel.cump) : 0;
     const remise = line.remise ?? 0;
-    const ligneHt = line.prixUnitaire * line.quantite - remise;
-    const ligneTaxe = ligneHt * (Number(variant.product.tauxTaxe) / 100);
+    const { ligneHt, ligneTaxe } = computeLineAmounts({
+      prixUnitaire: line.prixUnitaire,
+      quantite: line.quantite,
+      remise,
+      tauxTaxe: Number(variant.product.tauxTaxe),
+      taxeRetenueSource: shop.taxeRetenueSource,
+    });
 
     lineComputations.push({
       input: line,

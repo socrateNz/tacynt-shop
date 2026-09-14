@@ -14,7 +14,7 @@ import { withTenantContext } from "@/lib/db/tenant-context";
 import { hasCapability } from "@/lib/permissions";
 import { getTenantContext } from "@/lib/tenant/context";
 
-import { toggleShopActive } from "./actions";
+import { toggleShopActive, toggleShopTaxMode } from "./actions";
 import { ShopForm } from "./shop-form";
 import { ShopUsersDialog } from "./shop-users-dialog";
 
@@ -58,6 +58,7 @@ export default async function ShopsPage() {
               <TableHead>Adresse</TableHead>
               <TableHead>Téléphone</TableHead>
               <TableHead>Statut</TableHead>
+              <TableHead>Taxe</TableHead>
               <TableHead />
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
@@ -72,6 +73,17 @@ export default async function ShopsPage() {
                   <Badge variant={s.actif ? "success" : "secondary"}>
                     {s.actif ? "Active" : "Inactive"}
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  <form action={toggleShopTaxMode} className="flex items-center gap-2">
+                    <input type="hidden" name="shopId" value={s.id} />
+                    <Badge variant={s.taxeRetenueSource ? "secondary" : "success"}>
+                      {s.taxeRetenueSource ? "Retenue à la source" : "Incluse dans le prix"}
+                    </Badge>
+                    <Button type="submit" variant="ghost" size="sm">
+                      Changer
+                    </Button>
+                  </form>
                 </TableCell>
                 <TableCell className="flex justify-end gap-2">
                   <form action={toggleShopActive}>
@@ -97,7 +109,7 @@ export default async function ShopsPage() {
             ))}
             {shops.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   Aucune boutique pour l&apos;instant.
                 </TableCell>
               </TableRow>

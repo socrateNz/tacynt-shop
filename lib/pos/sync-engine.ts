@@ -26,9 +26,13 @@ export async function loadCatalogFromServer(): Promise<number> {
   const data = (await res.json()) as {
     generatedAt: string;
     products: Parameters<typeof saveCatalog>[0];
+    taxeRetenueSource: boolean;
   };
   await saveCatalog(data.products);
-  await setSyncMeta({ catalogGeneratedAt: data.generatedAt });
+  await setSyncMeta({
+    catalogGeneratedAt: data.generatedAt,
+    taxeRetenueSource: data.taxeRetenueSource,
+  });
   return data.products.length;
 }
 

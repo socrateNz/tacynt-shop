@@ -14,17 +14,20 @@ export async function GET() {
   await assertCapability(ctx.role, "pos:sell");
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
 
-  const products = await withTenantContext(
+  const [shop, products] = await withTenantContext(
     { organizationId: ctx.organizationId, shopId },
-    (tx) =>
-      tx.product.findMany({
+    async (tx) => {
+      const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId } });
+      const products = await tx.product.findMany({
         where: { actif: true },
         include: {
           variants: {
             include: { shopPrices: { where: { shopId } } },
           },
         },
-      }),
+      });
+      return [shop, products] as const;
+    },
   );
 
   const catalog = products.flatMap((p) =>
@@ -56,5 +59,6 @@ export async function GET() {
     shopId,
     generatedAt: new Date().toISOString(),
     products: catalog,
+    taxeRetenueSource: shop.taxeRetenueSource,
   });
 }

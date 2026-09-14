@@ -81,6 +81,34 @@ export async function toggleShopActive(formData: FormData) {
   revalidatePath("/shops");
 }
 
+export async function toggleShopTaxMode(formData: FormData) {
+  const ctx = await getTenantContext();
+  await assertCapability(ctx.role, "shops:manage");
+
+  const shopId = String(formData.get("shopId") ?? "");
+  if (!shopId) return;
+
+  await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
+    const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId } });
+    await tx.shop.update({
+      where: { id: shopId },
+      data: { taxeRetenueSource: !shop.taxeRetenueSource },
+    });
+
+    await recordAuditLog(tx, {
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+      action: "SHOP_TAX_MODE_CHANGED",
+      entite: "shop",
+      entiteId: shopId,
+      avant: { taxeRetenueSource: shop.taxeRetenueSource },
+      apres: { taxeRetenueSource: !shop.taxeRetenueSource },
+    });
+  });
+
+  revalidatePath("/shops");
+}
+
 export async function setActiveShop(formData: FormData) {
   const ctx = await getTenantContext();
   const shopId = String(formData.get("shopId") ?? "");

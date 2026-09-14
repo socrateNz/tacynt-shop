@@ -65,6 +65,9 @@ export type SyncMeta = {
   catalogGeneratedAt: string | null;
   customersGeneratedAt: string | null;
   categoryPrices: CategoryPrice[];
+  // true (défaut) : prix saisis HT, taxe ajoutée par-dessus. false : taxe
+  // déjà retenue à la source (déjà incluse dans le prix) — lib/sales/tax.ts.
+  taxeRetenueSource: boolean;
 };
 
 interface PosDBSchema extends DBSchema {
@@ -162,6 +165,7 @@ const DEFAULT_SYNC_META: SyncMeta = {
   catalogGeneratedAt: null,
   customersGeneratedAt: null,
   categoryPrices: [],
+  taxeRetenueSource: true,
 };
 
 export async function getSyncMeta(): Promise<SyncMeta> {

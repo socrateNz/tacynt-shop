@@ -3,6 +3,7 @@ import type { OnlineOrderFulfillmentMode } from "@prisma/client";
 
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
+import { computeLineAmounts } from "@/lib/sales/tax";
 import { resolveStorefrontOrganization, resolveStorefrontShopId } from "@/lib/storefront/context";
 
 const FULFILLMENT_MODES: OnlineOrderFulfillmentMode[] = ["RETRAIT_BOUTIQUE", "LIVRAISON"];
@@ -70,6 +71,8 @@ export async function POST(request: Request) {
 
   try {
     const order = await withTenantContext({ organizationId: organization.id, shopId }, async (tx) => {
+      const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId } });
+
       let totalHt = 0;
       let totalTaxe = 0;
       const preparedLines: {
@@ -101,8 +104,13 @@ export async function POST(request: Request) {
         }
 
         const prixUnitaire = Number(price.prixVente);
-        const ligneHt = prixUnitaire * line.quantite;
-        const ligneTaxe = ligneHt * (Number(variant.product.tauxTaxe) / 100);
+        const { ligneHt, ligneTaxe } = computeLineAmounts({
+          prixUnitaire,
+          quantite: line.quantite,
+          remise: 0,
+          tauxTaxe: Number(variant.product.tauxTaxe),
+          taxeRetenueSource: shop.taxeRetenueSource,
+        });
         totalHt += ligneHt;
         totalTaxe += ligneTaxe;
 

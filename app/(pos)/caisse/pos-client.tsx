@@ -34,6 +34,7 @@ import {
 } from "@/lib/pos/sync-engine";
 
 import { recordCashMovement } from "@/app/(admin)/cash-movements/actions";
+import { computeLineAmounts } from "@/lib/sales/tax";
 
 import { PrintableTicket, type TicketData } from "./printable-ticket";
 
@@ -94,6 +95,7 @@ export function PosClient({
 
   const [customers, setCustomers] = useState<PosCustomer[]>([]);
   const [categoryPrices, setCategoryPrices] = useState<CategoryPrice[]>([]);
+  const [taxeRetenueSource, setTaxeRetenueSource] = useState(true);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
   const [customerQuery, setCustomerQuery] = useState("");
@@ -154,6 +156,7 @@ export function PosClient({
       setCatalog(c);
       setCustomers(custs);
       setCategoryPrices(meta.categoryPrices);
+      setTaxeRetenueSource(meta.taxeRetenueSource);
       setSessionId(meta.sessionId);
       setPendingCount(pending);
       setReady(true);
@@ -282,21 +285,31 @@ export function PosClient({
     setHeldTickets((prev) => prev.filter((h) => h.id !== id));
   }
 
-  // TTC (toutes taxes comprises) — même calcul que lib/sales/apply-sale.ts
-  // (ligneHt puis + taxe), jamais juste la somme des lignes : sinon le
-  // montant collecté à l'encaissement (et le ticket imprimé) sous-évalue le
-  // vrai total dès qu'un produit a un taux de taxe non nul, alors que
-  // Sale.totalTtc est calculé avec la taxe côté serveur (bug réel constaté :
-  // un ticket historique affichait un total différent de la somme des
-  // lignes affichées, faute de taxe visible nulle part).
-  const cartTotal = useMemo(
+  // HT et TTC via lib/sales/tax.ts — même calcul que lib/sales/apply-sale.ts
+  // côté serveur, jamais une seconde formule séparée : sinon le montant
+  // collecté à l'encaissement (et le ticket imprimé) diverge du vrai total
+  // dès qu'un produit a un taux de taxe non nul, alors que Sale.totalTtc est
+  // calculé côté serveur avec la même règle taxeRetenueSource (bug réel
+  // constaté : un ticket historique affichait un total différent de la
+  // somme des lignes affichées, faute de taxe visible nulle part).
+  const cartAmounts = useMemo(
     () =>
-      cart.reduce((sum, l) => {
-        const ligneHt = l.prixUnitaire * l.quantite - l.remise;
-        return sum + ligneHt * (1 + l.tauxTaxe / 100);
-      }, 0),
-    [cart],
+      cart.reduce(
+        (acc, l) => {
+          const { ligneHt, ligneTtc } = computeLineAmounts({
+            prixUnitaire: l.prixUnitaire,
+            quantite: l.quantite,
+            remise: l.remise,
+            tauxTaxe: l.tauxTaxe,
+            taxeRetenueSource,
+          });
+          return { totalHt: acc.totalHt + ligneHt, totalTtc: acc.totalTtc + ligneTtc };
+        },
+        { totalHt: 0, totalTtc: 0 },
+      ),
+    [cart, taxeRetenueSource],
   );
+  const cartTotal = cartAmounts.totalTtc;
 
   function openCheckout() {
     if (cartRef.current.length === 0) return;
@@ -343,6 +356,7 @@ export function PosClient({
         remise: l.remise,
       })),
       payments: paymentLines,
+      totalHt: cartAmounts.totalHt,
       totalTtc: cartTotal,
       devise,
     });

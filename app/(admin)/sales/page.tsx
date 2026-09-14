@@ -53,6 +53,7 @@ export default async function SalesPage() {
         remise: Number(l.remise),
       })),
       payments: s.payments.map((p) => ({ mode: p.mode, montant: Number(p.montant) })),
+      totalHt: Number(s.totalHt),
       totalTtc: Number(s.totalTtc),
       devise: organization.devise,
     },
