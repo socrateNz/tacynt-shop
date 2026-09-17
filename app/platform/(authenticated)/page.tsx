@@ -13,6 +13,7 @@ import { platformPrisma } from "@/lib/db/platform-client";
 import { systemPrisma } from "@/lib/db/system-client";
 import { formatMoney } from "@/lib/money";
 
+import { CopyLinkButton } from "./copy-link-button";
 import { OrganizationDetailDialog } from "./organization-detail-dialog";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -20,6 +21,15 @@ const STATUS_LABELS: Record<string, string> = {
   GRACE_PERIOD: "Période de grâce",
   SUSPENDED: "Suspendu",
 };
+
+// Même défaut que lib/tenant/resolve.ts (ROOT_DOMAIN) — http en local
+// (localhost n'a pas de certificat), https partout ailleurs.
+const ROOT_DOMAIN = process.env.APP_ROOT_DOMAIN ?? "localhost:3000";
+const PROTOCOL = ROOT_DOMAIN.startsWith("localhost") ? "http" : "https";
+
+function shopUrl(slug: string): string {
+  return `${PROTOCOL}://${slug}.${ROOT_DOMAIN}`;
+}
 
 export default async function PlatformOrganizationsPage() {
   const organizations = await systemPrisma.organization.findMany({
@@ -84,7 +94,8 @@ export default async function PlatformOrganizationsPage() {
                 <TableCell className="text-muted-foreground">
                   {org.createdAt.toLocaleDateString("fr-FR")}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="flex justify-end gap-1">
+                  <CopyLinkButton url={shopUrl(org.slug)} />
                   <OrganizationDetailDialog
                     organizationId={org.id}
                     nom={org.nom}
