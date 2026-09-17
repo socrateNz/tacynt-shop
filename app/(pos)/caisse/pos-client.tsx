@@ -35,6 +35,7 @@ import {
 
 import { recordCashMovement } from "@/app/(admin)/cash-movements/actions";
 import { computeLineAmounts } from "@/lib/sales/tax";
+import { downloadTicketPdf } from "@/lib/pos/ticket-pdf";
 
 import { PrintableTicket, type TicketData } from "./printable-ticket";
 
@@ -672,9 +673,18 @@ export function PosClient({
               <p className="text-sm font-medium text-foreground">
                 Vente enregistrée — {lastTicket.numero}
               </p>
-              <Button variant="outline" size="sm" onClick={() => window.print()}>
-                Imprimer le ticket
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => window.print()}>
+                  Imprimer le ticket
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => downloadTicketPdf(lastTicket)}
+                >
+                  Télécharger le PDF
+                </Button>
+              </div>
               <div className="max-h-64 overflow-y-auto rounded-md border border-border">
                 <PrintableTicket ticket={lastTicket} />
               </div>

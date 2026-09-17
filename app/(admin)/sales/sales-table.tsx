@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/table";
 
 import { PrintableTicket, type TicketData } from "@/app/(pos)/caisse/printable-ticket";
+import { downloadTicketPdf } from "@/lib/pos/ticket-pdf";
+
 import { CancelSaleForm } from "./cancel-sale-form";
 
 export type SaleRow = {
@@ -99,6 +101,18 @@ export function SalesTable({
               {openSale.customerNom && (
                 <p className="text-sm text-muted-foreground">Client : {openSale.customerNom}</p>
               )}
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => window.print()}>
+                  Imprimer le ticket
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => downloadTicketPdf(openSale.ticket)}
+                >
+                  Télécharger le PDF
+                </Button>
+              </div>
               <PrintableTicket ticket={openSale.ticket} />
               {canCancel && openSale.statut === "VALIDEE" && (
                 <CancelSaleForm saleId={openSale.id} />
