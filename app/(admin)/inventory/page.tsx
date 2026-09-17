@@ -1,5 +1,14 @@
+import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -101,13 +110,27 @@ export default async function InventoryPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Inventaire</h1>
-        <p className="text-sm text-muted-foreground">
-          La boutique continue de vendre pendant un inventaire — chaque ligne est comparée au
-          stock théorique au moment précis où elle est comptée, pas à l&apos;ouverture de la
-          session.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Inventaire</h1>
+          <p className="text-sm text-muted-foreground">
+            La boutique continue de vendre pendant un inventaire — chaque ligne est comparée au
+            stock théorique au moment précis où elle est comptée, pas à l&apos;ouverture de la
+            session.
+          </p>
+        </div>
+        <Dialog>
+          <DialogTrigger render={<Button className="gap-1.5" />}>
+            <Plus className="size-4" />
+            Nouvel inventaire
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Nouvel inventaire</DialogTitle>
+            </DialogHeader>
+            <InventorySessionForm categories={categories.map((c) => ({ id: c.id, nom: c.nom }))} />
+          </DialogContent>
+        </Dialog>
       </header>
 
       <div className="rounded-xl border border-border bg-card">
@@ -166,8 +189,6 @@ export default async function InventoryPage() {
           </TableBody>
         </Table>
       </div>
-
-      <InventorySessionForm categories={categories.map((c) => ({ id: c.id, nom: c.nom }))} />
     </div>
   );
 }

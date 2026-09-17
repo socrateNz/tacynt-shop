@@ -41,12 +41,7 @@ export function ExpenseForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6"
-    >
-      <h2 className="text-sm font-medium text-foreground">Nouvelle dépense</h2>
-
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}

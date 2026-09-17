@@ -1,7 +1,15 @@
+import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -42,12 +50,26 @@ export default async function ShopsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Boutiques</h1>
-        <p className="text-sm text-muted-foreground">
-          Le catalogue est mutualisé au niveau de l&apos;organisation, le stock et les prix sont
-          par boutique.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Boutiques</h1>
+          <p className="text-sm text-muted-foreground">
+            Le catalogue est mutualisé au niveau de l&apos;organisation, le stock et les prix sont
+            par boutique.
+          </p>
+        </div>
+        <Dialog>
+          <DialogTrigger render={<Button className="gap-1.5" />}>
+            <Plus className="size-4" />
+            Nouvelle boutique
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Nouvelle boutique</DialogTitle>
+            </DialogHeader>
+            <ShopForm />
+          </DialogContent>
+        </Dialog>
       </header>
 
       <div className="rounded-xl border border-border bg-card">
@@ -117,8 +139,6 @@ export default async function ShopsPage() {
           </TableBody>
         </Table>
       </div>
-
-      <ShopForm />
     </div>
   );
 }

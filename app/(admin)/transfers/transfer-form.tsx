@@ -21,12 +21,7 @@ export function TransferForm({
   const [lineCount, setLineCount] = useState(1);
 
   return (
-    <form
-      action={formAction}
-      className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6"
-    >
-      <h2 className="text-sm font-medium text-foreground">Nouvelle demande de transfert</h2>
-
+    <form action={formAction} className="flex flex-col gap-4">
       {state.error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}

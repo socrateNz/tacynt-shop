@@ -1,5 +1,14 @@
+import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -54,12 +63,29 @@ export default async function TransfersPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Transferts inter-boutiques</h1>
-        <p className="text-sm text-muted-foreground">
-          Demande → expédition (sortie du stock émetteur) → réception (entrée dans le stock
-          destinataire, écart éventuel constaté).
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Transferts inter-boutiques</h1>
+          <p className="text-sm text-muted-foreground">
+            Demande → expédition (sortie du stock émetteur) → réception (entrée dans le stock
+            destinataire, écart éventuel constaté).
+          </p>
+        </div>
+        <Dialog>
+          <DialogTrigger render={<Button className="gap-1.5" />}>
+            <Plus className="size-4" />
+            Nouveau transfert
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Nouvelle demande de transfert</DialogTitle>
+            </DialogHeader>
+            <TransferForm
+              shops={shops.map((s) => ({ id: s.id, nom: s.nom }))}
+              variants={variants.map((v) => ({ id: v.id, label: v.product.designation }))}
+            />
+          </DialogContent>
+        </Dialog>
       </header>
 
       {enTransit.length > 0 && (
@@ -129,11 +155,6 @@ export default async function TransfersPage() {
           </TableBody>
         </Table>
       </div>
-
-      <TransferForm
-        shops={shops.map((s) => ({ id: s.id, nom: s.nom }))}
-        variants={variants.map((v) => ({ id: v.id, label: v.product.designation }))}
-      />
     </div>
   );
 }

@@ -1,6 +1,15 @@
+import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -63,12 +72,26 @@ export default async function CustomersPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Clients</h1>
-        <p className="text-sm text-muted-foreground">
-          Le solde d&apos;un client est la somme de son journal — jamais une valeur qu&apos;on
-          écrit directement.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Clients</h1>
+          <p className="text-sm text-muted-foreground">
+            Le solde d&apos;un client est la somme de son journal — jamais une valeur qu&apos;on
+            écrit directement.
+          </p>
+        </div>
+        <Dialog>
+          <DialogTrigger render={<Button className="gap-1.5" />}>
+            <Plus className="size-4" />
+            Nouveau client
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Nouveau client</DialogTitle>
+            </DialogHeader>
+            <CustomerForm />
+          </DialogContent>
+        </Dialog>
       </header>
 
       <div className="rounded-xl border border-border bg-card">
@@ -148,8 +171,6 @@ export default async function CustomersPage() {
           </TableBody>
         </Table>
       </div>
-
-      <CustomerForm />
     </div>
   );
 }

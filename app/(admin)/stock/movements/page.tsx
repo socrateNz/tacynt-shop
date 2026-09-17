@@ -1,5 +1,14 @@
+import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -168,22 +177,44 @@ export default async function StockMovementsPage() {
       )}
 
       {canWrite && (
-        <>
-          <ReceiveStockForm
-            showLots={showLots}
-            showSerial={showSerial}
-            variants={variants.map((v) => ({
-              id: v.id,
-              label: `${v.product.designation}${v.codeBarres ? ` (${v.codeBarres})` : ""}`,
-            }))}
-          />
-          <AdjustStockForm
-            variants={variants.map((v) => ({
-              id: v.id,
-              label: `${v.product.designation}${v.codeBarres ? ` (${v.codeBarres})` : ""}`,
-            }))}
-          />
-        </>
+        <div className="flex flex-wrap gap-2">
+          <Dialog>
+            <DialogTrigger render={<Button className="gap-1.5" />}>
+              <Plus className="size-4" />
+              Réceptionner du stock
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Réception de stock</DialogTitle>
+              </DialogHeader>
+              <ReceiveStockForm
+                showLots={showLots}
+                showSerial={showSerial}
+                variants={variants.map((v) => ({
+                  id: v.id,
+                  label: `${v.product.designation}${v.codeBarres ? ` (${v.codeBarres})` : ""}`,
+                }))}
+              />
+            </DialogContent>
+          </Dialog>
+          <Dialog>
+            <DialogTrigger render={<Button variant="outline" className="gap-1.5" />}>
+              <Plus className="size-4" />
+              Ajuster le stock
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Ajustement d&apos;inventaire (comptage, casse, perte)</DialogTitle>
+              </DialogHeader>
+              <AdjustStockForm
+                variants={variants.map((v) => ({
+                  id: v.id,
+                  label: `${v.product.designation}${v.codeBarres ? ` (${v.codeBarres})` : ""}`,
+                }))}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       )}
 
       <section className="flex flex-col gap-4">
