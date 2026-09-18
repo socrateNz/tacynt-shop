@@ -19,6 +19,7 @@ import {
   getCatalog,
   getCustomers,
   getSyncMeta,
+  saveCustomers,
   setSyncMeta,
   type CatalogProduct,
   type CategoryPrice,
@@ -37,6 +38,7 @@ import { recordCashMovement } from "@/app/(admin)/cash-movements/actions";
 import { computeLineAmounts } from "@/lib/sales/tax";
 import { downloadTicketPdf } from "@/lib/pos/ticket-pdf";
 
+import { DebtsDialog } from "./debts-dialog";
 import { PrintableTicket, type TicketData } from "./printable-ticket";
 
 type CashMovementType = "APPRO" | "PRELEVEMENT" | "DEPOT_BANQUE";
@@ -346,6 +348,24 @@ export function PosClient({
 
     const sale = await createLocalSale({ lines, payments: paymentLines, customerId });
 
+    // Reflète immédiatement la dette dans le cache local (IndexedDB) : sans
+    // ça, "Solde (dernière synchro)" et le bouton "Dettes" resteraient
+    // faux jusqu'à la prochaine synchro complète des clients (seulement au
+    // montage de la page aujourd'hui) — trompeur juste après avoir vendu à
+    // crédit, exactement le moment où le caissier voudrait vérifier.
+    const ledgerDelta = paymentLines
+      .filter((p) => p.mode === "ARDOISE" || p.mode === "BON_ACHAT")
+      .reduce((sum, p) => sum + p.montant, 0);
+    if (customerId && ledgerDelta !== 0) {
+      setCustomers((prev) => {
+        const next = prev.map((c) =>
+          c.id === customerId ? { ...c, solde: c.solde + ledgerDelta } : c,
+        );
+        void saveCustomers(next);
+        return next;
+      });
+    }
+
     setLastTicket({
       numero: sale.numero,
       createdAt: sale.clientCreatedAt,
@@ -527,6 +547,7 @@ export function PosClient({
               Synchroniser maintenant
             </Button>
           )}
+          <DebtsDialog customers={customers} devise={devise} />
           <Button variant="ghost" size="sm" onClick={() => setCashMovementOpen(true)}>
             Mouvement de caisse
           </Button>
