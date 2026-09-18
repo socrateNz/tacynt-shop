@@ -71,7 +71,7 @@ export function CatalogueClient({
           {filtered.length} article{filtered.length > 1 ? "s" : ""}
         </p>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {filtered.map((item) => (
             <ProductCard key={item.variantId} item={item} shopId={shopId} devise={devise} />
           ))}
