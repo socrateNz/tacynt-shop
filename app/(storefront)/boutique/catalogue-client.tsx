@@ -26,6 +26,7 @@ export function CatalogueClient({
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FiltersState>({
     categories: new Set(),
+    minPrice: 0,
     maxPrice: priceCeiling,
     availableOnly: false,
   });
@@ -40,7 +41,7 @@ export function CatalogueClient({
       ) {
         return false;
       }
-      if (item.prixVente > filters.maxPrice) return false;
+      if (item.prixVente < filters.minPrice || item.prixVente > filters.maxPrice) return false;
       if (filters.availableOnly && !item.available) return false;
       return true;
     });
@@ -76,7 +77,7 @@ export function CatalogueClient({
             <ProductCard key={item.variantId} item={item} shopId={shopId} devise={devise} />
           ))}
           {filtered.length === 0 && (
-            <p className="text-sm text-muted-foreground sm:col-span-2 xl:col-span-3">
+            <p className="text-sm text-muted-foreground sm:col-span-2 xl:col-span-4">
               Aucun article ne correspond à ces critères.
             </p>
           )}

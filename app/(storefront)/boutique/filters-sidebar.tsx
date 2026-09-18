@@ -1,9 +1,11 @@
 "use client";
 
+import { Slider } from "@/components/ui/slider";
 import { formatMoney } from "@/lib/money";
 
 export type FiltersState = {
   categories: Set<string>;
+  minPrice: number;
   maxPrice: number;
   availableOnly: boolean;
 };
@@ -32,19 +34,21 @@ export function FiltersSidebar({
     <aside className="flex h-fit flex-col gap-6 rounded-xl border border-border bg-card p-4 lg:sticky lg:top-6">
       <h2 className="text-sm font-semibold text-foreground">Filtres</h2>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         <p className="text-xs font-medium text-muted-foreground uppercase">Tranche de prix</p>
         <p className="num text-sm text-foreground">
-          0 – {formatMoney(filters.maxPrice, devise)}
+          {formatMoney(filters.minPrice, devise)} – {formatMoney(filters.maxPrice, devise)}
         </p>
-        <input
-          type="range"
+        <Slider
           min={0}
           max={priceCeiling}
           step={Math.max(1, Math.round(priceCeiling / 100))}
-          value={filters.maxPrice}
-          onChange={(e) => onChange({ ...filters, maxPrice: Number(e.target.value) })}
-          className="accent-primary"
+          minStepsBetweenValues={0}
+          value={[filters.minPrice, filters.maxPrice]}
+          onValueChange={(next) => {
+            const [minPrice, maxPrice] = next as number[];
+            onChange({ ...filters, minPrice, maxPrice });
+          }}
         />
       </div>
 
