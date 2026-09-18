@@ -46,6 +46,8 @@ export function DebtsDialog({ customers, devise }: { customers: PosCustomer[]; d
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const debtorsCount = customers.filter((c) => c.solde > 0).length;
+
   const indebted = customers
     .filter((c) => c.solde > 0)
     .filter((c) => {
@@ -84,10 +86,17 @@ export function DebtsDialog({ customers, devise }: { customers: PosCustomer[]; d
 
   return (
     <>
-      <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setOpen(true)}>
-        <Receipt className="size-4" />
-        Dettes
-      </Button>
+      <div className="relative">
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setOpen(true)}>
+          <Receipt className="size-4" />
+          Dettes
+        </Button>
+        {debtorsCount > 0 && (
+          <span className="num absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+            {debtorsCount}
+          </span>
+        )}
+      </div>
       <Dialog
         open={open}
         onOpenChange={(next) => {
