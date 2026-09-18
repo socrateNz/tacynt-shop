@@ -95,10 +95,10 @@ export default async function DashboardPage() {
             <ul className="flex flex-col gap-3">
               {overview.topProducts.map((p) => (
                 <li key={p.productId} className="flex items-center gap-3">
-                  {p.hasImage ? (
+                  {p.coverImageId ? (
                     // eslint-disable-next-line @next/next/no-img-element -- image binaire servie par la route, pas un asset statique optimisable
                     <img
-                      src={`/api/products/${p.productId}/image`}
+                      src={`/api/products/${p.productId}/images/${p.coverImageId}`}
                       alt={p.designation}
                       className="size-10 rounded-md border border-border object-cover"
                     />

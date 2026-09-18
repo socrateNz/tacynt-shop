@@ -24,7 +24,7 @@ const PUBLIC_PATHS = new Set([
   "/api/auth/mfa/verify",
 ]);
 
-const PRODUCT_IMAGE_PATH = /^\/api\/products\/[^/]+\/image$/;
+const PRODUCT_IMAGE_PATH = /^\/api\/products\/[^/]+\/images\/[^/]+$/;
 
 // Chemins publics UNIQUEMENT pour certaines méthodes — /api/branding/logo
 // sert (GET, anonyme, résout l'organisation par host lui-même comme
@@ -55,6 +55,8 @@ function isStorefrontPath(pathname: string): boolean {
     pathname === "/commande" ||
     pathname === "/merci" ||
     pathname.startsWith("/merci/") ||
+    pathname === "/produit" ||
+    pathname.startsWith("/produit/") ||
     pathname.startsWith("/api/storefront/")
   );
 }

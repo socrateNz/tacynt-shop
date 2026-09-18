@@ -13,7 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { SALE_UNITS } from "@/lib/tenant/units";
+
+const MAX_IMAGES = 3;
 
 export function ProductForm({
   categories,
@@ -39,9 +42,15 @@ export function ProductForm({
     // quand la création avait réussi côté serveur (bug réel constaté).
     const form = e.currentTarget;
     setError(null);
+
+    const formData = new FormData(form);
+    if (formData.getAll("images").filter((f) => f instanceof File && f.size > 0).length > MAX_IMAGES) {
+      setError(`${MAX_IMAGES} photos maximum par produit.`);
+      return;
+    }
+
     setIsPending(true);
     try {
-      const formData = new FormData(form);
       const res = await fetch("/api/products", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) {
@@ -131,9 +140,26 @@ export function ProductForm({
           <Input id="seuilAlerte" name="seuilAlerte" type="number" />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="image">Photo (optionnel)</Label>
-          <input id="image" name="image" type="file" accept="image/*" className="text-sm" />
+          <Label htmlFor="images">Photos (jusqu&apos;à {MAX_IMAGES}, optionnel)</Label>
+          <input
+            id="images"
+            name="images"
+            type="file"
+            accept="image/*"
+            multiple
+            className="text-sm"
+          />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="description">Description (optionnel)</Label>
+        <Textarea
+          id="description"
+          name="description"
+          placeholder="Affichée sur la fiche produit de la boutique en ligne."
+          rows={4}
+        />
       </div>
 
       <label className="flex items-center gap-2 text-sm text-foreground">

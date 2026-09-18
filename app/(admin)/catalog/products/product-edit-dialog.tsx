@@ -21,7 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { SALE_UNITS } from "@/lib/tenant/units";
+
+const MAX_IMAGES = 3;
 
 export type ProductEditValues = {
   id: string;
@@ -33,7 +36,8 @@ export type ProductEditValues = {
   prixVente: number;
   prixPlancher: number | null;
   seuilAlerte: number | null;
-  hasImage: boolean;
+  description: string | null;
+  images: { id: string }[];
 };
 
 export function ProductEditDialog({
@@ -188,29 +192,56 @@ export function ProductEditDialog({
             </div>
           </div>
 
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="edit-description">Description (optionnel)</Label>
+            <Textarea
+              id="edit-description"
+              name="description"
+              defaultValue={product.description ?? ""}
+              placeholder="Affichée sur la fiche produit de la boutique en ligne."
+              rows={4}
+            />
+          </div>
+
           <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
-            <p className="text-sm font-medium text-foreground">Photo</p>
-            {product.hasImage ? (
-              <div className="flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element -- image binaire servie par la route, pas un asset statique optimisable */}
-                <img
-                  src={`/api/products/${product.id}/image`}
-                  alt=""
-                  className="size-16 rounded-md border border-border object-cover"
-                />
-                <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <input type="checkbox" name="removeImage" className="size-4" />
-                  Supprimer la photo actuelle
-                </label>
+            <p className="text-sm font-medium text-foreground">
+              Photos ({product.images.length}/{MAX_IMAGES})
+            </p>
+            {product.images.length > 0 ? (
+              <div className="flex flex-wrap gap-3">
+                {product.images.map((image) => (
+                  <div key={image.id} className="flex flex-col items-center gap-1.5">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- image binaire servie par la route, pas un asset statique optimisable */}
+                    <img
+                      src={`/api/products/${product.id}/images/${image.id}`}
+                      alt=""
+                      className="size-16 rounded-md border border-border object-cover"
+                    />
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        name="removeImageIds"
+                        value={image.id}
+                        className="size-3.5"
+                      />
+                      Supprimer
+                    </label>
+                  </div>
+                ))}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">Aucune photo pour l&apos;instant.</p>
             )}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-image">
-                {product.hasImage ? "Remplacer par une nouvelle photo" : "Ajouter une photo"}
-              </Label>
-              <input id="edit-image" name="image" type="file" accept="image/*" className="text-sm" />
+              <Label htmlFor="edit-images">Ajouter des photos</Label>
+              <input
+                id="edit-images"
+                name="images"
+                type="file"
+                accept="image/*"
+                multiple
+                className="text-sm"
+              />
             </div>
           </div>
 

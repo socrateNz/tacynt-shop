@@ -8,6 +8,7 @@ import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGES = 3;
 
 function isUniqueViolation(error: unknown): boolean {
   return (
@@ -40,7 +41,8 @@ export async function POST(request: Request) {
   const prixPlancher = prixPlancherRaw ? Number(prixPlancherRaw) : null;
   const seuilAlerteRaw = String(formData.get("seuilAlerte") ?? "").trim();
   const seuilAlerte = seuilAlerteRaw ? Number(seuilAlerteRaw) : null;
-  const image = formData.get("image");
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const images = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
 
   if (!designation || !Number.isFinite(prixVente) || prixVente < 0) {
     return NextResponse.json(
@@ -48,16 +50,23 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-
-  let imageData: Uint8Array<ArrayBuffer> | null = null;
-  let imageMimeType: string | null = null;
-  if (image instanceof File && image.size > 0) {
-    if (image.size > MAX_IMAGE_BYTES) {
+  if (images.length > MAX_IMAGES) {
+    return NextResponse.json(
+      { error: `${MAX_IMAGES} photos maximum par produit.` },
+      { status: 400 },
+    );
+  }
+  for (const img of images) {
+    if (img.size > MAX_IMAGE_BYTES) {
       return NextResponse.json({ error: "Image trop volumineuse (5 Mo max)." }, { status: 400 });
     }
-    imageData = new Uint8Array(await image.arrayBuffer());
-    imageMimeType = image.type || "application/octet-stream";
   }
+  const imagePayloads = await Promise.all(
+    images.map(async (img) => ({
+      imageData: new Uint8Array(await img.arrayBuffer()),
+      imageMimeType: img.type || "application/octet-stream",
+    })),
+  );
 
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
 
@@ -85,6 +94,7 @@ export async function POST(request: Request) {
           suiviStock,
           suiviLots,
           suiviSerie,
+          description,
         },
       });
 
@@ -111,9 +121,14 @@ export async function POST(request: Request) {
         },
       });
 
-      if (imageData) {
-        await tx.productImage.create({
-          data: { productId: product.id, organizationId: ctx.organizationId, imageData, imageMimeType },
+      if (imagePayloads.length > 0) {
+        await tx.productImage.createMany({
+          data: imagePayloads.map((payload, position) => ({
+            productId: product.id,
+            organizationId: ctx.organizationId,
+            position,
+            ...payload,
+          })),
         });
       }
 

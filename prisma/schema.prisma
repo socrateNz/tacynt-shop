@@ -423,13 +423,17 @@ model Product {
   // lib/stock/serial-numbers.ts. Mutuellement exclusif de suiviLots en
   // pratique (aucun profil n'active les deux), jamais forcé par le schéma.
   suiviSerie     Boolean  @default(false) @map("suivi_serie")
+  // Texte libre affiché sur la fiche produit de la vitrine e-commerce
+  // (M34) — jamais utilisé ailleurs (pas repris sur le ticket, pas dans le
+  // catalogue admin en liste), donc simplement optionnel partout.
+  description    String?
   actif          Boolean  @default(true)
   createdAt      DateTime @default(now()) @map("created_at")
 
   organization Organization     @relation(fields: [organizationId], references: [id])
   category     Category?        @relation(fields: [categoryId], references: [id])
   variants     ProductVariant[]
-  image        ProductImage?
+  images       ProductImage[]
 
   @@unique([organizationId, reference])
   @@index([organizationId])
@@ -437,16 +441,23 @@ model Product {
   @@map("products")
 }
 
-// Image produit stockée en base (bytea), même précédent qu'Expense.
+// Images produit stockées en base (bytea), même précédent qu'Expense.
 // justificatifData et OrganizationBranding.logoData — modèle séparé de
 // Product pour ne jamais alourdir product.findMany() (relu par le
 // catalogue admin, la synchro catalogue POS, et le catalogue de la
 // boutique en ligne à chaque requête). organizationId dénormalisé depuis
 // le produit parent, même règle que sale_lines, pour une policy RLS sans
-// jointure.
+// jointure. Jusqu'à 3 images par produit (M34, limite imposée côté
+// application, pas en base) — position est un simple indice d'ordre
+// d'affichage (0 = couverture utilisée partout où une seule image
+// suffit : grille catalogue, tableau admin, tableau de bord), pas une
+// contrainte d'unicité : un retrait/ajout n'a jamais besoin de réindexer
+// les autres lignes.
 model ProductImage {
-  productId      String  @id @map("product_id") @db.Uuid
+  id             String  @id @default(uuid()) @db.Uuid
+  productId      String  @map("product_id") @db.Uuid
   organizationId String  @map("organization_id") @db.Uuid
+  position       Int     @default(0)
   imageData      Bytes?  @map("image_data")
   imageMimeType  String? @map("image_mime_type")
 
@@ -454,6 +465,7 @@ model ProductImage {
   organization Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
+  @@index([productId])
   @@map("product_images")
 }
 

@@ -10,7 +10,7 @@ export type DashboardOverview = {
   topProducts: {
     productId: string;
     designation: string;
-    hasImage: boolean;
+    coverImageId: string | null;
     quantiteVendue: number;
     chiffreAffaires: number;
   }[];
@@ -70,7 +70,13 @@ export async function getDashboardOverview(
     include: {
       lines: {
         include: {
-          variant: { include: { product: { include: { image: { select: { productId: true } } } } } },
+          variant: {
+            include: {
+              product: {
+                include: { images: { select: { id: true }, orderBy: { position: "asc" }, take: 1 } },
+              },
+            },
+          },
         },
       },
       payments: true,
@@ -102,14 +108,14 @@ export async function getDashboardOverview(
 
   const productAgg = new Map<
     string,
-    { designation: string; hasImage: boolean; quantite: number; revenue: number }
+    { designation: string; coverImageId: string | null; quantite: number; revenue: number }
   >();
   for (const s of sales) {
     for (const l of s.lines) {
       const p = l.variant.product;
       const entry = productAgg.get(p.id) ?? {
         designation: p.designation,
-        hasImage: p.image !== null,
+        coverImageId: p.images[0]?.id ?? null,
         quantite: 0,
         revenue: 0,
       };
@@ -122,7 +128,7 @@ export async function getDashboardOverview(
     .map(([productId, v]) => ({
       productId,
       designation: v.designation,
-      hasImage: v.hasImage,
+      coverImageId: v.coverImageId,
       quantiteVendue: v.quantite,
       chiffreAffaires: v.revenue,
     }))

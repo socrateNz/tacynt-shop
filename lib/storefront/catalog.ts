@@ -8,7 +8,12 @@ export type StorefrontItem = {
   attributs: Record<string, string>;
   prixVente: number;
   available: boolean;
-  hasImage: boolean;
+  coverImageId: string | null;
+};
+
+export type StorefrontProductDetail = StorefrontItem & {
+  description: string | null;
+  imageIds: string[];
 };
 
 // Lecture seule (Phase 4, M29) : le prix affiché ici n'est JAMAIS celui
@@ -25,7 +30,14 @@ export async function getStorefrontCatalog(
     where: { actif: true, product: { actif: true } },
     include: {
       product: {
-        include: { image: { select: { productId: true } }, category: true },
+        include: {
+          // Juste la couverture (position la plus basse) pour la grille —
+          // jamais imageData ici, ni les 2 autres photos (inutiles tant
+          // qu'on n'est pas sur la fiche détail, voir
+          // getStorefrontProductDetail).
+          images: { select: { id: true }, orderBy: { position: "asc" }, take: 1 },
+          category: true,
+        },
       },
       shopPrices: { where: { shopId } },
       stockLevels: { where: { shopId } },
@@ -48,7 +60,51 @@ export async function getStorefrontCatalog(
         attributs: v.attributs as Record<string, string>,
         prixVente: Number(price.prixVente),
         available,
-        hasImage: v.product.image !== null,
+        coverImageId: v.product.images[0]?.id ?? null,
       };
     });
+}
+
+// Fiche détail (M34) : requête dédiée par variantId plutôt qu'un filtrage
+// de getStorefrontCatalog — la liste ne charge jamais la description ni
+// plus d'une image, cette page-ci en a besoin des trois, pas de raison
+// d'alourdir la liste pour ça.
+export async function getStorefrontProductDetail(
+  tx: Prisma.TransactionClient,
+  shopId: string,
+  variantId: string,
+): Promise<StorefrontProductDetail | null> {
+  const variant = await tx.productVariant.findFirst({
+    where: { id: variantId, actif: true, product: { actif: true } },
+    include: {
+      product: {
+        include: {
+          images: { select: { id: true }, orderBy: { position: "asc" } },
+          category: true,
+        },
+      },
+      shopPrices: { where: { shopId } },
+      stockLevels: { where: { shopId } },
+    },
+  });
+
+  if (!variant || variant.shopPrices.length === 0) return null;
+
+  const price = variant.shopPrices[0];
+  const stock = variant.stockLevels[0];
+  const available = !variant.product.suiviStock || (stock ? Number(stock.quantite) > 0 : false);
+  const imageIds = variant.product.images.map((img) => img.id);
+
+  return {
+    variantId: variant.id,
+    productId: variant.productId,
+    designation: variant.product.designation,
+    categoryName: variant.product.category?.nom ?? null,
+    attributs: variant.attributs as Record<string, string>,
+    prixVente: Number(price.prixVente),
+    available,
+    coverImageId: imageIds[0] ?? null,
+    description: variant.product.description,
+    imageIds,
+  };
 }

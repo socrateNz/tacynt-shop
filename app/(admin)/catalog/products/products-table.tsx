@@ -52,7 +52,7 @@ export type ProductRow = {
   lots: ProductLotRow[];
   hasSerialNumbers: boolean;
   serialNumbers: ProductSerialNumberRow[];
-  hasImage: boolean;
+  coverImageId: string | null;
   edit: ProductEditValues;
 };
 
@@ -257,10 +257,10 @@ export function ProductsTable({
                   <Checkbox checked={selected.has(p.id)} onCheckedChange={() => toggleOne(p.id)} />
                 </TableCell>
                 <TableCell>
-                  {p.hasImage ? (
+                  {p.coverImageId ? (
                     // eslint-disable-next-line @next/next/no-img-element -- image binaire servie par la route, pas un asset statique optimisable
                     <img
-                      src={`/api/products/${p.id}/image`}
+                      src={`/api/products/${p.id}/images/${p.coverImageId}`}
                       alt=""
                       className="size-10 rounded-md border border-border object-cover"
                     />

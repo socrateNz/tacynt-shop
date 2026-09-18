@@ -32,10 +32,10 @@ export default async function ProductsPage() {
         include: {
           category: true,
           variants: { include: { shopPrices: { where: { shopId } } } },
-          // Juste l'existence d'une photo, jamais imageData (bytea) ici —
-          // c'est exactement pour éviter cet alourdissement que ProductImage
-          // est un modèle séparé de Product.
-          image: { select: { productId: true } },
+          // Juste les id (pour construire les URLs), jamais imageData
+          // (bytea) ici — c'est exactement pour éviter cet alourdissement
+          // que ProductImage est un modèle séparé de Product.
+          images: { select: { id: true }, orderBy: { position: "asc" } },
         },
       });
       const categories = await tx.category.findMany({ orderBy: { nom: "asc" } });
@@ -100,7 +100,7 @@ export default async function ProductsPage() {
       priceValue: price ? Number(price.prixVente) : 0,
       stockSuivi: p.suiviStock,
       activeVariants: p.variants.filter((v) => v.actif).length,
-      hasImage: p.image !== null,
+      coverImageId: p.images[0]?.id ?? null,
       edit: {
         id: p.id,
         designation: p.designation,
@@ -111,7 +111,8 @@ export default async function ProductsPage() {
         prixVente: price ? Number(price.prixVente) : 0,
         prixPlancher: price?.prixPlancher ? Number(price.prixPlancher) : null,
         seuilAlerte: price?.seuilAlerte ?? null,
-        hasImage: p.image !== null,
+        description: p.description,
+        images: p.images.map((img) => ({ id: img.id })),
       },
       variants: p.variants.map((v) => {
         const attrs = v.attributs as Record<string, string>;

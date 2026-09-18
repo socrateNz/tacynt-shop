@@ -7,6 +7,7 @@ import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGES = 3;
 
 function isUniqueViolation(error: unknown): boolean {
   return (
@@ -44,8 +45,9 @@ export async function POST(
   const prixPlancher = prixPlancherRaw ? Number(prixPlancherRaw) : null;
   const seuilAlerteRaw = String(formData.get("seuilAlerte") ?? "").trim();
   const seuilAlerte = seuilAlerteRaw ? Number(seuilAlerteRaw) : null;
-  const image = formData.get("image");
-  const removeImage = formData.get("removeImage") === "on";
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const newImages = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
+  const removeImageIds = new Set(formData.getAll("removeImageIds").map(String));
 
   if (!designation || !Number.isFinite(prixVente) || prixVente < 0) {
     return NextResponse.json(
@@ -56,16 +58,17 @@ export async function POST(
   if (!Number.isFinite(tauxTaxe) || tauxTaxe < 0) {
     return NextResponse.json({ error: "Taux de taxe invalide." }, { status: 400 });
   }
-
-  let imageData: Uint8Array<ArrayBuffer> | null = null;
-  let imageMimeType: string | null = null;
-  if (image instanceof File && image.size > 0) {
-    if (image.size > MAX_IMAGE_BYTES) {
+  for (const img of newImages) {
+    if (img.size > MAX_IMAGE_BYTES) {
       return NextResponse.json({ error: "Image trop volumineuse (5 Mo max)." }, { status: 400 });
     }
-    imageData = new Uint8Array(await image.arrayBuffer());
-    imageMimeType = image.type || "application/octet-stream";
   }
+  const newImagePayloads = await Promise.all(
+    newImages.map(async (img) => ({
+      imageData: new Uint8Array(await img.arrayBuffer()),
+      imageMimeType: img.type || "application/octet-stream",
+    })),
+  );
 
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
 
@@ -80,7 +83,7 @@ export async function POST(
 
       await tx.product.update({
         where: { id: productId },
-        data: { designation, categoryId, unite, tauxTaxe },
+        data: { designation, categoryId, unite, tauxTaxe, description },
       });
 
       await tx.productVariant.update({
@@ -101,20 +104,38 @@ export async function POST(
         update: { prixVente, prixPlancher, seuilAlerte },
       });
 
-      if (imageData) {
-        await tx.productImage.upsert({
-          where: { productId },
-          create: { productId, organizationId: ctx.organizationId, imageData, imageMimeType },
-          update: { imageData, imageMimeType },
-        });
-      } else if (removeImage) {
-        // Ligne supprimée plutôt que vidée : products/page.tsx et
+      const existingImages = await tx.productImage.findMany({
+        where: { productId },
+        select: { id: true, position: true },
+      });
+      const keptCount = existingImages.filter((img) => !removeImageIds.has(img.id)).length;
+      if (keptCount + newImagePayloads.length > MAX_IMAGES) {
+        throw new Error("TOO_MANY_IMAGES");
+      }
+
+      if (removeImageIds.size > 0) {
+        // Lignes supprimées plutôt que vidées : products/page.tsx et
         // getStorefrontCatalog détectent "a une photo" par la seule
-        // existence de la relation image (jamais en relisant imageData,
-        // pour ne pas alourdir ces requêtes de liste) — une ligne à données
-        // nulles serait donc encore comptée comme "a une photo" (bug réel
-        // constaté).
-        await tx.productImage.deleteMany({ where: { productId } });
+        // existence de lignes product_images (jamais en relisant
+        // imageData, pour ne pas alourdir ces requêtes de liste).
+        await tx.productImage.deleteMany({
+          where: { productId, id: { in: [...removeImageIds] } },
+        });
+      }
+
+      if (newImagePayloads.length > 0) {
+        // Nouvelles positions après le plus haut indice existant — jamais
+        // besoin de réindexer les images conservées, position n'est qu'un
+        // indice de tri, pas une contrainte d'unicité (voir schema.prisma).
+        const nextPosition = existingImages.reduce((max, img) => Math.max(max, img.position), -1) + 1;
+        await tx.productImage.createMany({
+          data: newImagePayloads.map((payload, i) => ({
+            productId,
+            organizationId: ctx.organizationId,
+            position: nextPosition + i,
+            ...payload,
+          })),
+        });
       }
 
       await recordAuditLog(tx, {
@@ -127,6 +148,12 @@ export async function POST(
       });
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "TOO_MANY_IMAGES") {
+      return NextResponse.json(
+        { error: `${MAX_IMAGES} photos maximum par produit — supprimez-en avant d'en ajouter.` },
+        { status: 400 },
+      );
+    }
     if (isUniqueViolation(error)) {
       return NextResponse.json(
         { error: "Ce code-barres existe déjà, ou une erreur temporaire est survenue — réessayez." },
