@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -9,24 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney } from "@/lib/money";
 
-import { cartTotal, clearCart, getCart, type Cart } from "../cart";
+import { useCart } from "../cart-context";
 
 export function CheckoutForm({ devise }: { devise: string }) {
   const router = useRouter();
-  const [cart, setCart] = useState<Cart | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const { cart, loaded, total, clear } = useCart();
   const [modeRetrait, setModeRetrait] = useState<"RETRAIT_BOUTIQUE" | "LIVRAISON">("RETRAIT_BOUTIQUE");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-
-  useEffect(() => {
-    // Même pattern que cart-view.tsx / pos-client.tsx : lecture localStorage
-    // dans un callback, pas en synchrone dans le corps de l'effet.
-    (async () => {
-      setCart(getCart());
-      setLoaded(true);
-    })();
-  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -54,7 +44,7 @@ export function CheckoutForm({ devise }: { devise: string }) {
         setError(body.error ?? "Échec de la commande.");
         return;
       }
-      clearCart();
+      clear();
       router.push(`/boutique/merci/${body.id}`);
     } finally {
       setPending(false);
@@ -86,7 +76,7 @@ export function CheckoutForm({ devise }: { devise: string }) {
           ))}
         </ul>
         <p className="num mt-2 text-lg font-semibold text-foreground">
-          Total : {formatMoney(cartTotal(cart), devise)}
+          Total : {formatMoney(total, devise)}
         </p>
       </div>
 

@@ -4,9 +4,9 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
-
-import { addToCart } from "../cart";
 import type { StorefrontItem } from "@/lib/storefront/catalog";
+
+import { useCart } from "../cart-context";
 
 export function ProductCard({
   item,
@@ -17,11 +17,12 @@ export function ProductCard({
   shopId: string;
   devise: string;
 }) {
+  const { addItem } = useCart();
   const [added, setAdded] = useState(false);
   const attrLabel = Object.values(item.attributs).join(", ");
 
   function handleAdd() {
-    addToCart(shopId, {
+    addItem(shopId, {
       variantId: item.variantId,
       designation: item.designation,
       prixVente: item.prixVente,

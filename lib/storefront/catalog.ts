@@ -4,6 +4,7 @@ export type StorefrontItem = {
   variantId: string;
   productId: string;
   designation: string;
+  categoryName: string | null;
   attributs: Record<string, string>;
   prixVente: number;
   available: boolean;
@@ -23,7 +24,9 @@ export async function getStorefrontCatalog(
   const variants = await tx.productVariant.findMany({
     where: { actif: true, product: { actif: true } },
     include: {
-      product: { include: { image: { select: { productId: true } } } },
+      product: {
+        include: { image: { select: { productId: true } }, category: true },
+      },
       shopPrices: { where: { shopId } },
       stockLevels: { where: { shopId } },
     },
@@ -41,6 +44,7 @@ export async function getStorefrontCatalog(
         variantId: v.id,
         productId: v.productId,
         designation: v.product.designation,
+        categoryName: v.product.category?.nom ?? null,
         attributs: v.attributs as Record<string, string>,
         prixVente: Number(price.prixVente),
         available,

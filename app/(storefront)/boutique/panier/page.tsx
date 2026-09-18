@@ -11,7 +11,7 @@ export default async function PanierPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
       <header>
         <h1 className="text-xl font-semibold text-foreground">Panier</h1>
       </header>

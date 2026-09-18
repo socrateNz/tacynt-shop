@@ -1,31 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/money";
 
-import { cartTotal, getCart, updateQuantity, type Cart } from "../cart";
+import { useCart } from "../cart-context";
 
 export function CartView({ devise }: { devise: string }) {
-  const [cart, setCartState] = useState<Cart | null>(null);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    // localStorage n'existe pas côté serveur — lu uniquement après montage,
-    // dans un callback (même pattern que pos-client.tsx) plutôt qu'en
-    // synchrone dans le corps de l'effet.
-    (async () => {
-      setCartState(getCart());
-      setLoaded(true);
-    })();
-  }, []);
+  const { cart, loaded, total, updateQty } = useCart();
 
   function handleQuantityChange(variantId: string, quantite: number) {
     if (!cart) return;
-    setCartState(updateQuantity(cart.shopId, variantId, quantite));
+    updateQty(cart.shopId, variantId, quantite);
   }
 
   if (!loaded) return null;
@@ -73,9 +61,7 @@ export function CartView({ devise }: { devise: string }) {
       ))}
 
       <div className="flex items-center justify-between border-t border-border pt-4">
-        <p className="num text-lg font-semibold text-foreground">
-          Total : {formatMoney(cartTotal(cart), devise)}
-        </p>
+        <p className="num text-lg font-semibold text-foreground">Total : {formatMoney(total, devise)}</p>
         <Link href="/boutique/commande">
           <Button type="button">Passer la commande</Button>
         </Link>

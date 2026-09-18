@@ -4,7 +4,7 @@ import { withTenantContext } from "@/lib/db/tenant-context";
 import { getStorefrontCatalog } from "@/lib/storefront/catalog";
 import { getStorefrontOrganization, resolveStorefrontShopId } from "@/lib/storefront/context";
 
-import { ProductCard } from "./product-card";
+import { CatalogueClient } from "./catalogue-client";
 
 export default async function BoutiquePage({
   searchParams,
@@ -26,6 +26,12 @@ export default async function BoutiquePage({
     getStorefrontCatalog(tx, shopId),
   );
 
+  const allCategories = Array.from(
+    new Set(items.map((item) => item.categoryName).filter((nom): nom is string => nom !== null)),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const priceCeiling = items.reduce((max, item) => Math.max(max, item.prixVente), 0) || 1;
+
   return (
     <div className="flex flex-col gap-6">
       <header>
@@ -36,14 +42,13 @@ export default async function BoutiquePage({
         </p>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-        {items.map((item) => (
-          <ProductCard key={item.variantId} item={item} shopId={shopId} devise={organization.devise} />
-        ))}
-        {items.length === 0 && (
-          <p className="text-sm text-muted-foreground">Aucun article disponible pour l&apos;instant.</p>
-        )}
-      </div>
+      <CatalogueClient
+        items={items}
+        shopId={shopId}
+        devise={organization.devise}
+        allCategories={allCategories}
+        priceCeiling={priceCeiling}
+      />
     </div>
   );
 }
