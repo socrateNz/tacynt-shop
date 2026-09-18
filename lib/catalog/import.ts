@@ -16,6 +16,22 @@ export type ImportRow = {
 
 type MappedKey = Exclude<keyof ImportRow, "ligne" | "errors">;
 
+// Ordre et casse utilisés pour le modèle téléchargeable (route
+// /api/catalog/import/template) — normalizeHeader() rend la casse
+// indifférente au parsing, cette liste ne sert qu'à garder les deux en
+// phase pour la lisibilité du fichier généré.
+export const IMPORT_TEMPLATE_HEADERS = [
+  "designation",
+  "categorie",
+  "codeBarres",
+  "prixAchat",
+  "prixVente",
+  "quantiteInitiale",
+  "unite",
+  "tauxTaxe",
+  "suiviStock",
+] as const;
+
 const COLUMN_KEYS: Record<string, MappedKey> = {
   designation: "designation",
   categorie: "categorie",

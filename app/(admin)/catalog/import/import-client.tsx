@@ -100,6 +100,15 @@ export function ImportClient() {
           (optionnel), suiviStock (oui/non, optionnel). La référence est générée
           automatiquement, inutile de la fournir.
         </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="self-start"
+          nativeButton={false}
+          render={<a href="/api/catalog/import/template" download />}
+        >
+          Télécharger le modèle
+        </Button>
         <input
           type="file"
           accept=".csv,.xlsx,.xls"
