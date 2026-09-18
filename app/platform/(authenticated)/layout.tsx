@@ -29,6 +29,7 @@ export default async function PlatformLayout({ children }: { children: ReactNode
     { href: "/platform", label: "Organisations", icon: "Building2" },
     { href: "/platform/new", label: "Nouvelle organisation", icon: "PlusCircle" },
     { href: "/platform/requests", label: "Demandes", icon: "Mail", badge: pendingRequests },
+    { href: "/platform/admins", label: "Comptes admin", icon: "UserCog" },
   ];
 
   return (
