@@ -29,6 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+import { ProductEditDialog, type ProductEditValues } from "./product-edit-dialog";
 import { ProductForm } from "./product-form";
 import { ProductLotsDialog, type ProductLotRow } from "./product-lots-dialog";
 import {
@@ -51,6 +52,8 @@ export type ProductRow = {
   lots: ProductLotRow[];
   hasSerialNumbers: boolean;
   serialNumbers: ProductSerialNumberRow[];
+  hasImage: boolean;
+  edit: ProductEditValues;
 };
 
 type SortKey = "designation" | "price-desc" | "variants-desc";
@@ -218,6 +221,7 @@ export function ProductsTable({
                 categories={categories}
                 showLots={showLots}
                 showSerial={showSerial}
+                onSuccess={() => setFormOpen(false)}
               />
             </DialogContent>
           </Dialog>
@@ -235,6 +239,7 @@ export function ProductsTable({
               <TableHead className="w-10">
                 <Checkbox checked={allPageSelected} onCheckedChange={toggleAllOnPage} />
               </TableHead>
+              <TableHead className="w-14" />
               <TableHead>Produit</TableHead>
               <TableHead>Catégorie</TableHead>
               <TableHead className="text-right">Prix de vente</TableHead>
@@ -242,6 +247,7 @@ export function ProductsTable({
               <TableHead>Variantes</TableHead>
               {showLots && <TableHead>Lots</TableHead>}
               {showSerial && <TableHead>Numéros de série</TableHead>}
+              <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -249,6 +255,18 @@ export function ProductsTable({
               <TableRow key={p.id}>
                 <TableCell>
                   <Checkbox checked={selected.has(p.id)} onCheckedChange={() => toggleOne(p.id)} />
+                </TableCell>
+                <TableCell>
+                  {p.hasImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- image binaire servie par la route, pas un asset statique optimisable
+                    <img
+                      src={`/api/products/${p.id}/image`}
+                      alt=""
+                      className="size-10 rounded-md border border-border object-cover"
+                    />
+                  ) : (
+                    <div className="size-10 rounded-md border border-dashed border-border" />
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col">
@@ -300,12 +318,15 @@ export function ProductsTable({
                     )}
                   </TableCell>
                 )}
+                <TableCell className="text-right">
+                  {canWrite && <ProductEditDialog product={p.edit} categories={categories} />}
+                </TableCell>
               </TableRow>
             ))}
             {pageRows.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={6 + (showLots ? 1 : 0) + (showSerial ? 1 : 0)}
+                  colSpan={7 + (showLots ? 1 : 0) + (showSerial ? 1 : 0)}
                   className="text-center text-muted-foreground"
                 >
                   Aucun produit ne correspond à ces critères.

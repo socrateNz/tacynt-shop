@@ -2,10 +2,12 @@ import type { Prisma } from "@prisma/client";
 
 export type StorefrontItem = {
   variantId: string;
+  productId: string;
   designation: string;
   attributs: Record<string, string>;
   prixVente: number;
   available: boolean;
+  hasImage: boolean;
 };
 
 // Lecture seule (Phase 4, M29) : le prix affiché ici n'est JAMAIS celui
@@ -21,7 +23,7 @@ export async function getStorefrontCatalog(
   const variants = await tx.productVariant.findMany({
     where: { actif: true, product: { actif: true } },
     include: {
-      product: true,
+      product: { include: { image: { select: { productId: true } } } },
       shopPrices: { where: { shopId } },
       stockLevels: { where: { shopId } },
     },
@@ -37,10 +39,12 @@ export async function getStorefrontCatalog(
 
       return {
         variantId: v.id,
+        productId: v.productId,
         designation: v.product.designation,
         attributs: v.attributs as Record<string, string>,
         prixVente: Number(price.prixVente),
         available,
+        hasImage: v.product.image !== null,
       };
     });
 }

@@ -32,6 +32,10 @@ export default async function ProductsPage() {
         include: {
           category: true,
           variants: { include: { shopPrices: { where: { shopId } } } },
+          // Juste l'existence d'une photo, jamais imageData (bytea) ici —
+          // c'est exactement pour éviter cet alourdissement que ProductImage
+          // est un modèle séparé de Product.
+          image: { select: { productId: true } },
         },
       });
       const categories = await tx.category.findMany({ orderBy: { nom: "asc" } });
@@ -96,6 +100,19 @@ export default async function ProductsPage() {
       priceValue: price ? Number(price.prixVente) : 0,
       stockSuivi: p.suiviStock,
       activeVariants: p.variants.filter((v) => v.actif).length,
+      hasImage: p.image !== null,
+      edit: {
+        id: p.id,
+        designation: p.designation,
+        categoryId: p.categoryId,
+        unite: p.unite,
+        tauxTaxe: Number(p.tauxTaxe),
+        codeBarres: p.variants[0]?.codeBarres ?? null,
+        prixVente: price ? Number(price.prixVente) : 0,
+        prixPlancher: price?.prixPlancher ? Number(price.prixPlancher) : null,
+        seuilAlerte: price?.seuilAlerte ?? null,
+        hasImage: p.image !== null,
+      },
       variants: p.variants.map((v) => {
         const attrs = v.attributs as Record<string, string>;
         const attrLabel =

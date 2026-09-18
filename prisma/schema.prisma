@@ -203,6 +203,7 @@ model Organization {
   platformPayments PlatformPayment[]
   branding         OrganizationBranding?
   onlineOrders     OnlineOrder[]
+  productImages    ProductImage[]
 
   @@map("organizations")
 }
@@ -428,11 +429,32 @@ model Product {
   organization Organization     @relation(fields: [organizationId], references: [id])
   category     Category?        @relation(fields: [categoryId], references: [id])
   variants     ProductVariant[]
+  image        ProductImage?
 
   @@unique([organizationId, reference])
   @@index([organizationId])
   @@index([categoryId])
   @@map("products")
+}
+
+// Image produit stockée en base (bytea), même précédent qu'Expense.
+// justificatifData et OrganizationBranding.logoData — modèle séparé de
+// Product pour ne jamais alourdir product.findMany() (relu par le
+// catalogue admin, la synchro catalogue POS, et le catalogue de la
+// boutique en ligne à chaque requête). organizationId dénormalisé depuis
+// le produit parent, même règle que sale_lines, pour une policy RLS sans
+// jointure.
+model ProductImage {
+  productId      String  @id @map("product_id") @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  imageData      Bytes?  @map("image_data")
+  imageMimeType  String? @map("image_mime_type")
+
+  product      Product      @relation(fields: [productId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("product_images")
 }
 
 model ProductVariant {

@@ -1,6 +1,4 @@
-"use server";
-
-import { revalidatePath } from "next/cache";
+import { NextResponse } from "next/server";
 
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
@@ -9,7 +7,7 @@ import { assertWithinQuota, QuotaExceededError } from "@/lib/quotas";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
-export type ProductFormState = { error: string | null };
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 function isUniqueViolation(error: unknown): boolean {
   return (
@@ -20,13 +18,14 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
-export async function createProduct(
-  _prevState: ProductFormState,
-  formData: FormData,
-): Promise<ProductFormState> {
+// Route Handler plutôt que Server Action : une photo produit dépasse
+// facilement le plafond de 1 Mo des Server Actions (même raison que
+// l'import catalogue, le justificatif de dépense et le logo).
+export async function POST(request: Request) {
   const ctx = await getTenantContext();
   await assertCapability(ctx.role, "catalog:write");
 
+  const formData = await request.formData();
   const designation = String(formData.get("designation") ?? "").trim();
   const categoryId = String(formData.get("categoryId") ?? "") || null;
   const unite = String(formData.get("unite") ?? "piece").trim() || "piece";
@@ -41,9 +40,23 @@ export async function createProduct(
   const prixPlancher = prixPlancherRaw ? Number(prixPlancherRaw) : null;
   const seuilAlerteRaw = String(formData.get("seuilAlerte") ?? "").trim();
   const seuilAlerte = seuilAlerteRaw ? Number(seuilAlerteRaw) : null;
+  const image = formData.get("image");
 
   if (!designation || !Number.isFinite(prixVente) || prixVente < 0) {
-    return { error: "Désignation et prix de vente (valide) sont requis." };
+    return NextResponse.json(
+      { error: "Désignation et prix de vente (valide) sont requis." },
+      { status: 400 },
+    );
+  }
+
+  let imageData: Uint8Array<ArrayBuffer> | null = null;
+  let imageMimeType: string | null = null;
+  if (image instanceof File && image.size > 0) {
+    if (image.size > MAX_IMAGE_BYTES) {
+      return NextResponse.json({ error: "Image trop volumineuse (5 Mo max)." }, { status: 400 });
+    }
+    imageData = new Uint8Array(await image.arrayBuffer());
+    imageMimeType = image.type || "application/octet-stream";
   }
 
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
@@ -56,8 +69,8 @@ export async function createProduct(
       await assertWithinQuota(tx, ctx.organizationId, organization.plan, "products");
 
       // Référence auto-générée (même patron que les numéros de transfert,
-      // bon de commande, réception... — voir app/(admin)/transfers/actions.ts)
-      // : plus de saisie manuelle, jamais de doublon à gérer côté utilisateur.
+      // bon de commande, réception...) : plus de saisie manuelle, jamais de
+      // doublon à gérer côté utilisateur.
       const count = await tx.product.count({ where: { organizationId: ctx.organizationId } });
       const reference = `REF-${String(count + 1).padStart(6, "0")}`;
 
@@ -76,9 +89,8 @@ export async function createProduct(
       });
 
       // Catalogue simple (Phase 1) : chaque produit reçoit une variante par
-      // défaut. Les vraies variantes (taille/couleur) arrivent en Phase 2 —
-      // mais stock/prix/code-barres s'accrochent toujours à une variante,
-      // jamais directement au produit (cf. modèle de données section 10).
+      // défaut — stock/prix/code-barres s'accrochent toujours à une
+      // variante, jamais directement au produit.
       const variant = await tx.productVariant.create({
         data: {
           organizationId: ctx.organizationId,
@@ -99,6 +111,12 @@ export async function createProduct(
         },
       });
 
+      if (imageData) {
+        await tx.productImage.create({
+          data: { productId: product.id, organizationId: ctx.organizationId, imageData, imageMimeType },
+        });
+      }
+
       await recordAuditLog(tx, {
         organizationId: ctx.organizationId,
         userId: ctx.userId,
@@ -107,17 +125,21 @@ export async function createProduct(
         entiteId: product.id,
         apres: { reference, designation, prixVente },
       });
+
+      return product;
     });
   } catch (error) {
     if (error instanceof QuotaExceededError) {
-      return { error: error.message };
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     if (isUniqueViolation(error)) {
-      return { error: "Ce code-barres existe déjà, ou une erreur temporaire est survenue — réessayez." };
+      return NextResponse.json(
+        { error: "Ce code-barres existe déjà, ou une erreur temporaire est survenue — réessayez." },
+        { status: 400 },
+      );
     }
     throw error;
   }
 
-  revalidatePath("/catalog/products");
-  return { error: null };
+  return NextResponse.json({ ok: true });
 }

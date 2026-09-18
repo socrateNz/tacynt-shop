@@ -32,6 +32,16 @@ export function ProductCard({
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
+      {item.hasImage ? (
+        // eslint-disable-next-line @next/next/no-img-element -- image binaire servie par la route, pas un asset statique optimisable
+        <img
+          src={`/api/products/${item.productId}/image`}
+          alt={item.designation}
+          className="aspect-square w-full rounded-lg border border-border object-cover"
+        />
+      ) : (
+        <div className="aspect-square w-full rounded-lg border border-dashed border-border" />
+      )}
       <p className="text-sm font-medium text-foreground">
         {item.designation}
         {attrLabel ? ` — ${attrLabel}` : ""}

@@ -21,17 +21,23 @@ export function ExpenseForm() {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    // Capturé avant le premier await : event.currentTarget redevient null
+    // dès que la pile d'appels synchrone se termine (spec DOM, pas propre à
+    // React) — l'appeler après un await plantait silencieusement .reset(),
+    // rattrapé par le catch ci-dessous qui affichait alors un échec même
+    // quand l'enregistrement avait réussi côté serveur (bug réel constaté).
+    const form = e.currentTarget;
     setError(null);
     setIsPending(true);
     try {
-      const formData = new FormData(e.currentTarget);
+      const formData = new FormData(form);
       const res = await fetch("/api/expenses", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Échec de l'enregistrement de la dépense.");
         return;
       }
-      e.currentTarget.reset();
+      form.reset();
       router.refresh();
     } catch {
       setError("Échec de l'enregistrement de la dépense.");
