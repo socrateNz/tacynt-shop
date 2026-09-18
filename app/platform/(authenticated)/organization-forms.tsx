@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,11 +9,15 @@ import { Label } from "@/components/ui/label";
 import { MODULE_CATALOG } from "@/lib/tenant/modules";
 
 import {
+  deleteOrganization,
   recordPlatformPayment,
   updateOrganizationModules,
+  updateOrganizationOwnerCredentials,
   updateOrganizationPlanStatus,
+  type DeleteOrganizationState,
   type RecordPaymentState,
   type UpdateModulesState,
+  type UpdateOwnerCredentialsState,
   type UpdatePlanStatusState,
 } from "./organization-detail-actions";
 
@@ -198,6 +202,133 @@ export function ModulesForm({
       </div>
       <Button type="submit" className="self-start" disabled={isPending}>
         {isPending ? "Enregistrement..." : "Enregistrer les modules"}
+      </Button>
+    </form>
+  );
+}
+
+const initialOwnerCredentialsState: UpdateOwnerCredentialsState = { error: null };
+
+export function OwnerCredentialsForm({
+  organizationId,
+  ownerEmail,
+}: {
+  organizationId: string;
+  ownerEmail: string | null;
+}) {
+  const [state, formAction, isPending] = useActionState(
+    updateOrganizationOwnerCredentials,
+    initialOwnerCredentialsState,
+  );
+
+  return (
+    <form
+      action={formAction}
+      className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
+    >
+      <h2 className="text-sm font-medium text-foreground">Identifiants du propriétaire</h2>
+      <p className="text-sm text-muted-foreground">
+        Pour aider un client qui a perdu ses identifiants — à transmettre vous-même, aucun email
+        n&apos;est envoyé.
+      </p>
+      {!ownerEmail && (
+        <p className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-foreground">
+          Aucun compte Propriétaire trouvé pour cette organisation.
+        </p>
+      )}
+      {state.error && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {state.error}
+        </p>
+      )}
+      <input type="hidden" name="organizationId" value={organizationId} />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="ownerEmail">Email</Label>
+          <Input
+            id="ownerEmail"
+            // Force un nouveau montage quand ownerEmail change (mise à jour
+            // réussie, revalidatePath) : un champ non contrôlé ne relit
+            // jamais defaultValue après son premier rendu — sans ce key,
+            // le champ restait affiché avec l'ancien email malgré la
+            // sauvegarde réussie (avertissement Base UI constaté en test :
+            // "changing the default value state of an uncontrolled
+            // FieldControl after being initialized").
+            key={ownerEmail ?? "none"}
+            name="email"
+            type="email"
+            required
+            defaultValue={ownerEmail ?? ""}
+            disabled={!ownerEmail}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="ownerPassword">Nouveau mot de passe</Label>
+          <Input
+            id="ownerPassword"
+            name="password"
+            type="password"
+            minLength={8}
+            placeholder="Laisser vide pour ne pas changer"
+            disabled={!ownerEmail}
+          />
+        </div>
+      </div>
+      <Button type="submit" className="self-start" disabled={isPending || !ownerEmail}>
+        {isPending ? "Enregistrement..." : "Mettre à jour les identifiants"}
+      </Button>
+    </form>
+  );
+}
+
+const initialDeleteState: DeleteOrganizationState = { error: null };
+
+export function DeleteOrganizationForm({
+  organizationId,
+  slug,
+}: {
+  organizationId: string;
+  slug: string;
+}) {
+  const [state, formAction, isPending] = useActionState(deleteOrganization, initialDeleteState);
+  const [confirmSlug, setConfirmSlug] = useState("");
+  const confirmed = confirmSlug === slug;
+
+  return (
+    <form
+      action={formAction}
+      className="flex flex-col gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-6"
+    >
+      <h2 className="text-sm font-medium text-destructive">Zone dangereuse</h2>
+      <p className="text-sm text-muted-foreground">
+        Supprime définitivement l&apos;organisation et TOUTES ses données (boutiques, ventes,
+        clients, produits, historique...). Irréversible, aucune sauvegarde de secours.
+      </p>
+      {state.error && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {state.error}
+        </p>
+      )}
+      <input type="hidden" name="organizationId" value={organizationId} />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="confirmSlug">
+          Tapez <span className="num font-semibold text-foreground">{slug}</span> pour confirmer
+        </Label>
+        <Input
+          id="confirmSlug"
+          name="confirmSlug"
+          value={confirmSlug}
+          onChange={(e) => setConfirmSlug(e.target.value)}
+          autoComplete="off"
+        />
+      </div>
+      <Button
+        type="submit"
+        variant="destructive"
+        className="self-start"
+        disabled={isPending || !confirmed}
+      >
+        {isPending ? "Suppression..." : "Supprimer définitivement l'organisation"}
       </Button>
     </form>
   );

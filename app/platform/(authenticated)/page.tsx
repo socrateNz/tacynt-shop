@@ -51,6 +51,14 @@ export default async function PlatformOrganizationsPage() {
     paymentsByOrg.set(p.organizationId, list);
   }
 
+  const owners = organizationIds.length
+    ? await systemPrisma.user.findMany({
+        where: { organizationId: { in: organizationIds }, role: "PROPRIETAIRE" },
+        select: { organizationId: true, email: true },
+      })
+    : [];
+  const ownerEmailByOrg = new Map(owners.map((u) => [u.organizationId, u.email]));
+
   return (
     <div className="flex flex-col gap-8">
       <header className="flex items-start justify-between gap-4">
@@ -116,6 +124,7 @@ export default async function PlatformOrganizationsPage() {
                       montantLabel: formatMoney(p.montant, p.devise),
                       recordedByEmail: p.recordedByAdmin.email,
                     }))}
+                    ownerEmail={ownerEmailByOrg.get(org.id) ?? null}
                   />
                 </TableCell>
               </TableRow>

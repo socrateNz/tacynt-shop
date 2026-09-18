@@ -19,7 +19,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { ModulesForm, PlanStatusForm, RecordPaymentForm } from "./organization-forms";
+import {
+  DeleteOrganizationForm,
+  ModulesForm,
+  OwnerCredentialsForm,
+  PlanStatusForm,
+  RecordPaymentForm,
+} from "./organization-forms";
 
 export type PlatformPaymentRow = {
   id: string;
@@ -39,6 +45,7 @@ export function OrganizationDetailDialog({
   enabledModules,
   devise,
   payments,
+  ownerEmail,
 }: {
   organizationId: string;
   nom: string;
@@ -49,6 +56,7 @@ export function OrganizationDetailDialog({
   enabledModules: string[];
   devise: string;
   payments: PlatformPaymentRow[];
+  ownerEmail: string | null;
 }) {
   return (
     <Dialog>
@@ -65,6 +73,7 @@ export function OrganizationDetailDialog({
         </p>
 
         <PlanStatusForm organizationId={organizationId} plan={plan} statut={statut} />
+        <OwnerCredentialsForm organizationId={organizationId} ownerEmail={ownerEmail} />
         <ModulesForm organizationId={organizationId} enabledModules={enabledModules} />
         <RecordPaymentForm organizationId={organizationId} devise={devise} />
 
@@ -100,6 +109,8 @@ export function OrganizationDetailDialog({
             </Table>
           </div>
         </section>
+
+        <DeleteOrganizationForm organizationId={organizationId} slug={slug} />
       </DialogContent>
     </Dialog>
   );
