@@ -36,6 +36,47 @@ export async function getStorefrontOrganization() {
   return resolveStorefrontOrganization(h.get("host") ?? "");
 }
 
+export type RootPageContext =
+  | { kind: "marketing" }
+  | { kind: "not-found" }
+  | { kind: "storefront"; organization: NonNullable<Awaited<ReturnType<typeof resolveOrganizationBySlug>>> };
+
+// Racine "/" (M32) : contrairement à resolveStorefrontOrganization, qui
+// confond "domaine racine marketing" et "hôte tenant mais module ecommerce
+// désactivé" dans un même null (les deux appellent notFound() côté
+// appelant), app/page.tsx doit distinguer les deux — le premier cas rend
+// MarketingHome, le second un vrai 404. proxy.ts a déjà garanti (404
+// "Boutique introuvable") qu'une organisation existe pour tout hôte tenant
+// qui atteint une page ; ici on ne fait que rejouer la même résolution
+// (jamais confiance aux headers proxy sur un chemin anonyme, même principe
+// que resolveStorefrontOrganization) pour retrouver ce résultat.
+export async function resolveRootPageContext(host: string): Promise<RootPageContext> {
+  const slug = extractSlugFromHost(host);
+  let organization = slug
+    ? await resolveOrganizationBySlug(slug)
+    : await resolveOrganizationByCustomDomain(host);
+
+  if (!slug && organization && !organizationCanUseWhiteLabel(organization.plan)) {
+    organization = null;
+  }
+
+  const isTenantHost = slug !== null || organization !== null;
+  if (!isTenantHost) {
+    return { kind: "marketing" };
+  }
+
+  if (!organization || !organizationHasModule(organization.enabledModules, "ecommerce")) {
+    return { kind: "not-found" };
+  }
+
+  return { kind: "storefront", organization };
+}
+
+export async function getRootPageContext(): Promise<RootPageContext> {
+  const h = await headers();
+  return resolveRootPageContext(h.get("host") ?? "");
+}
+
 // Sélection de boutique pour la vitrine (pas de session, donc pas de
 // user_shops à consulter comme lib/tenant/active-shop.ts) : la boutique
 // demandée par ?shop=, sinon la première boutique active de l'organisation.

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
 
-import { useCart } from "../cart-context";
+import { useCart } from "./cart-context";
 
 export function CartPanel({ devise }: { devise: string }) {
   const { cart, loaded, total, updateQty } = useCart();
@@ -61,7 +61,7 @@ export function CartPanel({ devise }: { devise: string }) {
             </span>
           </div>
 
-          <Link href="/boutique/commande">
+          <Link href="/commande">
             <Button type="button" className="w-full">
               Passer la commande
             </Button>

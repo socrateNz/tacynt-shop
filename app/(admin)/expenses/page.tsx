@@ -43,7 +43,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default async function ExpensesPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "expenses:manage")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const canApprove = hasCapability(ctx.role, "expenses:approve");

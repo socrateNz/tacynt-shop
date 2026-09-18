@@ -24,21 +24,39 @@ const PUBLIC_PATHS = new Set([
   "/api/auth/mfa/verify",
 ]);
 
+const PRODUCT_IMAGE_PATH = /^\/api\/products\/[^/]+\/image$/;
+
 // Chemins publics UNIQUEMENT pour certaines méthodes — /api/branding/logo
 // sert (GET, anonyme, résout l'organisation par host lui-même comme
 // login/page.tsx) ET reçoit l'upload (POST, exige une vraie session +
 // white_label:manage) sur le MÊME chemin, contrairement aux entrées de
 // PUBLIC_PATHS ci-dessus qui n'ont chacune qu'une seule méthode utile.
+// /api/products/{id}/image suit le même principe : GET public (photo
+// affichée sur la vitrine anonyme), le reste (édition produit) exige une
+// session ailleurs.
 function isPublicForMethod(pathname: string, method: string): boolean {
-  return pathname === "/api/branding/logo" && method === "GET";
+  return (
+    method === "GET" &&
+    (pathname === "/api/branding/logo" || PRODUCT_IMAGE_PATH.test(pathname))
+  );
 }
 
 // Vitrine e-commerce (Phase 4, M29) : entièrement anonyme, aucune session
-// tenant requise — resolveStorefrontOrganization (lib/storefront/context.ts)
-// refait sa propre résolution par host et répond 404 elle-même si le module
-// "ecommerce" n'est pas actif, jamais confiance au client sur ce point ici.
+// tenant requise — resolveStorefrontOrganization/resolveRootPageContext
+// (lib/storefront/context.ts) refont leur propre résolution par host et
+// répondent 404 elles-mêmes si le module "ecommerce" n'est pas actif,
+// jamais confiance au client sur ce point ici. La racine "/" EST la vitrine
+// (M32) — plus de mini tableau de bord authentifié à cette URL, voir
+// app/page.tsx et le nouveau /dashboard.
 function isStorefrontPath(pathname: string): boolean {
-  return pathname === "/boutique" || pathname.startsWith("/boutique/") || pathname.startsWith("/api/storefront/");
+  return (
+    pathname === "/" ||
+    pathname === "/panier" ||
+    pathname === "/commande" ||
+    pathname === "/merci" ||
+    pathname.startsWith("/merci/") ||
+    pathname.startsWith("/api/storefront/")
+  );
 }
 
 // Même principe pour l'espace admin plateforme (Phase 3, M25), servi sur le

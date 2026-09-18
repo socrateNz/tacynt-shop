@@ -17,7 +17,7 @@ export default async function SettingsPage() {
   const canManageShop = hasCapability(ctx.role, "shops:manage");
   const canManageAccounting = hasCapability(ctx.role, "accounting:manage");
   if (!canManageShop && !canManageAccounting) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const organization = await systemPrisma.organization.findUniqueOrThrow({

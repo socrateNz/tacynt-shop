@@ -34,7 +34,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default async function InventoryPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "inventory:manage")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);

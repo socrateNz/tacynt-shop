@@ -44,7 +44,7 @@ const TYPE_LABELS: Record<string, string> = {
 export default async function StockMovementsPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "stock:read")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);

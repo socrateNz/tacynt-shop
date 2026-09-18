@@ -29,7 +29,7 @@ import { ShopUsersDialog } from "./shop-users-dialog";
 export default async function ShopsPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "shops:manage")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const { shops, users, assignedByShop } = await withTenantContext(

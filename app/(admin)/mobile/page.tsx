@@ -27,7 +27,7 @@ import { getTenantContext } from "@/lib/tenant/context";
 export default async function MobileOwnerViewPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "reports:read")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const organization = await systemPrisma.organization.findUniqueOrThrow({
@@ -56,7 +56,7 @@ export default async function MobileOwnerViewPage() {
           <p className="text-xs text-muted-foreground uppercase">{organization.nom}</p>
           <h1 className="text-lg font-semibold text-foreground">Vue propriétaire</h1>
         </div>
-        <Link href="/" className="text-xs text-primary underline-offset-4 hover:underline">
+        <Link href="/dashboard" className="text-xs text-primary underline-offset-4 hover:underline">
           Vue complète
         </Link>
       </header>

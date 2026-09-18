@@ -14,7 +14,7 @@ import { ProductsTable, type ProductRow } from "./products-table";
 export default async function ProductsPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "catalog:read")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);

@@ -12,7 +12,7 @@ import { PosClient } from "./pos-client";
 export default async function CaissePage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "pos:sell")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);

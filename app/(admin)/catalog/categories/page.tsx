@@ -31,7 +31,7 @@ export default async function CategoriesPage() {
   // section 5.8) — proxy.ts ne vérifie que la session, pas les permissions
   // par page, donc la garde doit être ici.
   if (!hasCapability(ctx.role, "catalog:read")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const categories = await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>

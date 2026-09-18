@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney } from "@/lib/money";
 
-import { useCart } from "../cart-context";
+import { useCart } from "../../cart-context";
 
 export function CheckoutForm({ devise }: { devise: string }) {
   const router = useRouter();
@@ -45,7 +45,7 @@ export function CheckoutForm({ devise }: { devise: string }) {
         return;
       }
       clear();
-      router.push(`/boutique/merci/${body.id}`);
+      router.push(`/merci/${body.id}`);
     } finally {
       setPending(false);
     }
@@ -57,7 +57,7 @@ export function CheckoutForm({ devise }: { devise: string }) {
     return (
       <div className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">Votre panier est vide.</p>
-        <Link href="/boutique" className="text-sm text-primary underline-offset-4 hover:underline">
+        <Link href="/" className="text-sm text-primary underline-offset-4 hover:underline">
           ← Retour au catalogue
         </Link>
       </div>

@@ -30,7 +30,7 @@ import { CustomerForm } from "./customer-form";
 export default async function CustomersPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "customers:manage")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const organization = await systemPrisma.organization.findUniqueOrThrow({

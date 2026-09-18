@@ -12,7 +12,7 @@ import { SalesTable, type SaleRow } from "./sales-table";
 export default async function SalesPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "reports:read") && !hasCapability(ctx.role, "pos:cancel_ticket")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);

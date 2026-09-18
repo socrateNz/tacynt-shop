@@ -34,7 +34,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default async function TransfersPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "transfers:manage")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const { transfers, shops, variants } = await withTenantContext(

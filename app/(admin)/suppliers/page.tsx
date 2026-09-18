@@ -31,7 +31,7 @@ import { SupplierForm } from "./supplier-form";
 export default async function SuppliersPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "suppliers:manage")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const canPurchase = hasCapability(ctx.role, "purchasing:manage");

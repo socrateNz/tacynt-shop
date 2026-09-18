@@ -8,7 +8,7 @@ import { ImportClient } from "./import-client";
 export default async function ImportPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "catalog:import")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   return (

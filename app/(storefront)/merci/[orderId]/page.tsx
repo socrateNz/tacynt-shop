@@ -55,7 +55,7 @@ export default async function MerciPage({
         </p>
       </div>
 
-      <Link href="/boutique" className="text-sm text-primary underline-offset-4 hover:underline">
+      <Link href="/" className="text-sm text-primary underline-offset-4 hover:underline">
         ← Retour au catalogue
       </Link>
     </div>

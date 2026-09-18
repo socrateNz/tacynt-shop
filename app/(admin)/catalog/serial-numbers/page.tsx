@@ -24,7 +24,7 @@ export default async function SerialNumberSearchPage({
 }) {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "stock:read")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const { q } = await searchParams;

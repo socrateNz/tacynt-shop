@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/money";
 
-import { useCart } from "../cart-context";
+import { useCart } from "../../cart-context";
 
 export function CartView({ devise }: { devise: string }) {
   const { cart, loaded, total, updateQty } = useCart();
@@ -22,7 +22,7 @@ export function CartView({ devise }: { devise: string }) {
     return (
       <div className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">Votre panier est vide.</p>
-        <Link href="/boutique" className="text-sm text-primary underline-offset-4 hover:underline">
+        <Link href="/" className="text-sm text-primary underline-offset-4 hover:underline">
           ← Retour au catalogue
         </Link>
       </div>
@@ -62,7 +62,7 @@ export function CartView({ devise }: { devise: string }) {
 
       <div className="flex items-center justify-between border-t border-border pt-4">
         <p className="num text-lg font-semibold text-foreground">Total : {formatMoney(total, devise)}</p>
-        <Link href="/boutique/commande">
+        <Link href="/commande">
           <Button type="button">Passer la commande</Button>
         </Link>
       </div>

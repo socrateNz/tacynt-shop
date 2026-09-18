@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 
 import { getStorefrontOrganization } from "@/lib/storefront/context";
 
-import { CheckoutForm } from "../checkout-form";
+import { CartView } from "./cart-view";
 
-export default async function CommandePage() {
+export default async function PanierPage() {
   const organization = await getStorefrontOrganization();
   if (!organization) {
     notFound();
@@ -13,9 +13,9 @@ export default async function CommandePage() {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
       <header>
-        <h1 className="text-xl font-semibold text-foreground">Passer la commande</h1>
+        <h1 className="text-xl font-semibold text-foreground">Panier</h1>
       </header>
-      <CheckoutForm devise={organization.devise} />
+      <CartView devise={organization.devise} />
     </div>
   );
 }

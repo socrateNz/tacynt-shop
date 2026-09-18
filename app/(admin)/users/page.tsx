@@ -35,7 +35,7 @@ const ROLE_LABELS: Record<string, string> = {
 export default async function UsersPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "users:manage")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const users = await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>

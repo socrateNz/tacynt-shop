@@ -1,42 +1,22 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 
 import { getStorefrontOrganization } from "@/lib/storefront/context";
-import { parseOrgSettings } from "@/lib/tenant/settings";
 
-import { CartHeaderLink } from "./cart-header-link";
-import { CartProvider } from "./cart-context";
+import { StorefrontShell } from "../storefront-shell";
 
 // Vitrine e-commerce (Phase 4, M29) : le contrôle vit ici, au niveau du
 // layout — toute page sous (storefront) hérite du 404 si l'organisation
 // n'est pas résolue ou si le module "ecommerce" n'est pas actif, sans avoir
-// à le revérifier dans chaque page.tsx individuellement.
+// à le revérifier dans chaque page.tsx individuellement. Ne wrappe plus que
+// /panier, /commande, /merci/[orderId] depuis M32 — la racine "/" (le
+// catalogue) est gérée directement par app/page.tsx, qui applique le même
+// StorefrontShell lui-même (voir son propre commentaire).
 export default async function StorefrontLayout({ children }: { children: ReactNode }) {
   const organization = await getStorefrontOrganization();
   if (!organization) {
     notFound();
   }
 
-  const branding = parseOrgSettings(organization.settings).branding;
-
-  return (
-    <div
-      className="flex flex-1 flex-col bg-background"
-      style={branding?.primaryColor ? ({ "--primary": branding.primaryColor } as CSSProperties) : undefined}
-    >
-      <CartProvider>
-        <header className="flex items-center gap-3 border-b border-border px-6 py-4">
-          {branding?.hasLogo ? (
-            // eslint-disable-next-line @next/next/no-img-element -- logo servi dynamiquement par organisation, pas un asset statique optimisable par next/image
-            <img src="/api/branding/logo" alt={organization.nom} className="h-8 w-auto" />
-          ) : (
-            <span className="text-lg font-semibold text-foreground">{organization.nom}</span>
-          )}
-          <span className="text-sm text-muted-foreground">Boutique en ligne</span>
-          <CartHeaderLink />
-        </header>
-        <main className="flex flex-1 flex-col px-6 py-10">{children}</main>
-      </CartProvider>
-    </div>
-  );
+  return <StorefrontShell organization={organization}>{children}</StorefrontShell>;
 }

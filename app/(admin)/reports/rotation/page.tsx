@@ -26,7 +26,7 @@ export default async function RotationReportPage({
 }) {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "reports:read")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const sp = await searchParams;

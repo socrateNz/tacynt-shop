@@ -22,7 +22,9 @@ import { parseOrgSettings } from "@/lib/tenant/settings";
 
 import { ShopSwitcher } from "./shops/shop-switcher";
 
-const TOP_LINKS: NavLink[] = [{ href: "/", label: "Accueil", icon: "Home" }];
+const TOP_LINKS: NavLink[] = [
+  { href: "/dashboard", label: "Accueil", icon: "LayoutDashboard" },
+];
 
 // Même 17 liens que l'ancienne nav horizontale, simplement regroupés pour la
 // lisibilité en sidebar verticale — aucune route ajoutée, retirée ou renommée.

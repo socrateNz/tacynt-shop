@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
 import type { StorefrontItem } from "@/lib/storefront/catalog";
 
-import { useCart } from "../cart-context";
+import { useCart } from "./cart-context";
 
 export function ProductCard({
   item,

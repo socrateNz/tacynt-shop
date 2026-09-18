@@ -32,7 +32,9 @@ export async function finishLogin(
     ip,
   });
 
-  const response = NextResponse.redirect(new URL("/", requestOrigin(request)), { status: 303 });
+  const response = NextResponse.redirect(new URL("/dashboard", requestOrigin(request)), {
+    status: 303,
+  });
   response.cookies.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",

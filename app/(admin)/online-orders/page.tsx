@@ -36,7 +36,7 @@ export default async function OnlineOrdersPage() {
     !hasCapability(ctx.role, "ecommerce:manage") ||
     !organizationHasModule(organization.enabledModules, "ecommerce")
   ) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const orders = await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>

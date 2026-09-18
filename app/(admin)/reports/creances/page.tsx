@@ -20,7 +20,7 @@ import { ExportButtons } from "../export-buttons";
 export default async function CreancesReportPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "reports:read")) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const organization = await systemPrisma.organization.findUniqueOrThrow({
