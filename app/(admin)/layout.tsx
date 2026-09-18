@@ -15,6 +15,7 @@ import {
 import { SidebarNav, type NavGroup, type NavLink } from "@/components/ui/sidebar-nav";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
+import { hasCapability } from "@/lib/permissions";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { parseOrgSettings } from "@/lib/tenant/settings";
@@ -28,61 +29,71 @@ const TOP_LINKS: NavLink[] = [{ href: "/", label: "Accueil", icon: "Home" }];
 // icon: clé (string), jamais la référence du composant — voir le commentaire
 // dans components/ui/sidebar-nav.tsx (ce fichier est un Server Component,
 // une icône lucide ne peut pas traverser la frontière vers le Client
-// Component SidebarNav).
-const GROUPS: NavGroup[] = [
-  {
-    label: "Ventes",
-    links: [
-      { href: "/caisse", label: "Caisse", icon: "ShoppingCart" },
-      { href: "/sales", label: "Ventes", icon: "ReceiptText" },
-      { href: "/online-orders", label: "Commandes en ligne", icon: "ShoppingBag" },
-    ],
-  },
-  {
-    label: "Catalogue",
-    links: [
-      { href: "/catalog/products", label: "Produits", icon: "Package" },
-      { href: "/catalog/categories", label: "Catégories", icon: "Tags" },
-      { href: "/catalog/import", label: "Import", icon: "FileUp" },
-    ],
-  },
-  {
-    label: "Stock",
-    links: [
-      { href: "/stock/movements", label: "Mouvements", icon: "Boxes" },
-      { href: "/transfers", label: "Transferts", icon: "ArrowLeftRight" },
-      { href: "/inventory", label: "Inventaire", icon: "ClipboardList" },
-    ],
-  },
-  {
-    label: "Partenaires",
-    links: [
-      { href: "/customers", label: "Clients", icon: "Users" },
-      { href: "/suppliers", label: "Fournisseurs", icon: "Truck" },
-    ],
-  },
-  {
-    label: "Pilotage",
-    links: [
-      { href: "/expenses", label: "Dépenses", icon: "Receipt" },
-      { href: "/reports", label: "Rapports", icon: "BarChart3" },
-      { href: "/mobile", label: "Vue propriétaire", icon: "Smartphone" },
-    ],
-  },
-  {
-    label: "Organisation",
-    links: [
-      { href: "/shops", label: "Boutiques", icon: "Store" },
-      { href: "/users", label: "Utilisateurs", icon: "UserCog" },
-      { href: "/security", label: "Sécurité", icon: "Shield" },
-      { href: "/settings", label: "Paramètres", icon: "Settings" },
-    ],
-  },
-];
+// Component SidebarNav). Fonction plutôt que const : le badge de commandes
+// en attente dépend d'une requête (voir AdminLayout), pas connu au chargement
+// du module.
+function buildGroups(badges: { onlineOrders?: number }): NavGroup[] {
+  return [
+    {
+      label: "Ventes",
+      links: [
+        { href: "/caisse", label: "Caisse", icon: "ShoppingCart" },
+        { href: "/sales", label: "Ventes", icon: "ReceiptText" },
+        {
+          href: "/online-orders",
+          label: "Commandes en ligne",
+          icon: "ShoppingBag",
+          badge: badges.onlineOrders,
+        },
+      ],
+    },
+    {
+      label: "Catalogue",
+      links: [
+        { href: "/catalog/products", label: "Produits", icon: "Package" },
+        { href: "/catalog/categories", label: "Catégories", icon: "Tags" },
+        { href: "/catalog/import", label: "Import", icon: "FileUp" },
+      ],
+    },
+    {
+      label: "Stock",
+      links: [
+        { href: "/stock/movements", label: "Mouvements", icon: "Boxes" },
+        { href: "/transfers", label: "Transferts", icon: "ArrowLeftRight" },
+        { href: "/inventory", label: "Inventaire", icon: "ClipboardList" },
+      ],
+    },
+    {
+      label: "Partenaires",
+      links: [
+        { href: "/customers", label: "Clients", icon: "Users" },
+        { href: "/suppliers", label: "Fournisseurs", icon: "Truck" },
+      ],
+    },
+    {
+      label: "Pilotage",
+      links: [
+        { href: "/expenses", label: "Dépenses", icon: "Receipt" },
+        { href: "/reports", label: "Rapports", icon: "BarChart3" },
+        { href: "/mobile", label: "Vue propriétaire", icon: "Smartphone" },
+      ],
+    },
+    {
+      label: "Organisation",
+      links: [
+        { href: "/shops", label: "Boutiques", icon: "Store" },
+        { href: "/users", label: "Utilisateurs", icon: "UserCog" },
+        { href: "/security", label: "Sécurité", icon: "Shield" },
+        { href: "/settings", label: "Paramètres", icon: "Settings" },
+      ],
+    },
+  ];
+}
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const ctx = await getTenantContext();
-  const [organization, activeShopId, userShops, user] = await Promise.all([
+  const canManageOnlineOrders = hasCapability(ctx.role, "ecommerce:manage");
+  const [organization, activeShopId, userShops, user, pendingOnlineOrders] = await Promise.all([
     systemPrisma.organization.findUnique({ where: { id: ctx.organizationId } }),
     getActiveShopId(ctx.organizationId, ctx.userId),
     withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
@@ -93,6 +104,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       }),
     ),
     systemPrisma.user.findUnique({ where: { id: ctx.userId }, select: { email: true } }),
+    // Même définition de "à traiter" que app/(admin)/online-orders/page.tsx
+    // (EN_ATTENTE + CONFIRMEE) — inutile pour un rôle sans ecommerce:manage,
+    // qui serait de toute façon redirigé en cliquant le lien.
+    canManageOnlineOrders
+      ? withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
+          tx.onlineOrder.count({ where: { statut: { in: ["EN_ATTENTE", "CONFIRMEE"] } } }),
+        )
+      : Promise.resolve(0),
   ]);
 
   // White label (Phase 4, M27) : hasLogo évite de relire organization_branding
@@ -110,7 +129,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <div className="flex h-dvh min-h-0" style={brandingStyle}>
-      <SidebarNav topLinks={TOP_LINKS} groups={GROUPS} />
+      <SidebarNav
+        topLinks={TOP_LINKS}
+        groups={buildGroups({ onlineOrders: pendingOnlineOrders })}
+      />
       <div className="flex min-h-0 flex-1 flex-col bg-background">
         <header className="no-print flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-4">
