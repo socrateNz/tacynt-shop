@@ -16,9 +16,10 @@ import {
 import { SidebarNav, type NavGroup, type NavLink } from "@/components/ui/sidebar-nav";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
-import { hasCapability } from "@/lib/permissions";
+import { hasCapability, type Capability, type Role } from "@/lib/permissions";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
+import { organizationHasModule } from "@/lib/tenant/modules";
 import { parseOrgSettings } from "@/lib/tenant/settings";
 
 import { ShopSwitcher } from "./shops/shop-switcher";
@@ -35,62 +36,119 @@ const TOP_LINKS: NavLink[] = [
 // Component SidebarNav). Fonction plutôt que const : le badge de commandes
 // en attente dépend d'une requête (voir AdminLayout), pas connu au chargement
 // du module.
-function buildGroups(badges: { onlineOrders?: number }): NavGroup[] {
-  return [
+//
+// Chaque lien porte `show`, calqué sur la garde de sa propre page (le
+// redirect("/dashboard") en tête de page.tsx) : un lien affiché mais
+// inaccessible renverrait l'utilisateur sur l'accueil au clic. La garde de la
+// page reste la vraie barrière de sécurité, `show` ne fait que masquer.
+type GatedLink = NavLink & { show: boolean };
+type GatedGroup = { label: string; links: GatedLink[] };
+
+function buildGroups({
+  role,
+  ecommerceEnabled,
+  onlineOrders,
+}: {
+  role: Role;
+  ecommerceEnabled: boolean;
+  onlineOrders: number;
+}): NavGroup[] {
+  const can = (capability: Capability) => hasCapability(role, capability);
+
+  const groups: GatedGroup[] = [
     {
       label: "Ventes",
       links: [
-        { href: "/caisse", label: "Caisse", icon: "ShoppingCart" },
-        { href: "/sales", label: "Ventes", icon: "ReceiptText" },
+        { href: "/caisse", label: "Caisse", icon: "ShoppingCart", show: can("pos:sell") },
+        {
+          href: "/sales",
+          label: "Ventes",
+          icon: "ReceiptText",
+          show: can("reports:read") || can("pos:cancel_ticket"),
+        },
         {
           href: "/online-orders",
           label: "Commandes en ligne",
           icon: "ShoppingBag",
-          badge: badges.onlineOrders,
+          badge: onlineOrders,
+          // Deux axes distincts : la capacité du rôle ET le module payé.
+          show: can("ecommerce:manage") && ecommerceEnabled,
         },
       ],
     },
     {
       label: "Catalogue",
       links: [
-        { href: "/catalog/products", label: "Produits", icon: "Package" },
-        { href: "/catalog/categories", label: "Catégories", icon: "Tags" },
-        { href: "/catalog/import", label: "Import", icon: "FileUp" },
+        { href: "/catalog/products", label: "Produits", icon: "Package", show: can("catalog:read") },
+        { href: "/catalog/categories", label: "Catégories", icon: "Tags", show: can("catalog:read") },
+        { href: "/catalog/import", label: "Import", icon: "FileUp", show: can("catalog:import") },
       ],
     },
     {
       label: "Stock",
       links: [
-        { href: "/stock/movements", label: "Mouvements", icon: "Boxes" },
-        { href: "/transfers", label: "Transferts", icon: "ArrowLeftRight" },
-        { href: "/inventory", label: "Inventaire", icon: "ClipboardList" },
+        { href: "/stock/movements", label: "Mouvements", icon: "Boxes", show: can("stock:read") },
+        {
+          href: "/transfers",
+          label: "Transferts",
+          icon: "ArrowLeftRight",
+          show: can("transfers:manage"),
+        },
+        {
+          href: "/inventory",
+          label: "Inventaire",
+          icon: "ClipboardList",
+          show: can("inventory:manage"),
+        },
       ],
     },
     {
       label: "Partenaires",
       links: [
-        { href: "/customers", label: "Clients", icon: "Users" },
-        { href: "/suppliers", label: "Fournisseurs", icon: "Truck" },
+        { href: "/customers", label: "Clients", icon: "Users", show: can("customers:manage") },
+        { href: "/suppliers", label: "Fournisseurs", icon: "Truck", show: can("suppliers:manage") },
       ],
     },
     {
       label: "Pilotage",
       links: [
-        { href: "/expenses", label: "Dépenses", icon: "Receipt" },
-        { href: "/reports", label: "Rapports", icon: "BarChart3" },
-        { href: "/mobile", label: "Vue propriétaire", icon: "Smartphone" },
+        { href: "/expenses", label: "Dépenses", icon: "Receipt", show: can("expenses:manage") },
+        { href: "/reports", label: "Rapports", icon: "BarChart3", show: can("reports:read") },
+        {
+          href: "/mobile",
+          label: "Vue propriétaire",
+          icon: "Smartphone",
+          show: can("reports:read"),
+        },
       ],
     },
     {
       label: "Organisation",
       links: [
-        { href: "/shops", label: "Boutiques", icon: "Store" },
-        { href: "/users", label: "Utilisateurs", icon: "UserCog" },
-        { href: "/security", label: "Sécurité", icon: "Shield" },
-        { href: "/settings", label: "Paramètres", icon: "Settings" },
+        { href: "/shops", label: "Boutiques", icon: "Store", show: can("shops:manage") },
+        { href: "/users", label: "Utilisateurs", icon: "UserCog", show: can("users:manage") },
+        // Pas de garde de capacité sur cette page : chacun gère son propre MFA.
+        { href: "/security", label: "Sécurité", icon: "Shield", show: true },
+        {
+          href: "/settings",
+          label: "Paramètres",
+          icon: "Settings",
+          show: can("shops:manage") || can("accounting:manage"),
+        },
       ],
     },
   ];
+
+  // Un groupe entier sans lien visible (ex. "Partenaires" pour un Vendeur)
+  // disparaît, sinon son titre resterait affiché au-dessus de rien.
+  return groups
+    .map((group) => ({
+      label: group.label,
+      links: group.links
+        .filter((link) => link.show)
+        .map(({ href, label, icon, badge }) => ({ href, label, icon, badge })),
+    }))
+    .filter((group) => group.links.length > 0);
 }
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
@@ -134,7 +192,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     <div className="flex h-dvh min-h-0" style={brandingStyle}>
       <SidebarNav
         topLinks={TOP_LINKS}
-        groups={buildGroups({ onlineOrders: pendingOnlineOrders })}
+        groups={buildGroups({
+          role: ctx.role,
+          ecommerceEnabled: organizationHasModule(organization?.enabledModules, "ecommerce"),
+          onlineOrders: pendingOnlineOrders,
+        })}
       />
       <div className="flex min-h-0 flex-1 flex-col bg-background">
         <header className="no-print flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
