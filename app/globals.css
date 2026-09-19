@@ -136,8 +136,13 @@
   body:has(.printable-ticket) * {
     visibility: hidden;
   }
-  .printable-ticket,
-  .printable-ticket * {
+  /* :has() prend la spécificité de son argument : la règle de masquage
+     ci-dessus pèse (0,1,1). L'ancienne règle d'affichage (".printable-ticket",
+     (0,1,0)) perdait donc face à elle et le ticket se masquait lui-même —
+     l'impression sortait blanche. Ces sélecteurs pèsent (0,2,1)/(0,3,1) et
+     gagnent, quel que soit l'ordre des règles. */
+  body:has(.printable-ticket) .printable-ticket,
+  body:has(.printable-ticket) .printable-ticket * {
     visibility: visible;
   }
   .printable-ticket {
@@ -145,6 +150,27 @@
     top: 0;
     left: 0;
     width: 80mm;
+  }
+
+  /* Ticket ouvert dans un dialogue (page Ventes) : le ticket est en position
+     absolue, donc relatif au dialogue si celui-ci est son bloc conteneur —
+     et il l'est, à cause de sa translation de centrage (-50% -50%) : le
+     ticket sortait décalé, à moitié hors de la page. Annuler la translation
+     n'est pas fiable (le pipeline CSS supprime "translate: none"), on retire
+     donc le dialogue de la mise en page : "display: contents" supprime sa
+     boîte, et avec elle sa translation et son rôle de bloc conteneur.
+     Le ticket se recale alors en haut de la page, comme à la caisse. */
+  [data-slot="dialog-content"]:has(.printable-ticket) {
+    display: contents !important;
+  }
+
+  /* Le reste de l'application (page Ventes derrière le dialogue) est masqué
+     par visibility mais occupe toujours sa place : sans ceci, l'impression
+     comportait une première page blanche puis le ticket sur la suivante, ce
+     qui gaspille un rouleau de papier thermique. On retire tout élément
+     racine qui ne contient pas le ticket. */
+  body:has(.printable-ticket) > *:not(:has(.printable-ticket)) {
+    display: none !important;
   }
 
   /* Rapports (section M17) : masque uniquement la navigation/les filtres/
