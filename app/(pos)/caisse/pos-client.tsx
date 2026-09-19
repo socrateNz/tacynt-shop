@@ -504,8 +504,8 @@ export function PosClient({
 
   if (!sessionId) {
     return (
-      <div className="flex flex-1 items-center justify-center px-6">
-        <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8">
+      <div className="flex flex-1 items-center justify-center px-4 sm:px-6">
+        <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 sm:p-8">
           <h1 className="text-lg font-semibold text-foreground">
             Ouvrir la caisse — {registerNom}
           </h1>
@@ -532,8 +532,8 @@ export function PosClient({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex shrink-0 items-center justify-between border-b border-border px-6 py-3">
-        <div>
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 lg:px-6">
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">
             {organizationNom} — {registerNom}
           </p>
@@ -541,7 +541,7 @@ export function PosClient({
             {pendingCount > 0 ? `${pendingCount} vente(s) en attente de synchro` : "À jour"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {pendingCount > 0 && (
             <Button variant="ghost" size="sm" onClick={handleSyncNow}>
               Synchroniser maintenant
@@ -558,13 +558,13 @@ export function PosClient({
       </header>
 
       {error && (
-        <p className="mx-6 mt-3 shrink-0 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p className="mx-4 mt-3 shrink-0 lg:mx-6 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </p>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-6 lg:grid-cols-3">
-        <div className="flex flex-col gap-3 lg:col-span-2">
+      <div className="grid min-h-0 flex-1 grid-cols-1 content-start gap-4 overflow-y-auto p-4 lg:grid-cols-3 lg:content-stretch lg:p-6">
+        <div className="flex min-w-0 flex-col gap-3 lg:col-span-2">
           <div className="relative">
             <Input
               ref={searchRef}
@@ -596,8 +596,11 @@ export function PosClient({
           <div className="flex flex-1 flex-col rounded-xl border border-border bg-card">
             <div className="flex flex-col divide-y divide-border">
               {cart.map((l) => (
-                <div key={l.variantId} className="flex items-center gap-3 px-4 py-3">
-                  <div className="flex-1">
+                <div
+                  key={l.variantId}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3"
+                >
+                  <div className="min-w-40 flex-1">
                     <p className="text-sm text-foreground">{l.designation}</p>
                     <p className="num text-xs text-muted-foreground">
                       {formatMoney(l.prixUnitaire, devise)} l&apos;unité
@@ -647,7 +650,7 @@ export function PosClient({
         </div>
 
         <div className="flex flex-col gap-3">
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="hidden rounded-xl border border-border bg-card p-4 lg:block">
             <p className="text-xs font-medium text-muted-foreground uppercase">Total</p>
             <p className="num text-3xl font-semibold text-foreground">
               {formatMoney(cartTotal, devise)}
@@ -678,7 +681,11 @@ export function PosClient({
           </button>
 
           <div className="flex flex-col gap-2">
-            <Button onClick={openCheckout} disabled={cart.length === 0}>
+            <Button
+              onClick={openCheckout}
+              disabled={cart.length === 0}
+              className="hidden lg:inline-flex"
+            >
               Encaisser (F9)
             </Button>
             <Button variant="outline" onClick={holdCart} disabled={cart.length === 0}>
@@ -714,6 +721,21 @@ export function PosClient({
         </div>
       </div>
 
+      {/* Sous lg, le total et « Encaisser » de la colonne de droite seraient
+          tout en bas d'une longue page : on les épingle en bas de l'écran, à
+          portée du pouce, plutôt que de faire défiler jusqu'à eux. */}
+      <div className="no-print flex shrink-0 items-center justify-between gap-3 border-t border-border bg-card px-4 py-3 lg:hidden">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground uppercase">Total</p>
+          <p className="num truncate text-xl font-semibold text-foreground">
+            {formatMoney(cartTotal, devise)}
+          </p>
+        </div>
+        <Button onClick={openCheckout} disabled={cart.length === 0}>
+          Encaisser
+        </Button>
+      </div>
+
       <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
         <DialogContent>
           <DialogHeader>
@@ -721,8 +743,8 @@ export function PosClient({
           </DialogHeader>
           <div className="flex flex-col gap-3">
             {payments.map((p, i) => (
-              <div key={i} className="flex items-end gap-2">
-                <div className="flex flex-1 flex-col gap-1.5">
+              <div key={i} className="flex flex-wrap items-end gap-2">
+                <div className="flex min-w-40 flex-1 flex-col gap-1.5">
                   <Label>Mode</Label>
                   <select
                     value={p.mode}

@@ -38,7 +38,7 @@ export function AccountingMappingForm({ mapping }: { mapping: AccountingMapping 
           {state.error}
         </p>
       )}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="ventesCompte">Compte de ventes</Label>
           <Input id="ventesCompte" name="ventesCompte" defaultValue={mapping.ventesCompte} required />
@@ -60,7 +60,7 @@ export function AccountingMappingForm({ mapping }: { mapping: AccountingMapping 
       <p className="mt-2 text-xs font-medium text-muted-foreground uppercase">
         Comptes par mode de paiement
       </p>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {Object.entries(mapping.paiementComptes).map(([mode, compte]) => (
           <div key={mode} className="flex flex-col gap-1.5">
             <Label htmlFor={`paiement_${mode}`}>{PAYMENT_MODE_LABELS[mode] ?? mode}</Label>

@@ -51,14 +51,14 @@ export default async function PersonnelReportPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Personnel</h1>
           <p className="text-sm text-muted-foreground">
             Du {period.fromInput} au {period.toInput}
           </p>
         </div>
-        <div className="no-print flex items-center gap-2">
+        <div className="no-print flex flex-wrap items-center gap-2">
           {shopCount > 1 && <ShopFilter consolidated={consolidated} />}
           <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
         </div>

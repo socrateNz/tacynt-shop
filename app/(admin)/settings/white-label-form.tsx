@@ -88,8 +88,8 @@ export function WhiteLabelForm({
             {domainState.error}
           </p>
         )}
-        <form action={domainAction} className="flex items-end gap-2">
-          <div className="flex flex-1 flex-col gap-1.5">
+        <form action={domainAction} className="flex flex-wrap items-end gap-2">
+          <div className="flex min-w-40 flex-1 flex-col gap-1.5">
             <Label htmlFor="customDomain">Domaine</Label>
             <Input
               id="customDomain"
@@ -137,7 +137,7 @@ export function WhiteLabelForm({
             {colorState.error}
           </p>
         )}
-        <form action={colorAction} className="flex items-end gap-2">
+        <form action={colorAction} className="flex flex-wrap items-end gap-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="primaryColor">Couleur</Label>
             <Input
@@ -164,7 +164,7 @@ export function WhiteLabelForm({
             {logoError}
           </p>
         )}
-        <form onSubmit={handleLogoSubmit} className="flex items-end gap-2">
+        <form onSubmit={handleLogoSubmit} className="flex flex-wrap items-end gap-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="logo">Fichier (2 Mo max)</Label>
             <input

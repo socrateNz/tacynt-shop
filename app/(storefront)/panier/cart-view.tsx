@@ -34,9 +34,9 @@ export function CartView({ devise }: { devise: string }) {
       {cart.items.map((item) => (
         <div
           key={item.variantId}
-          className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card p-4"
+          className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-xl border border-border bg-card p-4"
         >
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 flex-col gap-1">
             <p className="text-sm font-medium text-foreground">{item.designation}</p>
             <p className="num text-sm text-muted-foreground">{formatMoney(item.prixVente, devise)}</p>
           </div>
@@ -60,7 +60,7 @@ export function CartView({ devise }: { devise: string }) {
         </div>
       ))}
 
-      <div className="flex items-center justify-between border-t border-border pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
         <p className="num text-lg font-semibold text-foreground">Total : {formatMoney(total, devise)}</p>
         <Link href="/commande">
           <Button type="button">Passer la commande</Button>

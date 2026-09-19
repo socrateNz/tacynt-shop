@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SidebarNav, type NavGroup, type NavLink } from "@/components/ui/sidebar-nav";
+import { MobileNav, SidebarNav, type NavGroup, type NavLink } from "@/components/ui/sidebar-nav";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { hasCapability, type Capability, type Role } from "@/lib/permissions";
@@ -188,24 +188,27 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     } as CSSProperties)
     : undefined;
 
+  const navGroups = buildGroups({
+    role: ctx.role,
+    ecommerceEnabled: organizationHasModule(organization?.enabledModules, "ecommerce"),
+    onlineOrders: pendingOnlineOrders,
+  });
+
   return (
     <div className="flex h-dvh min-h-0" style={brandingStyle}>
-      <SidebarNav
-        topLinks={TOP_LINKS}
-        groups={buildGroups({
-          role: ctx.role,
-          ecommerceEnabled: organizationHasModule(organization?.enabledModules, "ecommerce"),
-          onlineOrders: pendingOnlineOrders,
-        })}
-      />
-      <div className="flex min-h-0 flex-1 flex-col bg-background">
-        <header className="no-print flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
-          <div className="flex items-center gap-4">
+      <SidebarNav topLinks={TOP_LINKS} groups={navGroups} />
+      {/* min-w-0 : sans lui, un flex-item row ne descend jamais sous la largeur
+          min-content de son contenu, et un tableau large élargirait toute la
+          page au lieu de défiler dans son propre conteneur. */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
+        <header className="no-print flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3 lg:px-6 lg:py-4">
+          <div className="flex min-w-0 items-center gap-2 lg:gap-4">
+            <MobileNav topLinks={TOP_LINKS} groups={navGroups} />
             {branding?.hasLogo ? (
               // eslint-disable-next-line @next/next/no-img-element -- logo servi dynamiquement par organisation, pas un asset statique optimisable par next/image
-              <img src="/api/branding/logo" alt={organization?.nom ?? ""} className="h-6 w-auto" />
+              <img src="/api/branding/logo" alt={organization?.nom ?? ""} className="h-6 w-auto shrink-0" />
             ) : (
-              <span className="text-sm font-semibold text-foreground">{organization?.nom}</span>
+              <span className="truncate text-sm font-semibold text-foreground">{organization?.nom}</span>
             )}
             <ShopSwitcher
               shops={userShops.map((us: { shop: { id: string; nom: string; }; }) => ({ id: us.shop.id, nom: us.shop.nom }))}
@@ -213,13 +216,13 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             />
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" className="gap-2 px-1.5" />}>
+            <DropdownMenuTrigger render={<Button variant="ghost" className="shrink-0 gap-2 px-1.5" />}>
               <Avatar size="sm">
                 <AvatarFallback>{(user?.email ?? "?").slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
-              <span className="text-sm text-foreground">{user?.email}</span>
+              <span className="hidden text-sm text-foreground sm:inline">{user?.email}</span>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-auto min-w-48 max-w-[calc(100vw-2rem)]">
               <DropdownMenuGroup>
                 <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
               </DropdownMenuGroup>
@@ -237,18 +240,18 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </DropdownMenu>
         </header>
         {ctx.organizationStatus === "GRACE_PERIOD" && (
-          <div className="no-print shrink-0 border-b border-warning/30 bg-warning/10 px-6 py-2 text-sm text-foreground">
+          <div className="no-print shrink-0 border-b border-warning/30 bg-warning/10 px-4 py-2 lg:px-6 text-sm text-foreground">
             Abonnement en attente de paiement — période de grâce en cours. La caisse et
             l&apos;administration restent pleinement fonctionnelles.
           </div>
         )}
         {ctx.organizationStatus === "SUSPENDED" && (
-          <div className="no-print shrink-0 border-b border-destructive/30 bg-destructive/10 px-6 py-2 text-sm text-foreground">
+          <div className="no-print shrink-0 border-b border-destructive/30 bg-destructive/10 px-4 py-2 lg:px-6 text-sm text-foreground">
             Abonnement suspendu (impayé) — les actions d&apos;administration sont bloquées. La
             caisse (vente, encaissement) reste utilisable.
           </div>
         )}
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-10">
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-6 md:px-6 lg:py-10">
           <div className="w-full">{children}</div>
         </main>
       </div>

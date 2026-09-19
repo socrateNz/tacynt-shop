@@ -87,6 +87,35 @@
   ::-webkit-scrollbar-thumb:hover {
     background-color: color-mix(in oklch, var(--primary), black 15%);
   }
+
+  /* Un tableau plus large que l'écran défile dans son conteneur : une barre
+     de 1px serait invisible, donc rien n'indiquerait qu'il y a une suite. */
+  [data-slot="table-container"]::-webkit-scrollbar {
+    height: 6px;
+  }
+  [data-slot="table-container"]::-webkit-scrollbar-thumb {
+    border-radius: 3px;
+  }
+}
+
+/* Sous lg, un tableau à nombreuses colonnes déborde : sans précaution, le
+   bouton d'action (toujours la dernière colonne) part hors écran et devient
+   inatteignable au doigt. On épingle donc la dernière colonne à droite, mais
+   seulement dans les tableaux dont la dernière cellule contient réellement une
+   action (bouton, lien ou formulaire) — pas dans un rapport dont la dernière
+   colonne est un simple chiffre. Les lignes "aucun résultat" (colspan) sont
+   exclues : épinglées, elles se décaleraient au défilement. */
+@media (max-width: 1023px) {
+  [data-slot="table"]:has(
+      > [data-slot="table-body"] > [data-slot="table-row"] > [data-slot="table-cell"]:last-child:not([colspan]) :is(button, a, form)
+    )
+    :is([data-slot="table-head"], [data-slot="table-cell"]):last-child:not([colspan]) {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    background-color: var(--card);
+    box-shadow: -8px 0 8px -8px rgb(0 0 0 / 0.2);
+  }
 }
 
 /* Ticket de caisse imprimable (58/80mm) — décision verrouillée : impression

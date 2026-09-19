@@ -28,8 +28,8 @@ export function ProfilMetierForm({ profilMetier }: { profilMetier: string }) {
           {state.error}
         </p>
       )}
-      <div className="flex items-end gap-2">
-        <div className="flex flex-1 flex-col gap-1.5">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex min-w-40 flex-1 flex-col gap-1.5">
           <Label htmlFor="profilMetier">Profil</Label>
           <select
             id="profilMetier"

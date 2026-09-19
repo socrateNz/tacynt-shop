@@ -33,7 +33,7 @@ export function ProductCard({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
+    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-border bg-card p-3 sm:p-4">
       <Link href={`/produit/${item.variantId}`}>
         {item.coverImageId ? (
           // eslint-disable-next-line @next/next/no-img-element -- image binaire servie par la route, pas un asset statique optimisable
@@ -46,11 +46,11 @@ export function ProductCard({
           <div className="aspect-square w-full rounded-lg border border-dashed border-border" />
         )}
       </Link>
-      <Link href={`/produit/${item.variantId}`} className="text-sm font-medium text-foreground hover:underline">
+      <Link href={`/produit/${item.variantId}`} className="text-sm font-medium break-words text-foreground hover:underline">
         {item.designation}
         {attrLabel ? ` — ${attrLabel}` : ""}
       </Link>
-      <p className="num text-lg font-semibold text-foreground">{formatMoney(item.prixVente, devise)}</p>
+      <p className="num text-base font-semibold text-foreground sm:text-lg">{formatMoney(item.prixVente, devise)}</p>
       <span className={item.available ? "text-xs text-primary" : "text-xs text-muted-foreground"}>
         {item.available ? "En stock" : "Indisponible"}
       </span>

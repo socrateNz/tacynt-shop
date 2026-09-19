@@ -11,7 +11,7 @@ export function CartHeaderLink() {
   return (
     <Link
       href="/panier"
-      className="ml-auto flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted"
+      className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted"
     >
       <ShoppingCart className="size-4" />
       Panier

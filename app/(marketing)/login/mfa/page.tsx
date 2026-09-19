@@ -10,8 +10,8 @@ export default async function LoginMfaPage({
   const { error } = await searchParams;
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-background px-6 py-16">
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8">
+    <div className="flex flex-1 items-center justify-center bg-background px-4 py-10 sm:px-6 sm:py-16">
+      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 sm:p-8">
         <h1 className="text-xl font-semibold text-foreground">Vérification en deux étapes</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Entrez le code à 6 chiffres de votre application d&apos;authentification.

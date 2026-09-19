@@ -17,7 +17,7 @@ export function ShopSwitcher({
         name="shopId"
         defaultValue={activeShopId}
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
-        className="h-8 rounded-md border border-border bg-background px-2.5 text-sm text-foreground"
+        className="h-8 max-w-32 rounded-md border border-border bg-background px-2.5 text-sm text-foreground sm:max-w-56"
       >
         {shops.map((s) => (
           <option key={s.id} value={s.id}>

@@ -55,8 +55,8 @@ export default async function SerialNumberSearchPage({
         </p>
       </header>
 
-      <form method="get" className="flex items-end gap-3">
-        <div className="flex flex-1 flex-col gap-1.5">
+      <form method="get" className="flex flex-wrap items-end gap-3">
+        <div className="flex min-w-40 flex-1 flex-col gap-1.5">
           <label htmlFor="q" className="text-sm text-muted-foreground">
             Numéro de série
           </label>

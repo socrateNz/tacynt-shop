@@ -88,7 +88,7 @@ export function OnlineOrderDialog({
           Statut : {STATUS_LABELS[statut] ?? statut} — {shopNom}
         </p>
 
-        <section className="grid grid-cols-2 gap-4 rounded-xl border border-border bg-card p-4">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 rounded-xl border border-border bg-card p-4">
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase">Client</p>
             <p className="text-sm text-foreground">{nomClient}</p>

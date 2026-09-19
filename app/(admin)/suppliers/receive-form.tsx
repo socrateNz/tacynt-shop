@@ -44,7 +44,7 @@ export function ReceiveForm({
         {lines.map((l) => {
           const restant = Math.max(0, l.quantiteCommandee - l.dejaRecue);
           return (
-            <div key={l.variantId} className="flex items-end gap-2">
+            <div key={l.variantId} className="flex flex-wrap items-end gap-2">
               <input type="hidden" name="lineVariantId" value={l.variantId} />
               <div className="flex-1">
                 <p className="text-sm text-foreground">{l.designation}</p>

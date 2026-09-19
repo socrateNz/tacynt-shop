@@ -27,17 +27,17 @@ export function StorefrontShell({
       style={branding?.primaryColor ? ({ "--primary": branding.primaryColor } as CSSProperties) : undefined}
     >
       <CartProvider>
-        <header className="flex items-center gap-3 border-b border-border px-6 py-4">
+        <header className="flex items-center gap-3 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
           {branding?.hasLogo ? (
             // eslint-disable-next-line @next/next/no-img-element -- logo servi dynamiquement par organisation, pas un asset statique optimisable par next/image
-            <img src="/api/branding/logo" alt={organization.nom} className="h-8 w-auto" />
+            <img src="/api/branding/logo" alt={organization.nom} className="h-8 w-auto shrink-0" />
           ) : (
-            <span className="text-lg font-semibold text-foreground">{organization.nom}</span>
+            <span className="truncate text-lg font-semibold text-foreground">{organization.nom}</span>
           )}
-          <span className="text-sm text-muted-foreground">Boutique en ligne</span>
+          <span className="hidden text-sm text-muted-foreground sm:inline">Boutique en ligne</span>
           <CartHeaderLink />
         </header>
-        <main className="flex flex-1 flex-col px-6 py-10">{children}</main>
+        <main className="flex flex-1 flex-col px-4 py-6 sm:px-6 sm:py-10">{children}</main>
       </CartProvider>
     </div>
   );

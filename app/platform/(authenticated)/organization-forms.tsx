@@ -56,8 +56,8 @@ export function PlanStatusForm({
         </p>
       )}
       <input type="hidden" name="organizationId" value={organizationId} />
-      <div className="flex items-end gap-3">
-        <div className="flex flex-1 flex-col gap-1.5">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex min-w-40 flex-1 flex-col gap-1.5">
           <Label htmlFor="plan">Plan</Label>
           <select
             id="plan"
@@ -72,7 +72,7 @@ export function PlanStatusForm({
             ))}
           </select>
         </div>
-        <div className="flex flex-1 flex-col gap-1.5">
+        <div className="flex min-w-40 flex-1 flex-col gap-1.5">
           <Label htmlFor="statut">Statut</Label>
           <select
             id="statut"
@@ -128,7 +128,7 @@ export function RecordPaymentForm({
         </p>
       )}
       <input type="hidden" name="organizationId" value={organizationId} />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="montant">Montant</Label>
           <Input id="montant" name="montant" type="number" step="0.01" required />
@@ -242,7 +242,7 @@ export function OwnerCredentialsForm({
         </p>
       )}
       <input type="hidden" name="organizationId" value={organizationId} />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="ownerEmail">Email</Label>
           <Input

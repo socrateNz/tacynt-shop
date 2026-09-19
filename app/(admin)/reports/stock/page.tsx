@@ -51,14 +51,14 @@ export default async function StockReportPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Stock</h1>
           <p className="text-sm text-muted-foreground">
             Écarts et mouvements du {period.fromInput} au {period.toInput}
           </p>
         </div>
-        <div className="no-print flex items-center gap-2">
+        <div className="no-print flex flex-wrap items-center gap-2">
           {shopCount > 1 && <ShopFilter consolidated={consolidated} />}
           <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
         </div>
@@ -74,7 +74,7 @@ export default async function StockReportPage({
       </div>
 
       <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-medium text-foreground">Écarts d&apos;inventaire</h2>
           <ExportButtons
             rows={report.ecartsInventaire}

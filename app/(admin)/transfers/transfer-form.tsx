@@ -28,7 +28,7 @@ export function TransferForm({
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="fromShopId">Boutique émettrice</Label>
           <select
@@ -66,8 +66,8 @@ export function TransferForm({
       <div className="flex flex-col gap-2">
         <Label>Lignes</Label>
         {Array.from({ length: lineCount }).map((_, i) => (
-          <div key={i} className="flex items-end gap-2">
-            <div className="flex flex-1 flex-col gap-1.5">
+          <div key={i} className="flex flex-wrap items-end gap-2">
+            <div className="flex min-w-40 flex-1 flex-col gap-1.5">
               <Label>Produit</Label>
               <select
                 name="lineVariantId"

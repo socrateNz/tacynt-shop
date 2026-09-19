@@ -35,8 +35,8 @@ export default async function LoginPage({
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-background px-6 py-16">
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8">
+    <div className="flex flex-1 items-center justify-center bg-background px-4 py-10 sm:px-6 sm:py-16">
+      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 sm:p-8">
         <h1 className="text-xl font-semibold text-foreground">
           {organization?.nom ?? "Boutique introuvable"}
         </h1>

@@ -38,8 +38,8 @@ export function FulfillForm({ orderId, totalTtc }: { orderId: string; totalTtc: 
         </p>
       )}
       <input type="hidden" name="orderId" value={orderId} />
-      <div className="flex items-end gap-3">
-        <div className="flex flex-1 flex-col gap-1.5">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex min-w-40 flex-1 flex-col gap-1.5">
           <Label htmlFor="paymentMode">Mode de paiement</Label>
           <select
             id="paymentMode"

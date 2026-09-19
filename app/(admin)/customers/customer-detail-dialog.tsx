@@ -75,7 +75,7 @@ export function CustomerDetailDialog({
         </DialogHeader>
         <p className="text-sm text-muted-foreground">{telephone ?? "Aucun téléphone"}</p>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs font-medium text-muted-foreground uppercase">Solde actuel</p>
             <p

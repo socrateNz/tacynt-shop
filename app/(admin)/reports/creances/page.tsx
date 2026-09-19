@@ -72,7 +72,7 @@ export default async function CreancesReportPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-medium text-foreground">Par client</h2>
           <ExportButtons
             rows={report.parClient}

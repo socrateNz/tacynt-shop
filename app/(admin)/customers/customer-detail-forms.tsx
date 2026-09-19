@@ -34,12 +34,12 @@ export function PaymentForm({ customerId }: { customerId: string }) {
         </p>
       )}
       <input type="hidden" name="customerId" value={customerId} />
-      <div className="flex items-end gap-2">
-        <div className="flex flex-1 flex-col gap-1.5">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex min-w-40 flex-1 flex-col gap-1.5">
           <Label htmlFor="montant">Montant reçu</Label>
           <Input id="montant" name="montant" type="number" step="0.01" required />
         </div>
-        <div className="flex flex-1 flex-col gap-1.5">
+        <div className="flex min-w-40 flex-1 flex-col gap-1.5">
           <Label htmlFor="motif">Motif (optionnel)</Label>
           <Input id="motif" name="motif" placeholder="Paiement espèces" />
         </div>
@@ -73,8 +73,8 @@ export function LoyaltyConversionForm({
         </p>
       )}
       <input type="hidden" name="customerId" value={customerId} />
-      <div className="flex items-end gap-2">
-        <div className="flex flex-1 flex-col gap-1.5">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex min-w-40 flex-1 flex-col gap-1.5">
           <Label htmlFor="points">Points à convertir</Label>
           <Input id="points" name="points" type="number" step="1" max={pointsBalance} required />
         </div>
@@ -111,7 +111,7 @@ export function CustomerSettingsForm({
         </p>
       )}
       <input type="hidden" name="customerId" value={customerId} />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="categorieTarif">Catégorie tarifaire</Label>
           <Input id="categorieTarif" name="categorieTarif" defaultValue={categorieTarif} />

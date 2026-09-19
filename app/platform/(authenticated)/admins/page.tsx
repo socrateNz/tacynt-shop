@@ -30,7 +30,7 @@ export default async function PlatformAdminsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="flex items-start justify-between gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Comptes admin plateforme</h1>
           <p className="text-sm text-muted-foreground">

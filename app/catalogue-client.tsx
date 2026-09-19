@@ -1,9 +1,11 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { StorefrontItem } from "@/lib/storefront/catalog";
 
 import { CartPanel } from "./cart-panel";
@@ -47,37 +49,66 @@ export function CatalogueClient({
     });
   }, [items, search, filters]);
 
+  const activeFilterCount =
+    filters.categories.size +
+    (filters.minPrice > 0 || filters.maxPrice < priceCeiling ? 1 : 0) +
+    (filters.availableOnly ? 1 : 0);
+
+  const filtersPanel = (
+    <FiltersSidebar
+      allCategories={allCategories}
+      priceCeiling={priceCeiling}
+      devise={devise}
+      filters={filters}
+      onChange={setFilters}
+    />
+  );
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr_300px]">
-      <FiltersSidebar
-        allCategories={allCategories}
-        priceCeiling={priceCeiling}
-        devise={devise}
-        filters={filters}
-        onChange={setFilters}
-      />
+      {/* Les filtres restent une colonne fixe à partir de lg ; en dessous ils
+          passent dans un tiroir, sinon ils repousseraient les produits tout
+          en bas de l'écran. */}
+      <div className="hidden lg:block">{filtersPanel}</div>
 
-      <div className="flex flex-col gap-4">
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher un produit..."
-            className="pl-8"
-          />
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher un produit..."
+              className="pl-8"
+            />
+          </div>
+          <Sheet>
+            <SheetTrigger render={<Button variant="outline" className="shrink-0 gap-1.5 lg:hidden" />}>
+              <SlidersHorizontal className="size-4" />
+              Filtres
+              {activeFilterCount > 0 && (
+                <span className="num flex size-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+                  {activeFilterCount}
+                </span>
+              )}
+            </SheetTrigger>
+            <SheetContent className="overflow-y-auto bg-background p-4 pt-14 text-foreground">
+              <SheetTitle className="sr-only">Filtres</SheetTitle>
+              {filtersPanel}
+            </SheetContent>
+          </Sheet>
         </div>
 
         <p className="text-sm text-muted-foreground">
           {filtered.length} article{filtered.length > 1 ? "s" : ""}
         </p>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           {filtered.map((item) => (
             <ProductCard key={item.variantId} item={item} shopId={shopId} devise={devise} />
           ))}
           {filtered.length === 0 && (
-            <p className="text-sm text-muted-foreground sm:col-span-2 xl:col-span-4">
+            <p className="col-span-2 text-sm text-muted-foreground xl:col-span-4">
               Aucun article ne correspond à ces critères.
             </p>
           )}

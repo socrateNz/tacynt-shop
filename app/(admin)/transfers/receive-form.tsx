@@ -37,7 +37,7 @@ export function ReceiveForm({
 
       <div className="flex flex-col gap-3">
         {lines.map((l) => (
-          <div key={l.lineId} className="flex items-end gap-2">
+          <div key={l.lineId} className="flex flex-wrap items-end gap-2">
             <input type="hidden" name="lineId" value={l.lineId} />
             <div className="flex-1">
               <p className="text-sm text-foreground">{l.designation}</p>

@@ -34,12 +34,12 @@ export function SupplierPaymentForm({ supplierId }: { supplierId: string }) {
         </p>
       )}
       <input type="hidden" name="supplierId" value={supplierId} />
-      <div className="flex items-end gap-2">
-        <div className="flex flex-1 flex-col gap-1.5">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex min-w-40 flex-1 flex-col gap-1.5">
           <Label htmlFor="montant">Montant payé</Label>
           <Input id="montant" name="montant" type="number" step="0.01" required />
         </div>
-        <div className="flex flex-1 flex-col gap-1.5">
+        <div className="flex min-w-40 flex-1 flex-col gap-1.5">
           <Label htmlFor="motif">Motif (optionnel)</Label>
           <Input id="motif" name="motif" placeholder="Virement" />
         </div>
@@ -115,7 +115,7 @@ export function SupplierProductForm({
         </p>
       )}
       <input type="hidden" name="supplierId" value={supplierId} />
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="variantId">Produit</Label>
           <select
