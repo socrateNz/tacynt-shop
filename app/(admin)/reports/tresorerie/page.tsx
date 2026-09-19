@@ -94,9 +94,20 @@ export default async function TresorerieReportPage({
             rows={report.encaissementsParMode}
             columns={[
               { key: "mode", label: "Mode" },
-              { key: "montant", label: "Montant" },
+              { key: "montant", label: "Montant", format: "money" },
             ]}
             filename="tresorerie-encaissements"
+            pdf={{
+              title: "Trésorerie — Encaissements par mode",
+              subtitle: `Du ${period.fromInput} au ${period.toInput} — dépenses validées uniquement`,
+              organizationNom: organization.nom,
+              devise: organization.devise,
+              summary: [
+                { label: "Encaissements", value: formatMoney(report.totalEncaissements, organization.devise) },
+                { label: "Dépenses", value: formatMoney(report.totalDepenses, organization.devise) },
+                { label: "Solde net", value: formatMoney(report.soldeNet, organization.devise) },
+              ],
+            }}
           />
         </div>
         <div className="rounded-xl border border-border bg-card">

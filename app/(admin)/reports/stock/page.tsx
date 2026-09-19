@@ -80,11 +80,23 @@ export default async function StockReportPage({
             rows={report.ecartsInventaire}
             columns={[
               { key: "produit", label: "Produit" },
-              { key: "theorique", label: "Théorique" },
-              { key: "compte", label: "Compté" },
-              { key: "ecart", label: "Écart" },
+              { key: "theorique", label: "Théorique", format: "number" },
+              { key: "compte", label: "Compté", format: "number" },
+              { key: "ecart", label: "Écart", format: "number" },
             ]}
             filename="stock-ecarts-inventaire"
+            pdf={{
+              title: "Stock — Écarts d'inventaire",
+              subtitle: `Écarts et mouvements du ${period.fromInput} au ${period.toInput}`,
+              organizationNom: organization.nom,
+              devise: organization.devise,
+              summary: [
+                {
+                  label: "Valorisation totale du stock (instantané)",
+                  value: formatMoney(report.valorisationTotale, organization.devise),
+                },
+              ],
+            }}
           />
         </div>
         <div className="rounded-xl border border-border bg-card">

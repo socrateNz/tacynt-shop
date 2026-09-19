@@ -68,12 +68,18 @@ export default async function MargesReportPage({
         rows={report.parProduit}
         columns={[
           { key: "designation", label: "Produit" },
-          { key: "ca", label: "CA" },
-          { key: "cout", label: "Coût" },
-          { key: "marge", label: "Marge" },
-          { key: "margePourcent", label: "Marge %" },
+          { key: "ca", label: "CA", format: "money" },
+          { key: "cout", label: "Coût", format: "money" },
+          { key: "marge", label: "Marge", format: "money" },
+          { key: "margePourcent", label: "Marge %", format: "percent" },
         ]}
         filename="marges-par-produit"
+        pdf={{
+          title: "Marges — Par produit",
+          subtitle: `Du ${period.fromInput} au ${period.toInput}`,
+          organizationNom: organization.nom,
+          devise: organization.devise,
+        }}
       />
 
       <section className="flex flex-col gap-3">

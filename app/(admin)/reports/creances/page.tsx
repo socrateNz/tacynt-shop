@@ -78,13 +78,20 @@ export default async function CreancesReportPage() {
             rows={report.parClient}
             columns={[
               { key: "nom", label: "Client" },
-              { key: "solde", label: "Solde dû" },
-              { key: "j0_30", label: "0-30j" },
-              { key: "j31_60", label: "31-60j" },
-              { key: "j61_90", label: "61-90j" },
-              { key: "j90Plus", label: "90j+" },
+              { key: "solde", label: "Solde dû", format: "money" },
+              { key: "j0_30", label: "0-30j", format: "money" },
+              { key: "j31_60", label: "31-60j", format: "money" },
+              { key: "j61_90", label: "61-90j", format: "money" },
+              { key: "j90Plus", label: "90j+", format: "money" },
             ]}
             filename="creances-par-client"
+            pdf={{
+              title: "Créances — Par client",
+              subtitle: "Balance âgée des ardoises clients — instantané au moment de l'export",
+              organizationNom: organization.nom,
+              devise: organization.devise,
+              summary: [{ label: "Total dû", value: formatMoney(report.totalDu, organization.devise) }],
+            }}
           />
         </div>
         <div className="rounded-xl border border-border bg-card">

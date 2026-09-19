@@ -94,10 +94,22 @@ export default async function ComptabiliteReportPage({
           { key: "piece", label: "Pièce" },
           { key: "compteDebit", label: "Compte débit" },
           { key: "compteCredit", label: "Compte crédit" },
-          { key: "montant", label: "Montant" },
+          { key: "montant", label: "Montant", format: "money" },
           { key: "libelle", label: "Libellé" },
         ]}
         filename="journal-comptable"
+        pdf={{
+          title: "Comptabilité — Journal comptable",
+          subtitle: `Du ${period.fromInput} au ${period.toInput}`,
+          organizationNom: organization.nom,
+          devise: organization.devise,
+          summary: [
+            {
+              label: "Total du journal (débit = crédit)",
+              value: formatMoney(totalDebit, organization.devise),
+            },
+          ],
+        }}
       />
 
       <section className="flex flex-col gap-3">

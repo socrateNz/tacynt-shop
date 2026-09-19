@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { hasCapability } from "@/lib/permissions";
 import { parsePeriod } from "@/lib/reports/period";
@@ -34,6 +35,10 @@ export default async function RotationReportPage({
   const consolidated = sp.shop === "all";
   const activeShopId = await getActiveShopId(ctx.organizationId, ctx.userId);
   const shopId = consolidated ? null : activeShopId;
+
+  const organization = await systemPrisma.organization.findUniqueOrThrow({
+    where: { id: ctx.organizationId },
+  });
 
   const shopCount = await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
     tx.shop.count({ where: { actif: true } }),
@@ -66,9 +71,15 @@ export default async function RotationReportPage({
             rows={report.plusVendus}
             columns={[
               { key: "designation", label: "Produit" },
-              { key: "quantiteVendue", label: "Quantité vendue" },
+              { key: "quantiteVendue", label: "Quantité vendue", format: "number" },
             ]}
             filename="rotation-plus-vendus"
+            pdf={{
+              title: "Rotation — Produits les plus vendus",
+              subtitle: `Du ${period.fromInput} au ${period.toInput}`,
+              organizationNom: organization.nom,
+              devise: organization.devise,
+            }}
           />
         </div>
         <div className="rounded-xl border border-border bg-card">

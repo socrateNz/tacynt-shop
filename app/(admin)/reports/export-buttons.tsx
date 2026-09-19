@@ -1,8 +1,24 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
-export type ExportColumn = { key: string; label: string };
+import { Button } from "@/components/ui/button";
+import {
+  downloadReportPdf,
+  type PdfColumnFormat,
+  type ReportPdfOptions,
+} from "@/lib/reports/report-pdf";
+
+// `format` ne concerne que le PDF (montants, pourcentages) : le CSV et l'Excel
+// gardent la valeur brute, un tableur a besoin de nombres, pas de texte formaté.
+export type ExportColumn = { key: string; label: string; format?: PdfColumnFormat };
+
+// Contexte que le PDF affiche autour du tableau (titre, organisation, période,
+// chiffres clés) — le CSV/Excel, eux, n'en ont pas besoin.
+export type ExportPdfMeta = Pick<
+  ReportPdfOptions,
+  "title" | "subtitle" | "organizationNom" | "devise" | "summary"
+>;
 
 function toCell(value: unknown): string | number {
   if (value === null || value === undefined) return "";
@@ -30,11 +46,16 @@ export function ExportButtons({
   rows,
   columns,
   filename,
+  pdf,
 }: {
   rows: Record<string, unknown>[];
   columns: ExportColumn[];
   filename: string;
+  pdf: ExportPdfMeta;
 }) {
+  const [pdfPending, setPdfPending] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
+
   function exportCsv() {
     const header = columns.map((c) => csvEscape(c.label)).join(";");
     const lines = rows.map((row) =>
@@ -62,17 +83,36 @@ export function ExportButtons({
     );
   }
 
+  // Vrai fichier PDF (jsPDF, chargé à la demande) : on n'ouvre plus la boîte
+  // d'impression du navigateur, qui n'exportait rien et imprimait la page entière.
+  async function exportPdf() {
+    setPdfPending(true);
+    setPdfError(false);
+    try {
+      await downloadReportPdf({ ...pdf, columns, rows }, filename);
+    } catch {
+      setPdfError(true);
+    } finally {
+      setPdfPending(false);
+    }
+  }
+
   return (
-    <div className="no-print flex gap-2">
+    <div className="no-print flex flex-wrap items-center gap-2">
       <Button type="button" variant="outline" size="sm" onClick={exportCsv}>
         Export CSV
       </Button>
       <Button type="button" variant="outline" size="sm" onClick={exportExcel}>
         Export Excel
       </Button>
-      <Button type="button" variant="outline" size="sm" onClick={() => window.print()}>
-        Export PDF
+      <Button type="button" variant="outline" size="sm" onClick={exportPdf} disabled={pdfPending}>
+        {pdfPending ? "Génération..." : "Export PDF"}
       </Button>
+      {pdfError && (
+        <span role="alert" className="text-xs text-destructive">
+          Impossible de générer le PDF.
+        </span>
+      )}
     </div>
   );
 }

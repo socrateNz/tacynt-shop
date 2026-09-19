@@ -68,12 +68,18 @@ export default async function PersonnelReportPage({
         rows={report.parVendeur}
         columns={[
           { key: "email", label: "Vendeur" },
-          { key: "ca", label: "CA" },
-          { key: "tickets", label: "Tickets" },
-          { key: "remises", label: "Remises accordées" },
-          { key: "annulations", label: "Annulations" },
+          { key: "ca", label: "CA", format: "money" },
+          { key: "tickets", label: "Tickets", format: "number" },
+          { key: "remises", label: "Remises accordées", format: "money" },
+          { key: "annulations", label: "Annulations", format: "number" },
         ]}
         filename="personnel"
+        pdf={{
+          title: "Personnel — Par vendeur",
+          subtitle: `Du ${period.fromInput} au ${period.toInput}`,
+          organizationNom: organization.nom,
+          devise: organization.devise,
+        }}
       />
 
       <div className="rounded-xl border border-border bg-card">

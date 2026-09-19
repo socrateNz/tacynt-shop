@@ -87,10 +87,21 @@ export default async function VentesReportPage({
         rows={report.parJour}
         columns={[
           { key: "date", label: "Date" },
-          { key: "ca", label: "CA" },
-          { key: "tickets", label: "Tickets" },
+          { key: "ca", label: "CA", format: "money" },
+          { key: "tickets", label: "Tickets", format: "number" },
         ]}
         filename="ventes-par-jour"
+        pdf={{
+          title: "Ventes — Par jour",
+          subtitle: `Du ${period.fromInput} au ${period.toInput}`,
+          organizationNom: organization.nom,
+          devise: organization.devise,
+          summary: [
+            { label: "Chiffre d'affaires", value: formatMoney(report.totalCa, organization.devise) },
+            { label: "Tickets", value: String(report.totalTickets) },
+            { label: "Panier moyen", value: formatMoney(report.panierMoyen, organization.devise) },
+          ],
+        }}
       />
 
       <section className="flex flex-col gap-3">

@@ -68,7 +68,18 @@ export function downloadTicketPdf(ticket: TicketData): void {
     ticket.payments.length;
   const heightMm = MARGIN_MM * 2 + rowCount * LINE_HEIGHT_MM + 6;
 
-  const doc = new jsPDF({ unit: "mm", format: [PAGE_WIDTH_MM, heightMm] });
+  // Piège jsPDF : en orientation "portrait" (défaut), si la largeur dépasse la
+  // hauteur, la bibliothèque ÉCHANGE les deux. Un ticket court (moins de 80mm
+  // de haut, soit la plupart des tickets) devenait donc une page de
+  // "hauteur × 80mm" : plus étroite que prévu, avec le texte aligné à droite
+  // (tous les montants) et le nom d'organisation coupés hors de la page. On
+  // déclare l'orientation qui correspond aux dimensions réelles pour que
+  // jsPDF n'ait rien à corriger.
+  const doc = new jsPDF({
+    orientation: PAGE_WIDTH_MM > heightMm ? "landscape" : "portrait",
+    unit: "mm",
+    format: [PAGE_WIDTH_MM, heightMm],
+  });
   const left = MARGIN_MM;
   const right = PAGE_WIDTH_MM - MARGIN_MM;
   const center = PAGE_WIDTH_MM / 2;
