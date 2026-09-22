@@ -38,6 +38,15 @@ export async function createShop(
         data: { organizationId: ctx.organizationId, nom, adresse, telephone },
       });
 
+      // Sans ça, cette boutique n'a aucun poste de caisse et /caisse plante
+      // (register.findFirstOrThrow) dès qu'un utilisateur qui y est affecté
+      // essaie de vendre — bug réel constaté en production. Même poste par
+      // défaut que celui créé à l'inscription
+      // (app/platform/(authenticated)/new/actions.ts).
+      await tx.register.create({
+        data: { organizationId: ctx.organizationId, shopId: shop.id, nom: "Caisse 1", code: "C1" },
+      });
+
       await recordAuditLog(tx, {
         organizationId: ctx.organizationId,
         userId: ctx.userId,
