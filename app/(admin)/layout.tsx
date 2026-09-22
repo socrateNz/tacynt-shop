@@ -213,6 +213,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <ShopSwitcher
               shops={userShops.map((us: { shop: { id: string; nom: string; }; }) => ({ id: us.shop.id, nom: us.shop.nom }))}
               activeShopId={activeShopId}
+              canSwitch={hasCapability(ctx.role, "shops:manage")}
             />
           </div>
           <DropdownMenu>
