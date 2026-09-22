@@ -29,6 +29,10 @@ export function NewOrganizationForm() {
         <Input id="nom" name="nom" required placeholder="Épicerie du Marché" />
       </div>
       <div className="flex flex-col gap-1.5">
+        <Label htmlFor="ownerNom">Nom du propriétaire</Label>
+        <Input id="ownerNom" name="ownerNom" required placeholder="Awa Ndiaye" />
+      </div>
+      <div className="flex flex-col gap-1.5">
         <Label htmlFor="email">Email du propriétaire</Label>
         <Input id="email" name="email" type="email" required placeholder="vous@boutique.com" />
       </div>

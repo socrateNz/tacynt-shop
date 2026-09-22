@@ -72,9 +72,9 @@ export default async function ExpensesPage() {
     ),
   ];
   const users = userIds.length
-    ? await systemPrisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, email: true } })
+    ? await systemPrisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, nom: true } })
     : [];
-  const emailByUserId = new Map(users.map((u) => [u.id, u.email]));
+  const nomByUserId = new Map(users.map((u) => [u.id, u.nom]));
 
   return (
     <div className="flex flex-col gap-8">
@@ -162,12 +162,12 @@ export default async function ExpensesPage() {
                       { label: "Montant", value: formatMoney(e.montant, organization.devise) },
                       { label: "Mode de paiement", value: e.modePaiement },
                       { label: "Statut", value: STATUS_LABELS[e.statut] ?? e.statut },
-                      { label: "Saisie par", value: emailByUserId.get(e.userId) ?? "—" },
-                      ...(e.approvedByUserId && emailByUserId.has(e.approvedByUserId)
+                      { label: "Saisie par", value: nomByUserId.get(e.userId) ?? "—" },
+                      ...(e.approvedByUserId && nomByUserId.has(e.approvedByUserId)
                         ? [
                             {
                               label: e.statut === "REJETEE" ? "Rejetée par" : "Validée par",
-                              value: emailByUserId.get(e.approvedByUserId)!,
+                              value: nomByUserId.get(e.approvedByUserId)!,
                             },
                           ]
                         : []),

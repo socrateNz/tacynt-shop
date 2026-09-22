@@ -123,6 +123,7 @@ export default async function ShopsPage() {
                     shopNom={s.nom}
                     users={users.map((u) => ({
                       id: u.id,
+                      nom: u.nom,
                       email: u.email,
                       role: u.role,
                       assigned: assignedByShop.get(s.id)?.has(u.id) ?? false,

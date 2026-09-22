@@ -99,9 +99,9 @@ export default async function StockMovementsPage() {
 
   const userIds = [...new Set(movements.map((m) => m.userId).filter((id): id is string => !!id))];
   const users = userIds.length
-    ? await systemPrisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, email: true } })
+    ? await systemPrisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, nom: true } })
     : [];
-  const emailByUserId = new Map(users.map((u) => [u.id, u.email]));
+  const nomByUserId = new Map(users.map((u) => [u.id, u.nom]));
 
   return (
     <div className="flex flex-col gap-8">
@@ -259,8 +259,8 @@ export default async function StockMovementsPage() {
                         },
                         ...(m.lot ? [{ label: "Lot", value: m.lot.numero }] : []),
                         ...(m.motif ? [{ label: "Motif", value: m.motif }] : []),
-                        ...(m.userId && emailByUserId.has(m.userId)
-                          ? [{ label: "Utilisateur", value: emailByUserId.get(m.userId)! }]
+                        ...(m.userId && nomByUserId.has(m.userId)
+                          ? [{ label: "Utilisateur", value: nomByUserId.get(m.userId)! }]
                           : []),
                         ...(m.documentType
                           ? [

@@ -28,7 +28,11 @@ export function UserForm() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="nom">Nom</Label>
+          <Input id="nom" name="nom" required placeholder="Awa Ndiaye" />
+        </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email">Email</Label>
           <Input id="email" name="email" type="email" required />

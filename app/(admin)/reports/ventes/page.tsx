@@ -154,7 +154,7 @@ export default async function VentesReportPage({
             <TableBody>
               {report.parVendeur.map((r) => (
                 <TableRow key={r.userId}>
-                  <TableCell className="text-foreground">{r.email}</TableCell>
+                  <TableCell className="text-foreground">{r.nom}</TableCell>
                   <TableCell className="num text-right">{formatMoney(r.ca, organization.devise)}</TableCell>
                   <TableCell className="num text-right">{r.tickets}</TableCell>
                 </TableRow>

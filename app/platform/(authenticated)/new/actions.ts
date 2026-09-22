@@ -26,13 +26,16 @@ export async function createOrganization(
   const ctx = await getPlatformAdminContext();
 
   const nom = String(formData.get("nom") ?? "").trim();
+  const ownerNom = String(formData.get("ownerNom") ?? "").trim();
   const email = String(formData.get("email") ?? "")
     .trim()
     .toLowerCase();
   const password = String(formData.get("password") ?? "");
 
-  if (!nom || !email || password.length < 8) {
-    return { error: "Nom de boutique, email et mot de passe (8 caractères minimum) sont requis." };
+  if (!nom || !ownerNom || !email || password.length < 8) {
+    return {
+      error: "Nom de boutique, nom et email du propriétaire, mot de passe (8 caractères minimum) sont requis.",
+    };
   }
 
   const admin = await platformPrisma.platformAdmin.findUniqueOrThrow({
@@ -64,7 +67,7 @@ export async function createOrganization(
       });
 
       const user = await tx.user.create({
-        data: { organizationId: organization.id, email, hash, role: "PROPRIETAIRE" },
+        data: { organizationId: organization.id, nom: ownerNom, email, hash, role: "PROPRIETAIRE" },
       });
 
       await tx.userShop.create({
@@ -77,7 +80,7 @@ export async function createOrganization(
         action: "PLATFORM_ORG_CREATED",
         entite: "organization",
         entiteId: organization.id,
-        apres: { nom, slug, ownerEmail: email, platformAdminEmail: admin.email },
+        apres: { nom, slug, ownerNom, ownerEmail: email, platformAdminEmail: admin.email },
       });
     });
   } catch {

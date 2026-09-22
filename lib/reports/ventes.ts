@@ -7,7 +7,7 @@ export type VentesReport = {
   totalTickets: number;
   panierMoyen: number;
   parJour: { date: string; ca: number; tickets: number }[];
-  parVendeur: { userId: string; email: string; ca: number; tickets: number }[];
+  parVendeur: { userId: string; nom: string; ca: number; tickets: number }[];
   parCategorie: { categorie: string; ca: number }[];
   parModePaiement: { mode: string; montant: number }[];
 };
@@ -33,7 +33,7 @@ export async function getVentesReport(
 
   const userIds = [...new Set(sales.map((s) => s.userId))];
   const users = userIds.length > 0 ? await tx.user.findMany({ where: { id: { in: userIds } } }) : [];
-  const emailByUserId = new Map(users.map((u) => [u.id, u.email]));
+  const nomByUserId = new Map(users.map((u) => [u.id, u.nom]));
 
   const totalCa = sales.reduce((sum, s) => sum + Number(s.totalTtc), 0);
   const totalTickets = sales.length;
@@ -74,7 +74,7 @@ export async function getVentesReport(
       .map(([date, v]) => ({ date, ...v }))
       .sort((a, b) => a.date.localeCompare(b.date)),
     parVendeur: [...parVendeurMap.entries()]
-      .map(([userId, v]) => ({ userId, email: emailByUserId.get(userId) ?? userId, ...v }))
+      .map(([userId, v]) => ({ userId, nom: nomByUserId.get(userId) ?? userId, ...v }))
       .sort((a, b) => b.ca - a.ca),
     parCategorie: [...parCategorieMap.entries()]
       .map(([categorie, ca]) => ({ categorie, ca }))

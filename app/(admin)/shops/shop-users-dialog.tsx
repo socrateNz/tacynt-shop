@@ -24,6 +24,7 @@ import { assignUserToShop, unassignUserFromShop } from "./shop-users-actions";
 
 export type ShopUserRow = {
   id: string;
+  nom: string;
   email: string;
   role: string;
   assigned: boolean;
@@ -53,6 +54,7 @@ export function ShopUsersDialog({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Nom</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Rôle</TableHead>
                 <TableHead>Affecté</TableHead>
@@ -62,7 +64,8 @@ export function ShopUsersDialog({
             <TableBody>
               {users.map((u) => (
                 <TableRow key={u.id}>
-                  <TableCell className="text-foreground">{u.email}</TableCell>
+                  <TableCell className="text-foreground">{u.nom}</TableCell>
+                  <TableCell className="text-muted-foreground">{u.email}</TableCell>
                   <TableCell className="text-muted-foreground">{u.role}</TableCell>
                   <TableCell>
                     <Badge variant={u.assigned ? "success" : "secondary"}>
@@ -82,7 +85,7 @@ export function ShopUsersDialog({
               ))}
               {users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     Aucun utilisateur dans cette organisation.
                   </TableCell>
                 </TableRow>

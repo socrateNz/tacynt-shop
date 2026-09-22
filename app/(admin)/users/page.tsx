@@ -69,6 +69,7 @@ export default async function UsersPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Nom</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Rôle</TableHead>
               <TableHead>Statut</TableHead>
@@ -77,7 +78,8 @@ export default async function UsersPage() {
           <TableBody>
             {users.map((u) => (
               <TableRow key={u.id}>
-                <TableCell className="text-foreground">{u.email}</TableCell>
+                <TableCell className="text-foreground">{u.nom}</TableCell>
+                <TableCell className="text-muted-foreground">{u.email}</TableCell>
                 <TableCell className="text-muted-foreground">
                   {ROLE_LABELS[u.role] ?? u.role}
                 </TableCell>

@@ -5,7 +5,7 @@ import { shopScope } from "./scope";
 export type PersonnelReport = {
   parVendeur: {
     userId: string;
-    email: string;
+    nom: string;
     ca: number;
     tickets: number;
     remises: number;
@@ -32,7 +32,7 @@ export async function getPersonnelReport(
 
   const userIds = [...new Set([...validSales, ...cancelledSales].map((s) => s.userId))];
   const users = userIds.length > 0 ? await tx.user.findMany({ where: { id: { in: userIds } } }) : [];
-  const emailByUserId = new Map(users.map((u) => [u.id, u.email]));
+  const nomByUserId = new Map(users.map((u) => [u.id, u.nom]));
 
   const map = new Map<string, { ca: number; tickets: number; remises: number; annulations: number }>();
   function entry(userId: string) {
@@ -52,7 +52,7 @@ export async function getPersonnelReport(
 
   return {
     parVendeur: [...map.entries()]
-      .map(([userId, v]) => ({ userId, email: emailByUserId.get(userId) ?? userId, ...v }))
+      .map(([userId, v]) => ({ userId, nom: nomByUserId.get(userId) ?? userId, ...v }))
       .sort((a, b) => b.ca - a.ca),
   };
 }

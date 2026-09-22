@@ -33,15 +33,16 @@ export async function createUser(
   const ctx = await getTenantContext();
   await assertCapability(ctx.role, "users:manage");
 
+  const nom = String(formData.get("nom") ?? "").trim();
   const email = String(formData.get("email") ?? "")
     .trim()
     .toLowerCase();
   const password = String(formData.get("password") ?? "");
   const role = String(formData.get("role") ?? "") as Role;
 
-  if (!email || password.length < 8 || !ASSIGNABLE_ROLES.includes(role)) {
+  if (!nom || !email || password.length < 8 || !ASSIGNABLE_ROLES.includes(role)) {
     return {
-      error: "Email, mot de passe (8 caractères minimum) et rôle valides sont requis.",
+      error: "Nom, email, mot de passe (8 caractères minimum) et rôle valides sont requis.",
     };
   }
 
@@ -56,7 +57,7 @@ export async function createUser(
       await assertWithinQuota(tx, ctx.organizationId, organization.plan, "users");
 
       const user = await tx.user.create({
-        data: { organizationId: ctx.organizationId, email, hash, role },
+        data: { organizationId: ctx.organizationId, nom, email, hash, role },
       });
 
       await tx.userShop.create({
@@ -69,7 +70,7 @@ export async function createUser(
         action: "USER_CREATED",
         entite: "user",
         entiteId: user.id,
-        apres: { email, role },
+        apres: { nom, email, role },
       });
     });
   } catch (error) {

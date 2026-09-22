@@ -72,7 +72,7 @@ export default async function PersonnelReportPage({
       <ExportButtons
         rows={report.parVendeur}
         columns={[
-          { key: "email", label: "Vendeur" },
+          { key: "nom", label: "Vendeur" },
           { key: "ca", label: "CA", format: "money" },
           { key: "tickets", label: "Tickets", format: "number" },
           { key: "remises", label: "Remises accordées", format: "money" },
@@ -101,7 +101,7 @@ export default async function PersonnelReportPage({
           <TableBody>
             {report.parVendeur.map((r) => (
               <TableRow key={r.userId}>
-                <TableCell className="text-foreground">{r.email}</TableCell>
+                <TableCell className="text-foreground">{r.nom}</TableCell>
                 <TableCell className="num text-right">{formatMoney(r.ca, organization.devise)}</TableCell>
                 <TableCell className="num text-right">{r.tickets}</TableCell>
                 <TableCell className="num text-right">

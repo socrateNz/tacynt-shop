@@ -164,7 +164,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         orderBy: { shop: { nom: "asc" } },
       }),
     ),
-    systemPrisma.user.findUnique({ where: { id: ctx.userId }, select: { email: true } }),
+    systemPrisma.user.findUnique({ where: { id: ctx.userId }, select: { nom: true, email: true } }),
     // Même définition de "à traiter" que app/(admin)/online-orders/page.tsx
     // (EN_ATTENTE + CONFIRMEE) — inutile pour un rôle sans ecommerce:manage,
     // qui serait de toute façon redirigé en cliquant le lien.
@@ -219,13 +219,16 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="ghost" className="shrink-0 gap-2 px-1.5" />}>
               <Avatar size="sm">
-                <AvatarFallback>{(user?.email ?? "?").slice(0, 2).toUpperCase()}</AvatarFallback>
+                <AvatarFallback>{(user?.nom ?? user?.email ?? "?").slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
-              <span className="hidden text-sm text-foreground sm:inline">{user?.email}</span>
+              <span className="hidden text-sm text-foreground sm:inline">{user?.nom ?? user?.email}</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-auto min-w-48 max-w-[calc(100vw-2rem)]">
               <DropdownMenuGroup>
-                <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
+                <DropdownMenuLabel>
+                  <span className="block text-foreground">{user?.nom ?? user?.email}</span>
+                  <span className="block text-xs font-normal text-muted-foreground">{user?.email}</span>
+                </DropdownMenuLabel>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <form action="/api/auth/logout" method="POST">
