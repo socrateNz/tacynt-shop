@@ -362,9 +362,15 @@ model UserShop {
   // organization_id dénormalisé ici aussi : règle non négociable du cahier
   // des charges ("organization_id sur toutes les tables métier"), même sur
   // une table de jointure.
-  organizationId String @map("organization_id") @db.Uuid
-  userId         String @map("user_id") @db.Uuid
-  shopId         String @map("shop_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  shopId         String   @map("shop_id") @db.Uuid
+  // Détermine quelle boutique est active PAR DÉFAUT pour cet utilisateur
+  // tant qu'il n'a jamais explicitement changé via le sélecteur d'en-tête
+  // (lib/tenant/active-shop.ts) — trier par shopId (un UUID aléatoire)
+  // rendait ce choix imprévisible à chaque nouvelle affectation, jamais par
+  // date de la première affectation elle-même.
+  createdAt      DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id])
   shop Shop @relation(fields: [shopId], references: [id])

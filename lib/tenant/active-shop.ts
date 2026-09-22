@@ -6,9 +6,19 @@ export const ACTIVE_SHOP_COOKIE_NAME = "ts_active_shop_id";
 
 async function fetchUserShopIds(organizationId: string, userId: string): Promise<string[]> {
   return withTenantContext({ organizationId }, async (tx) => {
+    // Trié par date d'affectation, jamais par shopId : shopId est un UUID
+    // aléatoire sans rapport avec quoi que ce soit, donc trier dessus rend
+    // le "premier" de la liste imprévisible d'une boutique à l'autre à
+    // chaque nouvelle affectation. C'est justement CE tri qui servait de
+    // secours ci-dessous quand aucun cookie n'est encore posé (utilisateur
+    // qui vient tout juste d'être affecté à une seconde boutique, jamais
+    // encore passé par le sélecteur) — bug réel constaté : la boutique par
+    // défaut changeait au hasard selon que le nouvel UUID trie avant ou
+    // après l'ancien, y compris pour des actions déjà en cours (réception de
+    // stock, vente) qui n'avaient pourtant rien demandé de tel.
     const userShops = await tx.userShop.findMany({
       where: { userId },
-      orderBy: { shopId: "asc" },
+      orderBy: { createdAt: "asc" },
     });
     return userShops.map((us) => us.shopId);
   });
@@ -17,8 +27,9 @@ async function fetchUserShopIds(organizationId: string, userId: string): Promise
 // Multi-boutiques (Phase 3, M18) : le cookie sélectionne la boutique active
 // parmi celles auxquelles l'utilisateur est affecté — jamais fait confiance
 // tel quel, revalidé contre user_shops à chaque lecture. Retombe sur la
-// première boutique affectée si le cookie est absent, invalide, ou pointe
-// vers une boutique dont l'utilisateur a depuis été retiré.
+// PREMIÈRE boutique affectée (la plus ancienne, jamais un tri par shopId —
+// voir fetchUserShopIds) si le cookie est absent, invalide, ou pointe vers
+// une boutique dont l'utilisateur a depuis été retiré.
 export async function getActiveShopId(organizationId: string, userId: string): Promise<string> {
   const shopIds = await fetchUserShopIds(organizationId, userId);
 
