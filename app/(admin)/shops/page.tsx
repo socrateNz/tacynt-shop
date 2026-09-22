@@ -23,6 +23,7 @@ import { hasCapability } from "@/lib/permissions";
 import { getTenantContext } from "@/lib/tenant/context";
 
 import { toggleShopActive, toggleShopTaxMode } from "./actions";
+import { DeleteShopDialog } from "./delete-shop-dialog";
 import { ShopForm } from "./shop-form";
 import { ShopUsersDialog } from "./shop-users-dialog";
 
@@ -31,6 +32,7 @@ export default async function ShopsPage() {
   if (!hasCapability(ctx.role, "shops:manage")) {
     redirect("/dashboard");
   }
+  const canDelete = hasCapability(ctx.role, "shops:delete");
 
   const { shops, users, assignedByShop } = await withTenantContext(
     { organizationId: ctx.organizationId },
@@ -115,7 +117,7 @@ export default async function ShopsPage() {
                     </Button>
                   </form>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="flex justify-end gap-1 text-right">
                   <ShopUsersDialog
                     shopId={s.id}
                     shopNom={s.nom}
@@ -126,6 +128,7 @@ export default async function ShopsPage() {
                       assigned: assignedByShop.get(s.id)?.has(u.id) ?? false,
                     }))}
                   />
+                  {canDelete && <DeleteShopDialog shopId={s.id} shopNom={s.nom} />}
                 </TableCell>
               </TableRow>
             ))}

@@ -11,6 +11,7 @@ export type Role =
 
 export type Capability =
   | "shops:manage"
+  | "shops:delete"
   | "transfers:manage"
   | "catalog:read"
   | "catalog:write"
@@ -38,6 +39,7 @@ export type Capability =
 
 const ALL_CAPABILITIES: Capability[] = [
   "shops:manage",
+  "shops:delete",
   "transfers:manage",
   "catalog:read",
   "catalog:write",
@@ -65,10 +67,15 @@ const ALL_CAPABILITIES: Capability[] = [
 ];
 
 const CAPABILITIES_BY_ROLE: Record<Role, Capability[]> = {
-  // Tout, y compris la facturation SaaS et la suppression de l'organisation.
+  // Tout, y compris la facturation SaaS, la suppression d'une boutique et la
+  // suppression de l'organisation.
   PROPRIETAIRE: ALL_CAPABILITIES,
-  // Tout sur ses boutiques affectées, sauf la facturation SaaS.
-  GERANT: ALL_CAPABILITIES.filter((c) => c !== "billing:manage"),
+  // Tout sur ses boutiques affectées, sauf la facturation SaaS et la
+  // suppression d'une boutique — irréversible (ventes, stock, historique
+  // comptable), réservée au seul Propriétaire même si Gérant partage par
+  // ailleurs shops:manage (créer/activer une boutique, affecter du
+  // personnel).
+  GERANT: ALL_CAPABILITIES.filter((c) => c !== "billing:manage" && c !== "shops:delete"),
   // Catalogue, réceptions, inventaires, transferts. Pas d'accès caisse.
   RESPONSABLE_STOCK: [
     "catalog:read",
