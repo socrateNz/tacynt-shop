@@ -160,7 +160,18 @@ export function PosClient({
       setCustomers(custs);
       setCategoryPrices(meta.categoryPrices);
       setTaxeRetenueSource(meta.taxeRetenueSource);
-      setSessionId(meta.sessionId);
+      // sync_meta est un singleton local (un seul enregistrement pour tout
+      // l'appareil, lib/pos/db.ts) : s'il garde la session d'un AUTRE poste
+      // (l'utilisateur a changé de boutique active depuis, un poste par
+      // boutique), l'y rattacher aveuglément ferait passer une vente sur la
+      // caisse encore ouverte de l'ancienne boutique au lieu de proposer
+      // d'ouvrir celle de la boutique courante — bug réel constaté (la
+      // session de la boutique principale restait "ouverte" dans une
+      // boutique nouvellement créée). handleOpenSession() réattribue de
+      // toute façon proprement registerId/sessionId/plage de tickets au
+      // prochain "Ouvrir la caisse" ; l'ancienne session, elle, reste
+      // ouverte côté serveur jusqu'à sa propre fermeture, inchangée.
+      setSessionId(meta.registerId === registerId ? meta.sessionId : null);
       setPendingCount(pending);
       setReady(true);
     })();
@@ -177,7 +188,12 @@ export function PosClient({
       stopLoop();
       clearInterval(refreshPending);
     };
-  }, []);
+    // registerId : valeur stable pour toute la durée de vie de ce montage
+    // (un registre différent implique une nouvelle navigation serveur vers
+    // /caisse, donc un remontage complet) — l'ajouter ne redéclenche jamais
+    // cet effet en pratique, seulement le lint qui l'exigeait pour le
+    // nouveau meta.registerId === registerId ci-dessus.
+  }, [registerId]);
 
   const filteredCustomers = useMemo(() => {
     const q = customerQuery.trim().toLowerCase();
