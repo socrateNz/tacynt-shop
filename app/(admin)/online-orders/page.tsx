@@ -12,6 +12,7 @@ import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
 import { hasCapability } from "@/lib/permissions";
+import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
 
@@ -39,8 +40,10 @@ export default async function OnlineOrdersPage() {
     redirect("/dashboard");
   }
 
+  const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
   const orders = await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
     tx.onlineOrder.findMany({
+      where: { shopId: { in: myShopIds } },
       orderBy: { createdAt: "desc" },
       include: { shop: true, lines: { include: { variant: { include: { product: true } } } } },
       take: 100,

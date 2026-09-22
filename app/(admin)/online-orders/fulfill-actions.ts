@@ -10,6 +10,7 @@ import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions-server";
 import { applySale } from "@/lib/sales/apply-sale";
+import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
 import { parseOrgSettings } from "@/lib/tenant/settings";
@@ -46,6 +47,7 @@ export async function fulfillOrder(
   }
 
   const orgSettings = parseOrgSettings(organization.settings);
+  const assignedShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
 
   try {
     await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
@@ -54,6 +56,9 @@ export async function fulfillOrder(
         include: { lines: true },
       });
 
+      if (!assignedShopIds.includes(order.shopId)) {
+        throw new Error("BOUTIQUE_NON_AFFECTEE");
+      }
       if (order.statut === "RECUPEREE" || order.statut === "ANNULEE") {
         throw new Error("STATUT_INVALIDE");
       }
@@ -86,6 +91,7 @@ export async function fulfillOrder(
         userId: ctx.userId,
         role: ctx.role,
         sessionId: openSession.id,
+        assignedShopIds,
         numero,
         uuidClient: randomUUID(),
         customerId: order.customerId,
@@ -121,6 +127,9 @@ export async function fulfillOrder(
     }
     if (error instanceof Error && error.message === "STATUT_INVALIDE") {
       return { error: "Cette commande ne peut plus être encaissée." };
+    }
+    if (error instanceof Error && error.message === "BOUTIQUE_NON_AFFECTEE") {
+      return { error: "Vous n'êtes pas affecté à la boutique de cette commande." };
     }
     throw error;
   }

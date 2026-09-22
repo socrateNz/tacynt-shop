@@ -23,6 +23,7 @@ import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
 import { hasCapability } from "@/lib/permissions";
+import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 import { approveExpense, rejectExpense } from "./actions";
@@ -51,8 +52,18 @@ export default async function ExpensesPage() {
     where: { id: ctx.organizationId },
   });
 
+  // Jamais toutes les dépenses de l'organisation : seulement celles des
+  // boutiques auxquelles cet utilisateur est affecté, même pour un rôle qui
+  // peut approuver (un Gérant affecté à une seule boutique n'a pas à voir
+  // les dépenses d'une autre).
+  const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
   const expenses = await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
-    tx.expense.findMany({ orderBy: { createdAt: "desc" }, take: 50, include: { shop: true } }),
+    tx.expense.findMany({
+      where: { shopId: { in: myShopIds } },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      include: { shop: true },
+    }),
   );
 
   const userIds = [

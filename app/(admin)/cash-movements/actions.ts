@@ -3,6 +3,7 @@
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions-server";
+import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 export type CashMovementState = { error: string | null };
@@ -37,6 +38,10 @@ export async function recordCashMovement(
   const session = await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
     tx.cashSession.findUniqueOrThrow({ where: { id: cashSessionId } }),
   );
+  const assignedShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
+  if (!assignedShopIds.includes(session.shopId)) {
+    return { error: "Cette session de caisse n'appartient pas à une boutique qui vous est affectée." };
+  }
   if (session.closedAt) {
     return { error: "Cette session de caisse est déjà fermée." };
   }

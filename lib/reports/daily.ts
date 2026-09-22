@@ -25,7 +25,7 @@ function startOfDay(date: Date): Date {
 // (marges/rotation filtrables) sont Phase 2 — ceci reste la vue du jour.
 export async function getDailyReport(
   tx: Prisma.TransactionClient,
-  shopId: string | null,
+  shopId: string | string[] | null,
 ): Promise<DailyReport> {
   const now = new Date();
   const todayStart = startOfDay(now);

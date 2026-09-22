@@ -18,7 +18,7 @@ export type VentesReport = {
 // plutôt qu'un seul pivot multi-dimensionnel, plus simple à lire.
 export async function getVentesReport(
   tx: Prisma.TransactionClient,
-  shopId: string | null,
+  shopId: string | string[] | null,
   from: Date,
   to: Date,
 ): Promise<VentesReport> {

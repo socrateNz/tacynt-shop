@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions-server";
+import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 export type TransferFormState = { error: string | null };
@@ -42,6 +43,16 @@ export async function createTransferRequest(
   if (!fromShopId || !toShopId || fromShopId === toShopId || lines.length === 0) {
     return {
       error: "Boutique émettrice, boutique destinataire (différentes) et au moins une ligne sont requises.",
+    };
+  }
+
+  // Une demande doit toujours toucher au moins une boutique affectée au
+  // demandeur — sinon n'importe qui avec transfers:manage pourrait faire
+  // bouger du stock entre deux boutiques dont il ne s'occupe pas.
+  const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
+  if (!myShopIds.includes(fromShopId) && !myShopIds.includes(toShopId)) {
+    return {
+      error: "La demande doit concerner une boutique qui vous est affectée (émettrice ou destinataire).",
     };
   }
 

@@ -33,6 +33,14 @@ export type ApplySaleParams = {
   // commande en ligne devient une vente au comptoir comme une autre, tenue
   // par une session de caisse réellement ouverte.
   sessionId: string;
+  // Boutiques affectées à l'utilisateur qui encaisse (lib/tenant/active-shop.ts,
+  // getAssignedShopIds) — jamais déduit de sessionId : sessionId vient du
+  // client (synchro POS) ou d'une commande en ligne, ni l'un ni l'autre ne
+  // prouve que CET utilisateur a le droit d'agir sur la boutique de cette
+  // session. Sans cette vérification, un vendeur pouvait synchroniser une
+  // vente sur la session ouverte d'une tout autre boutique — stock déduit,
+  // ardoise créditée, fidélité accumulée là où il n'a jamais travaillé.
+  assignedShopIds: string[];
   numero: string;
   uuidClient: string;
   customerId?: string | null;
@@ -47,6 +55,16 @@ export type ApplySaleResult = {
   sale: { id: string; numero: string };
   stockAlert: boolean;
 };
+
+// Distingué des erreurs Prisma (P2002 duplicata, etc.) : chaque appelant
+// (synchro POS, fulfillment e-commerce) doit pouvoir donner un message
+// clair plutôt qu'une "erreur serveur" générique.
+export class ShopNotAssignedError extends Error {
+  constructor() {
+    super("La session de caisse indiquée n'appartient pas à une boutique qui vous est affectée.");
+    this.name = "ShopNotAssignedError";
+  }
+}
 
 // Cœur transactionnel du calcul/enregistrement d'une vente — extrait de
 // processOneSale (app/api/pos/sync/sales/route.ts, Phase 1-3) en Phase 4
@@ -65,6 +83,7 @@ export async function applySale(
     userId,
     role,
     sessionId,
+    assignedShopIds,
     numero,
     uuidClient,
     customerId,
@@ -77,6 +96,9 @@ export async function applySale(
 
   const session = await tx.cashSession.findUniqueOrThrow({ where: { id: sessionId } });
   const shopId = session.shopId;
+  if (!assignedShopIds.includes(shopId)) {
+    throw new ShopNotAssignedError();
+  }
   const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId } });
 
   // Pré-calcul : coût figé (CUMP courant) et taxe par ligne, AVANT de créer

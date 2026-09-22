@@ -25,7 +25,7 @@ function round2(n: number): number {
 // import générique.
 export async function getAccountingJournal(
   tx: Prisma.TransactionClient,
-  shopId: string | null,
+  shopId: string | string[] | null,
   from: Date,
   to: Date,
   mapping: AccountingMapping,

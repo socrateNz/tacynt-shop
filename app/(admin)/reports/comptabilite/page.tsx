@@ -15,7 +15,7 @@ import { hasCapability } from "@/lib/permissions";
 import { resolveAccountingMapping } from "@/lib/reports/accounting-mapping";
 import { getAccountingJournal } from "@/lib/reports/accounting";
 import { parsePeriod } from "@/lib/reports/period";
-import { getActiveShopId } from "@/lib/tenant/active-shop";
+import { getActiveShopId, getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
 import { parseOrgSettings } from "@/lib/tenant/settings";
@@ -45,18 +45,22 @@ export default async function ComptabiliteReportPage({
 
   const sp = await searchParams;
   const period = parsePeriod(sp);
-  const consolidated = sp.shop === "all";
+  // "Toutes les boutiques" ne consolide plus que les boutiques auxquelles CET
+  // utilisateur est affecté, jamais toutes celles de l'organisation : sans
+  // ça, un Gérant/Comptable affecté à une seule boutique verrait les
+  // chiffres de boutiques dont il n'a jamais eu la charge en tapant
+  // simplement ?shop=all dans l'URL (rien ne validait ce paramètre).
+  const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
   const activeShopId = await getActiveShopId(ctx.organizationId, ctx.userId);
-  const shopId = consolidated ? null : activeShopId;
-
-  const shopCount = await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
-    tx.shop.count({ where: { actif: true } }),
-  );
+  const consolidated = sp.shop === "all" && myShopIds.length > 1;
+  const shopId = consolidated ? myShopIds : activeShopId;
 
   const mapping = resolveAccountingMapping(parseOrgSettings(organization.settings));
 
   const journal = await withTenantContext(
-    shopId ? { organizationId: ctx.organizationId, shopId } : { organizationId: ctx.organizationId },
+    typeof shopId === "string"
+      ? { organizationId: ctx.organizationId, shopId }
+      : { organizationId: ctx.organizationId },
     (tx) => getAccountingJournal(tx, shopId, period.from, period.to, mapping),
   );
 
@@ -73,7 +77,7 @@ export default async function ComptabiliteReportPage({
           </p>
         </div>
         <div className="no-print flex flex-wrap items-center gap-2">
-          {shopCount > 1 && <ShopFilter consolidated={consolidated} />}
+          {myShopIds.length > 1 && <ShopFilter consolidated={consolidated} />}
           <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
         </div>
       </header>

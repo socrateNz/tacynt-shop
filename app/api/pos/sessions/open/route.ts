@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions-server";
+import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 export async function POST(request: Request) {
@@ -20,43 +21,63 @@ export async function POST(request: Request) {
     );
   }
 
-  // Le registre est un poste physique rattaché à UNE boutique précise : la
-  // session hérite de CETTE boutique, jamais de la boutique "active" de
-  // l'utilisateur (qui peut légitimement en gérer plusieurs depuis Phase 3
-  // M18 — utiliser getActiveShopId ici créerait une session mal étiquetée
-  // si le poste ouvert n'est pas celui de la boutique actuellement active).
-  const session = await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
-    const register = await tx.register.findUniqueOrThrow({ where: { id: registerId } });
-    const shopId = register.shopId;
+  const assignedShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
 
-    // Idempotent : rouvrir la même caisse renvoie la session déjà ouverte
-    // plutôt que d'en créer une seconde en double.
-    const existing = await tx.cashSession.findFirst({
-      where: { registerId, closedAt: null },
-    });
-    if (existing) return existing;
+  try {
+    // Le registre est un poste physique rattaché à UNE boutique précise : la
+    // session hérite de CETTE boutique, jamais de la boutique "active" de
+    // l'utilisateur (qui peut légitimement en gérer plusieurs depuis Phase 3
+    // M18 — utiliser getActiveShopId ici créerait une session mal étiquetée
+    // si le poste ouvert n'est pas celui de la boutique actuellement active).
+    const session = await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
+      const register = await tx.register.findUniqueOrThrow({ where: { id: registerId } });
+      const shopId = register.shopId;
 
-    const created = await tx.cashSession.create({
-      data: {
+      // Le client normal ne connaît que le poste de sa propre boutique active
+      // (résolu par /caisse via getActiveShopId, déjà validé) ; ce contrôle est
+      // la défense côté serveur si un registerId d'une autre boutique était
+      // malgré tout envoyé.
+      if (!assignedShopIds.includes(shopId)) {
+        throw new Error("BOUTIQUE_NON_AFFECTEE");
+      }
+
+      // Idempotent : rouvrir la même caisse renvoie la session déjà ouverte
+      // plutôt que d'en créer une seconde en double.
+      const existing = await tx.cashSession.findFirst({
+        where: { registerId, closedAt: null },
+      });
+      if (existing) return existing;
+
+      const created = await tx.cashSession.create({
+        data: {
+          organizationId: ctx.organizationId,
+          shopId,
+          registerId,
+          userId: ctx.userId,
+          fondInitial,
+        },
+      });
+
+      await recordAuditLog(tx, {
         organizationId: ctx.organizationId,
-        shopId,
-        registerId,
         userId: ctx.userId,
-        fondInitial,
-      },
+        action: "CASH_SESSION_OPENED",
+        entite: "cash_session",
+        entiteId: created.id,
+        apres: { fondInitial },
+      });
+
+      return created;
     });
 
-    await recordAuditLog(tx, {
-      organizationId: ctx.organizationId,
-      userId: ctx.userId,
-      action: "CASH_SESSION_OPENED",
-      entite: "cash_session",
-      entiteId: created.id,
-      apres: { fondInitial },
-    });
-
-    return created;
-  });
-
-  return NextResponse.json({ sessionId: session.id, fondInitial: Number(session.fondInitial) });
+    return NextResponse.json({ sessionId: session.id, fondInitial: Number(session.fondInitial) });
+  } catch (error) {
+    if (error instanceof Error && error.message === "BOUTIQUE_NON_AFFECTEE") {
+      return NextResponse.json(
+        { error: "Ce poste de caisse n'appartient pas à une boutique qui vous est affectée." },
+        { status: 403 },
+      );
+    }
+    throw error;
+  }
 }

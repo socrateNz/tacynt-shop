@@ -16,7 +16,7 @@ export type PersonnelReport = {
 // "CA par vendeur, remises accordées, annulations" (section 5.7).
 export async function getPersonnelReport(
   tx: Prisma.TransactionClient,
-  shopId: string | null,
+  shopId: string | string[] | null,
   from: Date,
   to: Date,
 ): Promise<PersonnelReport> {

@@ -6,6 +6,7 @@ import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions-server";
 import { adjustStockQuantity, creditStock } from "@/lib/stock/movements";
+import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 export type ShipTransferState = { error: string | null };
@@ -29,9 +30,14 @@ export async function shipTransfer(
     return { error: "Au moins une ligne avec une quantité expédiée (positive) est requise." };
   }
 
+  const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
+
   await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
     const transfer = await tx.stockTransfer.findUniqueOrThrow({ where: { id: transferId } });
     if (transfer.statut !== "DEMANDE") return;
+    // Expédier fait physiquement sortir du stock de la boutique émettrice :
+    // seul quelqu'un affecté à CETTE boutique peut le faire.
+    if (!myShopIds.includes(transfer.fromShopId)) return;
 
     for (const line of lines) {
       const transferLine = await tx.stockTransferLine.findUniqueOrThrow({ where: { id: line.lineId } });
@@ -98,9 +104,14 @@ export async function receiveTransfer(
     return { error: "Au moins une ligne avec une quantité reçue (positive ou nulle) est requise." };
   }
 
+  const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
+
   await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
     const transfer = await tx.stockTransfer.findUniqueOrThrow({ where: { id: transferId } });
     if (transfer.statut !== "EXPEDIE") return;
+    // Recevoir fait physiquement entrer du stock dans la boutique
+    // destinataire : seul quelqu'un affecté à CETTE boutique peut le faire.
+    if (!myShopIds.includes(transfer.toShopId)) return;
 
     for (const line of lines) {
       if (line.quantiteRecue <= 0) continue;
@@ -169,9 +180,12 @@ export async function cancelTransfer(formData: FormData) {
   const transferId = String(formData.get("transferId") ?? "");
   if (!transferId) return;
 
+  const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
+
   await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
     const transfer = await tx.stockTransfer.findUniqueOrThrow({ where: { id: transferId } });
     if (transfer.statut !== "DEMANDE") return;
+    if (!myShopIds.includes(transfer.fromShopId) && !myShopIds.includes(transfer.toShopId)) return;
 
     await tx.stockTransfer.update({ where: { id: transferId }, data: { statut: "ANNULE" } });
 

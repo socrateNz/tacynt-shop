@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions-server";
+import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 // Rapprochement (section 5.6) : espèces théoriques = fond + ventes espèces
@@ -24,6 +25,8 @@ export async function POST(
     return NextResponse.json({ error: "Comptage final (valide) requis." }, { status: 400 });
   }
 
+  const assignedShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
+
   try {
     // La boutique de la session ferme, jamais celle "active" de l'appelant
     // (même raison que sessions/open et sync/sales, Phase 3 M18/M20).
@@ -31,6 +34,9 @@ export async function POST(
       { organizationId: ctx.organizationId },
       async (tx) => {
         const session = await tx.cashSession.findUniqueOrThrow({ where: { id: sessionId } });
+        if (!assignedShopIds.includes(session.shopId)) {
+          throw new Error("BOUTIQUE_NON_AFFECTEE");
+        }
         if (session.closedAt) {
           throw new Error("ALREADY_CLOSED");
         }
@@ -85,6 +91,12 @@ export async function POST(
   } catch (error) {
     if (error instanceof Error && error.message === "ALREADY_CLOSED") {
       return NextResponse.json({ error: "Cette session est déjà fermée." }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "BOUTIQUE_NON_AFFECTEE") {
+      return NextResponse.json(
+        { error: "Cette session de caisse n'appartient pas à une boutique qui vous est affectée." },
+        { status: 403 },
+      );
     }
     throw error;
   }

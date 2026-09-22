@@ -18,7 +18,7 @@ export type TresorerieReport = {
 // compter tout l'argent physiquement sorti quel que soit son statut.
 export async function getTresorerieReport(
   tx: Prisma.TransactionClient,
-  shopId: string | null,
+  shopId: string | string[] | null,
   from: Date,
   to: Date,
 ): Promise<TresorerieReport> {

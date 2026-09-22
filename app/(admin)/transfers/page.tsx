@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/table";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { hasCapability } from "@/lib/permissions";
+import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 import { TransferDialog } from "./transfer-dialog";
@@ -37,10 +38,17 @@ export default async function TransfersPage() {
     redirect("/dashboard");
   }
 
+  const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
+
   const { transfers, shops, variants } = await withTenantContext(
     { organizationId: ctx.organizationId },
     async (tx) => {
+      // Seulement les transferts qui touchent une boutique affectée à cet
+      // utilisateur (émettrice ou destinataire) — jamais tous ceux de
+      // l'organisation, même si le formulaire ci-dessous doit pouvoir nommer
+      // n'importe quelle boutique comme contrepartie (voir transfer-form.tsx).
       const transfers = await tx.stockTransfer.findMany({
+        where: { OR: [{ fromShopId: { in: myShopIds } }, { toShopId: { in: myShopIds } }] },
         orderBy: { createdAt: "desc" },
         include: {
           fromShop: true,

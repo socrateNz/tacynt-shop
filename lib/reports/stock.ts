@@ -20,7 +20,7 @@ export type StockReport = {
 // sur la période choisie.
 export async function getStockReport(
   tx: Prisma.TransactionClient,
-  shopId: string | null,
+  shopId: string | string[] | null,
   from: Date,
   to: Date,
 ): Promise<StockReport> {

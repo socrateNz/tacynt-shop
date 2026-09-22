@@ -14,7 +14,7 @@ import { formatMoney } from "@/lib/money";
 import { hasCapability } from "@/lib/permissions";
 import { parsePeriod } from "@/lib/reports/period";
 import { getTresorerieReport } from "@/lib/reports/tresorerie";
-import { getActiveShopId } from "@/lib/tenant/active-shop";
+import { getActiveShopId, getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 import { ExportButtons } from "../export-buttons";
@@ -33,19 +33,24 @@ export default async function TresorerieReportPage({
 
   const sp = await searchParams;
   const period = parsePeriod(sp);
-  const consolidated = sp.shop === "all";
+  // "Toutes les boutiques" ne consolide plus que les boutiques auxquelles CET
+  // utilisateur est affecté, jamais toutes celles de l'organisation : sans
+  // ça, un Gérant/Comptable affecté à une seule boutique verrait les
+  // chiffres de boutiques dont il n'a jamais eu la charge en tapant
+  // simplement ?shop=all dans l'URL (rien ne validait ce paramètre).
+  const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
   const activeShopId = await getActiveShopId(ctx.organizationId, ctx.userId);
-  const shopId = consolidated ? null : activeShopId;
+  const consolidated = sp.shop === "all" && myShopIds.length > 1;
+  const shopId = consolidated ? myShopIds : activeShopId;
 
-  const [organization, shopCount] = await Promise.all([
-    systemPrisma.organization.findUniqueOrThrow({ where: { id: ctx.organizationId } }),
-    withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
-      tx.shop.count({ where: { actif: true } }),
-    ),
-  ]);
+  const organization = await systemPrisma.organization.findUniqueOrThrow({
+    where: { id: ctx.organizationId },
+  });
 
   const report = await withTenantContext(
-    shopId ? { organizationId: ctx.organizationId, shopId } : { organizationId: ctx.organizationId },
+    typeof shopId === "string"
+      ? { organizationId: ctx.organizationId, shopId }
+      : { organizationId: ctx.organizationId },
     (tx) => getTresorerieReport(tx, shopId, period.from, period.to),
   );
 
@@ -59,7 +64,7 @@ export default async function TresorerieReportPage({
           </p>
         </div>
         <div className="no-print flex flex-wrap items-center gap-2">
-          {shopCount > 1 && <ShopFilter consolidated={consolidated} />}
+          {myShopIds.length > 1 && <ShopFilter consolidated={consolidated} />}
           <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
         </div>
       </header>

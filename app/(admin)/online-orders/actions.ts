@@ -6,6 +6,7 @@ import { recordAuditLog } from "@/lib/audit";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions-server";
+import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
 
@@ -27,8 +28,11 @@ export async function confirmOrder(formData: FormData) {
   const orderId = String(formData.get("orderId") ?? "");
   if (!orderId) return;
 
+  const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
+
   await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
     const order = await tx.onlineOrder.findUniqueOrThrow({ where: { id: orderId } });
+    if (!myShopIds.includes(order.shopId)) return;
     if (order.statut !== "EN_ATTENTE") return;
 
     await tx.onlineOrder.update({
@@ -57,8 +61,11 @@ export async function cancelOrder(formData: FormData) {
   const orderId = String(formData.get("orderId") ?? "");
   if (!orderId) return;
 
+  const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
+
   await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
     const order = await tx.onlineOrder.findUniqueOrThrow({ where: { id: orderId } });
+    if (!myShopIds.includes(order.shopId)) return;
     if (order.statut === "RECUPEREE" || order.statut === "ANNULEE") return;
 
     await tx.onlineOrder.update({

@@ -4,7 +4,8 @@ import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import type { TenantContext } from "@/lib/tenant/context";
 import { assertCapability } from "@/lib/permissions-server";
-import { applySale } from "@/lib/sales/apply-sale";
+import { applySale, ShopNotAssignedError } from "@/lib/sales/apply-sale";
+import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { parseOrgSettings } from "@/lib/tenant/settings";
 
@@ -55,6 +56,7 @@ function isUniqueViolation(error: unknown): boolean {
 // e-commerce.
 async function processOneSale(
   ctx: TenantContext,
+  assignedShopIds: string[],
   discountCeiling: number,
   loyaltyPointsPerAmount: number,
   input: SaleInput,
@@ -66,6 +68,7 @@ async function processOneSale(
         userId: ctx.userId,
         role: ctx.role,
         sessionId: input.sessionId,
+        assignedShopIds,
         numero: input.numero,
         uuidClient: input.uuid,
         customerId: input.customerId,
@@ -81,6 +84,9 @@ async function processOneSale(
   } catch (error) {
     if (isUniqueViolation(error)) {
       return { uuid: input.uuid, status: "duplicate" };
+    }
+    if (error instanceof ShopNotAssignedError) {
+      return { uuid: input.uuid, status: "error", message: error.message };
     }
     console.error("Échec de synchronisation de la vente", input.uuid, error);
     return { uuid: input.uuid, status: "error", message: "Erreur serveur." };
@@ -104,12 +110,15 @@ export async function POST(request: Request) {
   const orgSettings = parseOrgSettings(organization.settings);
   const discountCeiling = orgSettings.vendeurDiscountCeiling ?? 0;
   const loyaltyPointsPerAmount = orgSettings.loyaltyPointsPerAmount ?? 0;
+  const assignedShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
 
   const results: SaleResult[] = [];
   // Séquentiel plutôt qu'en parallèle : à l'échelle d'un lot de caisse
   // (quelques ventes), la prévisibilité prime sur la vitesse.
   for (const sale of sales) {
-    results.push(await processOneSale(ctx, discountCeiling, loyaltyPointsPerAmount, sale));
+    results.push(
+      await processOneSale(ctx, assignedShopIds, discountCeiling, loyaltyPointsPerAmount, sale),
+    );
   }
 
   return NextResponse.json({ results });

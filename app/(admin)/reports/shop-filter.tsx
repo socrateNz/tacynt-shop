@@ -4,10 +4,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
-// Bascule simple boutique active / toute l'organisation (Phase 3, M20) — la
-// policy RLS existante gère déjà le cas consolidé (app.shop_id non
-// positionné = toutes les boutiques de l'organisation), aucun changement
-// de schéma nécessaire, seulement ce paramètre côté page.
+// Bascule boutique active / mes boutiques (Phase 3, M20 ; corrigé pour ne
+// jamais dépasser les boutiques affectées à l'utilisateur — voir
+// lib/tenant/active-shop.ts, getAssignedShopIds). Le composant ne sait pas
+// combien de boutiques ça représente, seule la page appelante le sait
+// (myShopIds.length) et décide de l'afficher ou non.
 export function ShopFilter({ consolidated }: { consolidated: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -39,7 +40,7 @@ export function ShopFilter({ consolidated }: { consolidated: boolean }) {
         variant={consolidated ? "outline" : "ghost"}
         onClick={() => setConsolidated(true)}
       >
-        Toute l&apos;organisation
+        Mes boutiques
       </Button>
     </div>
   );

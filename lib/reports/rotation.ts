@@ -14,7 +14,7 @@ export type RotationReport = {
 // alors qu'il reste du stock — surstock qui immobilise du capital.
 export async function getRotationReport(
   tx: Prisma.TransactionClient,
-  shopId: string | null,
+  shopId: string | string[] | null,
   from: Date,
   to: Date,
 ): Promise<RotationReport> {

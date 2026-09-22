@@ -13,7 +13,7 @@ export type MargesReport = {
 // historique ne bouge pas quand le prix d'achat évolue.
 export async function getMargesReport(
   tx: Prisma.TransactionClient,
-  shopId: string | null,
+  shopId: string | string[] | null,
   from: Date,
   to: Date,
 ): Promise<MargesReport> {
