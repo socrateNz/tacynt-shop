@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -45,7 +46,11 @@ export default async function OnlineOrdersPage() {
     tx.onlineOrder.findMany({
       where: { shopId: { in: myShopIds } },
       orderBy: { createdAt: "desc" },
-      include: { shop: true, lines: { include: { variant: { include: { product: true } } } } },
+      include: {
+        shop: true,
+        lines: { include: { variant: { include: { product: true } } } },
+        payments: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
       take: 100,
     }),
   );
@@ -90,7 +95,18 @@ export default async function OnlineOrdersPage() {
                 <TableCell className="text-muted-foreground">{o.nomClient}</TableCell>
                 <TableCell className="text-muted-foreground">{o.shop.nom}</TableCell>
                 <TableCell className="text-muted-foreground">
-                  {STATUS_LABELS[o.statut] ?? o.statut}
+                  <div className="flex flex-col gap-1">
+                    <span>{STATUS_LABELS[o.statut] ?? o.statut}</span>
+                    {o.payments[0]?.statut === "REUSSI" && o.statut === "ANNULEE" ? (
+                      <Badge variant="destructive">
+                        Payée en ligne mais annulée — réconciliation manuelle requise
+                      </Badge>
+                    ) : o.payments[0]?.statut === "REUSSI" ? (
+                      <Badge variant="success">Payée en ligne</Badge>
+                    ) : o.payments[0]?.statut === "ECHEC" || o.payments[0]?.statut === "EXPIRE" ? (
+                      <Badge variant="secondary">Paiement échoué</Badge>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell className="num text-right">
                   {formatMoney(o.totalTtc, organization.devise)}

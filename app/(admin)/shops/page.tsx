@@ -18,11 +18,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { hasCapability } from "@/lib/permissions";
 import { getTenantContext } from "@/lib/tenant/context";
+import { organizationHasModule } from "@/lib/tenant/modules";
 
-import { toggleShopActive, toggleShopTaxMode } from "./actions";
+import { toggleShopActive, toggleShopOnlinePayment, toggleShopTaxMode } from "./actions";
 import { DeleteShopDialog } from "./delete-shop-dialog";
 import { ShopForm } from "./shop-form";
 import { ShopUsersDialog } from "./shop-users-dialog";
@@ -33,6 +35,12 @@ export default async function ShopsPage() {
     redirect("/dashboard");
   }
   const canDelete = hasCapability(ctx.role, "shops:delete");
+
+  const organization = await systemPrisma.organization.findUniqueOrThrow({
+    where: { id: ctx.organizationId },
+  });
+  const ecommerceActif = organizationHasModule(organization.enabledModules, "ecommerce");
+  const deviseCompatibleCodees = organization.devise === "XAF";
 
   const { shops, users, assignedByShop } = await withTenantContext(
     { organizationId: ctx.organizationId },
@@ -83,6 +91,7 @@ export default async function ShopsPage() {
               <TableHead>Téléphone</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead>Taxe</TableHead>
+              {ecommerceActif && <TableHead>Paiement en ligne</TableHead>}
               <TableHead />
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
@@ -109,6 +118,23 @@ export default async function ShopsPage() {
                     </Button>
                   </form>
                 </TableCell>
+                {ecommerceActif && (
+                  <TableCell>
+                    {!s.paiementEnLigneActif && !deviseCompatibleCodees ? (
+                      <Badge variant="secondary">Devise non compatible (XAF requis)</Badge>
+                    ) : (
+                      <form action={toggleShopOnlinePayment} className="flex items-center gap-2">
+                        <input type="hidden" name="shopId" value={s.id} />
+                        <Badge variant={s.paiementEnLigneActif ? "success" : "secondary"}>
+                          {s.paiementEnLigneActif ? "Actif" : "Inactif"}
+                        </Badge>
+                        <Button type="submit" variant="ghost" size="sm">
+                          Changer
+                        </Button>
+                      </form>
+                    )}
+                  </TableCell>
+                )}
                 <TableCell className="flex justify-end gap-2">
                   <form action={toggleShopActive}>
                     <input type="hidden" name="shopId" value={s.id} />
@@ -135,7 +161,7 @@ export default async function ShopsPage() {
             ))}
             {shops.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={ecommerceActif ? 8 : 7} className="text-center text-muted-foreground">
                   Aucune boutique pour l&apos;instant.
                 </TableCell>
               </TableRow>

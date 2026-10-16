@@ -19,8 +19,11 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
-// Public (aucune session) : commande à distance, paiement à la réception
-// (décision verrouillée Phase 4) — ne décrémente JAMAIS le stock ici
+// Public (aucune session) : commande à distance. Paiement à la réception
+// par défaut (décision verrouillée Phase 4) ; si la boutique a activé le
+// module Codees (Shop.paiementEnLigneActif), un email client est requis ici
+// et le paiement est démarré séparément par
+// app/api/storefront/payments/initiate. Ne décrémente JAMAIS le stock ici
 // (décision #15). Le prix n'est jamais celui envoyé par le client (décision
 // #19) : toujours relu depuis ShopPrice au moment de la commande.
 export async function POST(request: Request) {
@@ -34,6 +37,7 @@ export async function POST(request: Request) {
     shopId?: string;
     nomClient?: string;
     telephoneClient?: string;
+    emailClient?: string;
     modeRetrait?: string;
     adresseLivraison?: string;
     notes?: string;
@@ -47,6 +51,7 @@ export async function POST(request: Request) {
   const shopId = await resolveStorefrontShopId(organization.id, body.shopId ?? null);
   const nomClient = String(body.nomClient ?? "").trim();
   const telephoneClient = String(body.telephoneClient ?? "").trim();
+  const emailClient = String(body.emailClient ?? "").trim() || null;
   const modeRetrait = body.modeRetrait as OnlineOrderFulfillmentMode;
   const adresseLivraison = String(body.adresseLivraison ?? "").trim() || null;
   const notes = String(body.notes ?? "").trim() || null;
@@ -72,6 +77,10 @@ export async function POST(request: Request) {
   try {
     const order = await withTenantContext({ organizationId: organization.id, shopId }, async (tx) => {
       const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId } });
+
+      if (shop.paiementEnLigneActif && !emailClient) {
+        throw new Error("EMAIL_REQUIS");
+      }
 
       let totalHt = 0;
       let totalTaxe = 0;
@@ -152,6 +161,7 @@ export async function POST(request: Request) {
               customerId: customer.id,
               nomClient,
               telephoneClient,
+              emailClient,
               modeRetrait,
               adresseLivraison,
               notes,
@@ -194,6 +204,12 @@ export async function POST(request: Request) {
     }
     if (error instanceof Error && error.message.startsWith("STOCK_INSUFFISANT:")) {
       return NextResponse.json({ error: "Un article de la commande est en rupture de stock." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "EMAIL_REQUIS") {
+      return NextResponse.json(
+        { error: "Une adresse email est requise pour le paiement en ligne." },
+        { status: 400 },
+      );
     }
     throw error;
   }

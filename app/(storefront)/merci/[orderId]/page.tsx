@@ -5,6 +5,8 @@ import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
 import { getStorefrontOrganization } from "@/lib/storefront/context";
 
+import { PaymentStatus } from "./payment-status";
+
 const STATUS_LABELS: Record<string, string> = {
   EN_ATTENTE: "En attente de confirmation",
   CONFIRMEE: "Confirmée",
@@ -29,12 +31,17 @@ export default async function MerciPage({
   // organisation ne matche simplement aucune ligne (isolation héritée de la
   // RLS, même principe que expenses/[expenseId]/attachment).
   const order = await withTenantContext({ organizationId: organization.id }, (tx) =>
-    tx.onlineOrder.findUnique({ where: { id: orderId } }),
+    tx.onlineOrder.findUnique({
+      where: { id: orderId },
+      include: { shop: true, payments: { orderBy: { createdAt: "desc" }, take: 1 } },
+    }),
   );
 
   if (!order) {
     notFound();
   }
+
+  const latestPayment = order.payments[0] ?? null;
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -49,10 +56,20 @@ export default async function MerciPage({
         <p className="num text-lg font-semibold text-foreground">
           Total : {formatMoney(order.totalTtc, organization.devise)}
         </p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Paiement à la réception, comme convenu — vous serez contacté(e) au{" "}
-          {order.telephoneClient} pour la suite.
-        </p>
+        {order.shop.paiementEnLigneActif ? (
+          <div className="mt-2">
+            <PaymentStatus
+              orderId={order.id}
+              orderConfirmee={order.statut === "CONFIRMEE"}
+              statutInitial={latestPayment?.statut ?? null}
+            />
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Paiement à la réception, comme convenu — vous serez contacté(e) au{" "}
+            {order.telephoneClient} pour la suite.
+          </p>
+        )}
       </div>
 
       <Link href="/" className="text-sm text-primary underline-offset-4 hover:underline">

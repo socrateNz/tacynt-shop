@@ -37,6 +37,16 @@ services:
       # {organisation}.shop.tacynt.com.
       APP_ROOT_DOMAIN: shop.tacynt.com
       NODE_ENV: production
+      # Paiement Mobile Money Codees — un seul compte marchand pour toute la
+      # plateforme (lib/payments/codees.ts).
+      CODEES_API_KEY: ${CODEES_API_KEY}
+      CODEES_SECRET_KEY: ${CODEES_SECRET_KEY}
+      # Envoi de l'email de confirmation de paiement (lib/email/).
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM}
       # Canal vers deploy/domain-watcher/ (hôte, hors conteneur) : chaque
       # inscription y dépose la liste à jour des boutiques pour étendre le
       # certificat Certbot au nouveau sous-domaine (lib/tenant/request-cert-refresh.ts).

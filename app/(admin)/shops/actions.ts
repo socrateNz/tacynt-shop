@@ -10,6 +10,7 @@ import { assertCapability } from "@/lib/permissions-server";
 import { assertWithinQuota, QuotaExceededError } from "@/lib/quotas";
 import { ACTIVE_SHOP_COOKIE_NAME } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
+import { organizationHasModule } from "@/lib/tenant/modules";
 
 export type ShopFormState = { error: string | null };
 
@@ -113,6 +114,50 @@ export async function toggleShopTaxMode(formData: FormData) {
       entiteId: shopId,
       avant: { taxeRetenueSource: shop.taxeRetenueSource },
       apres: { taxeRetenueSource: !shop.taxeRetenueSource },
+    });
+  });
+
+  revalidatePath("/shops");
+}
+
+// Codees facture toujours en XAF (franc CFA d'Afrique Centrale) — distinct
+// de Organization.devise, dont le défaut est XOF (Afrique de l'Ouest).
+// Activer le paiement en ligne pour une organisation en devise différente
+// facturerait réellement en XAF tout en affichant/enregistrant les totaux
+// dans une autre devise : no-op silencieux, même convention que
+// toggleShopActive/toggleShopTaxMode ci-dessus pour un état invalide
+// (shops/page.tsx empêche déjà ce cas côté UI, ceci est une défense
+// supplémentaire contre un appel direct de l'action).
+export async function toggleShopOnlinePayment(formData: FormData) {
+  const ctx = await getTenantContext();
+  await assertCapability(ctx.role, "shops:manage");
+
+  const shopId = String(formData.get("shopId") ?? "");
+  if (!shopId) return;
+
+  const organization = await systemPrisma.organization.findUniqueOrThrow({
+    where: { id: ctx.organizationId },
+  });
+  if (!organizationHasModule(organization.enabledModules, "ecommerce")) return;
+
+  await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
+    const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId } });
+    const next = !shop.paiementEnLigneActif;
+    if (next && organization.devise !== "XAF") return;
+
+    await tx.shop.update({
+      where: { id: shopId },
+      data: { paiementEnLigneActif: next },
+    });
+
+    await recordAuditLog(tx, {
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+      action: "SHOP_ONLINE_PAYMENT_CHANGED",
+      entite: "shop",
+      entiteId: shopId,
+      avant: { paiementEnLigneActif: shop.paiementEnLigneActif },
+      apres: { paiementEnLigneActif: next },
     });
   });
 

@@ -204,6 +204,7 @@ model Organization {
   branding         OrganizationBranding?
   onlineOrders     OnlineOrder[]
   productImages    ProductImage[]
+  onlineOrderPayments OnlineOrderPayment[]
 
   @@map("organizations")
 }
@@ -309,6 +310,13 @@ model Shop {
   // prix saisi ; le HT/la taxe affichés se retrouvent par soustraction mais
   // le total TTC reste le prix saisi, inchangé (lib/sales/tax.ts).
   taxeRetenueSource Boolean @default(true) @map("taxe_retenue_source")
+  // Module paiement en ligne (Codees, Mobile Money) : décidé boutique par
+  // boutique, jamais au niveau organisation — une organisation peut avoir
+  // une boutique physique (espèces) et une boutique en ligne payée d'avance.
+  // Un seul compte marchand Codees pour toute la plateforme (décision
+  // verrouillée) : ce booléen ne change QUE si la vitrine de cette boutique
+  // exige un paiement en ligne avant confirmation, jamais où va l'argent.
+  paiementEnLigneActif Boolean @default(false) @map("paiement_en_ligne_actif")
 
   organization   Organization    @relation(fields: [organizationId], references: [id])
   userShops      UserShop[]
@@ -330,6 +338,7 @@ model Shop {
   lots              Lot[]
   serialNumbers     SerialNumber[]
   onlineOrders      OnlineOrder[]
+  onlineOrderPayments OnlineOrderPayment[]
 
   @@index([organizationId])
   @@map("shops")
@@ -733,6 +742,10 @@ model OnlineOrder {
   // sale_lines qui fige son propre coût.
   nomClient        String                     @map("nom_client")
   telephoneClient  String                     @map("telephone_client")
+  // Requis uniquement quand la boutique exige le paiement en ligne (Codees) —
+  // l'API de création de session de paiement l'exige elle-même
+  // (customer_email). Jamais demandé pour une commande payée à la réception.
+  emailClient      String?                    @map("email_client")
   modeRetrait      OnlineOrderFulfillmentMode @default(RETRAIT_BOUTIQUE) @map("mode_retrait")
   adresseLivraison String?                    @map("adresse_livraison")
   notes            String?
@@ -753,6 +766,7 @@ model OnlineOrder {
   customer     Customer?         @relation(fields: [customerId], references: [id])
   sale         Sale?             @relation(fields: [saleId], references: [id])
   lines        OnlineOrderLine[]
+  payments     OnlineOrderPayment[]
 
   @@unique([shopId, numero])
   @@index([organizationId])
@@ -778,6 +792,80 @@ model OnlineOrderLine {
   @@index([organizationId])
   @@index([onlineOrderId])
   @@map("online_order_lines")
+}
+
+enum OnlineOrderPaymentStatus {
+  INITIE
+  EN_ATTENTE
+  REUSSI
+  ECHEC
+  EXPIRE
+
+  @@map("online_order_payment_status")
+}
+
+enum OnlineOrderPaymentEventSource {
+  INITIATION
+  WEBHOOK
+  STATUT_POLL
+  EXPIRATION_FILET
+
+  @@map("online_order_payment_event_source")
+}
+
+// Tentative de paiement Mobile Money (Codees) pour une commande en ligne —
+// jamais confondu avec Payment (paiements d'une Sale encaissée en boutique).
+// Une commande peut avoir plusieurs tentatives (retry après échec/expiration,
+// décision #3 de l'intégration) : chaque appel à /initiate crée une nouvelle
+// ligne, jamais de réutilisation d'un checkout_url déjà visité.
+model OnlineOrderPayment {
+  id               String                   @id @default(uuid()) @db.Uuid
+  organizationId   String                   @map("organization_id") @db.Uuid
+  shopId           String                   @map("shop_id") @db.Uuid
+  onlineOrderId    String                   @map("online_order_id") @db.Uuid
+  statut           OnlineOrderPaymentStatus @default(INITIE)
+  montant          Decimal                  @db.Decimal(14, 2)
+  devise           String                   @default("XAF")
+  // checkout_id Codees — unique car un même checkout Codees ne doit jamais
+  // correspondre à deux lignes de ce côté.
+  referenceExterne String?                  @unique @map("reference_externe")
+  idempotencyKey   String                   @unique @default(uuid()) @map("idempotency_key") @db.Uuid
+  erreurBrute      String?                  @map("erreur_brute")
+  expiresAt        DateTime                 @map("expires_at")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+
+  organization Organization              @relation(fields: [organizationId], references: [id])
+  shop         Shop                      @relation(fields: [shopId], references: [id])
+  onlineOrder  OnlineOrder               @relation(fields: [onlineOrderId], references: [id])
+  events       OnlineOrderPaymentEvent[]
+
+  @@index([organizationId])
+  @@index([onlineOrderId])
+  @@map("online_order_payments")
+}
+
+// Journal append-only de chaque interaction Codees pour une tentative de
+// paiement (initiation, callback webhook, poll de statut) — même principe
+// que StockMovement/AuditLog : un journal qui grandit est toujours une table
+// fille, jamais un tableau sur une ligne mutable. payloadBrut conserve la
+// réponse/le corps bruts : le format du webhook Codees n'est pas documenté,
+// ces lignes sont ce qui permettra de resserrer l'extraction plus tard une
+// fois un vrai payload observé.
+model OnlineOrderPaymentEvent {
+  id                   String                        @id @default(uuid()) @db.Uuid
+  organizationId       String                        @map("organization_id") @db.Uuid
+  shopId               String                        @map("shop_id") @db.Uuid
+  onlineOrderPaymentId String                        @map("online_order_payment_id") @db.Uuid
+  source               OnlineOrderPaymentEventSource
+  statutBrut           String?                       @map("statut_brut")
+  payloadBrut          Json?                         @map("payload_brut")
+  createdAt            DateTime                      @default(now()) @map("created_at")
+
+  onlineOrderPayment OnlineOrderPayment @relation(fields: [onlineOrderPaymentId], references: [id])
+
+  @@index([organizationId])
+  @@index([onlineOrderPaymentId])
+  @@map("online_order_payment_events")
 }
 
 // Cas "stock négatif après resynchronisation" (cahier des charges 7.3) :
