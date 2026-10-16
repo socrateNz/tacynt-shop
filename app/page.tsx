@@ -189,66 +189,33 @@ async function MarketingHome() {
           aria-hidden
           className="pointer-events-none absolute -bottom-40 -left-40 size-112 rounded-full bg-primary/10 blur-3xl"
         />
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 lg:grid-cols-2">
-          <ScrollReveal className="flex flex-col items-start gap-6">
-            <Badge variant="outline" className="rounded-full border-primary/30 px-3 py-1 text-primary">
-              Hors ligne d&apos;abord · Multi-boutique
-            </Badge>
-            <h1 className="text-4xl leading-[1.08] font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              La caisse qui ne <span className="text-primary">s&apos;arrête jamais</span>.
-            </h1>
-            <p className="max-w-md text-base text-muted-foreground sm:text-lg">
-              Caisse, stock, clients, e-commerce et rapports pour les commerces qui ne peuvent pas
-              se permettre une connexion instable.
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <ContactButton className="h-11 px-5 text-sm" />
-              <Button
-                render={<Link href="#fonctionnalites" />}
-                nativeButton={false}
-                variant="outline"
-                className="h-11 gap-2 rounded-full px-5 text-sm"
-              >
-                Voir les fonctionnalités
-                <ChevronDown className="size-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-subtle-foreground">
-              Mise en place accompagnée par notre équipe — aucune carte bancaire requise.
-            </p>
-          </ScrollReveal>
-
-          <ScrollReveal delayMs={150} className="relative hidden lg:block">
-            <div className="relative mx-auto aspect-square max-w-sm">
-              <div className="absolute inset-8 rounded-[2rem] bg-primary/10" />
-              <div className="absolute inset-0 flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-lg">
-                <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <ShoppingCart className="size-5" />
-                </span>
-                <div className="flex flex-col gap-1.5 text-xs text-muted-foreground">
-                  <div className="flex items-center justify-between">
-                    <span>3 × Boisson 33cl</span>
-                    <span className="num">2 400</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Sac de riz 25kg</span>
-                    <span className="num">10 000</span>
-                  </div>
-                </div>
-                <div className="border-t border-dashed border-border pt-3">
-                  <p className="num text-2xl font-semibold text-foreground">12 400 XOF</p>
-                </div>
-                <div className="mt-auto flex items-center gap-2 text-xs text-success">
-                  <Check className="size-3.5" /> Synchronisé
-                </div>
-              </div>
-              <div className="absolute -bottom-5 -left-8 flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-xs font-medium text-foreground shadow-lg">
-                <WifiOff className="size-3.5 text-primary" />
-                Hors ligne · synchro auto
-              </div>
-            </div>
-          </ScrollReveal>
-        </div>
+        <ScrollReveal className="relative mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
+          <Badge variant="outline" className="rounded-full border-primary/30 px-3 py-1 text-primary">
+            Hors ligne d&apos;abord · Multi-boutique
+          </Badge>
+          <h1 className="text-4xl leading-[1.08] font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+            La caisse qui ne <span className="text-primary">s&apos;arrête jamais</span>.
+          </h1>
+          <p className="max-w-xl text-base text-muted-foreground sm:text-lg">
+            Caisse, stock, clients, e-commerce et rapports pour les commerces qui ne peuvent pas se
+            permettre une connexion instable.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <ContactButton className="h-11 px-5 text-sm" />
+            <Button
+              render={<Link href="#fonctionnalites" />}
+              nativeButton={false}
+              variant="outline"
+              className="h-11 gap-2 rounded-full px-5 text-sm"
+            >
+              Voir les fonctionnalités
+              <ChevronDown className="size-4" />
+            </Button>
+          </div>
+          <p className="text-xs text-subtle-foreground">
+            Mise en place accompagnée par notre équipe — aucune carte bancaire requise.
+          </p>
+        </ScrollReveal>
       </section>
 
       {/* Pourquoi Tacynt Shop */}
