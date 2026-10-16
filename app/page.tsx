@@ -76,6 +76,7 @@ const FEATURES: Feature[] = [
     icon: BarChart3,
     title: "Rapports",
     description: "Chiffre d'affaires, marges, trésorerie, en temps réel.",
+    featured: true,
   },
 ];
 
@@ -147,32 +148,34 @@ async function MarketingHome() {
   return (
     <div className="flex flex-1 flex-col overflow-x-clip bg-background">
       {/* En-tête */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/80 px-6 py-3 backdrop-blur-md lg:px-16">
-        <Link href="#accueil" className="flex items-center gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element -- logo statique du produit, pas un asset d'organisation */}
-          <img src="/logo.png" alt="" className="size-8 rounded-md" />
-          <span className="font-semibold text-foreground">Tacynt Shop</span>
-        </Link>
-        <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
-          <Link href="#accueil" className="transition-colors hover:text-foreground">
-            Accueil
+      <header className="sticky top-0 z-30 border-b border-border bg-card/80 px-6 py-3 backdrop-blur-md lg:px-16">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
+          <Link href="#accueil" className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element -- logo statique du produit, pas un asset d'organisation */}
+            <img src="/logo.png" alt="" className="size-8 rounded-md" />
+            <span className="font-semibold text-foreground">Tacynt Shop</span>
           </Link>
-          <Link href="#fonctionnalites" className="transition-colors hover:text-foreground">
-            Fonctionnalités
-          </Link>
-          <Link href="#pourquoi" className="transition-colors hover:text-foreground">
-            Pourquoi nous
-          </Link>
-          <Link href="#faq" className="transition-colors hover:text-foreground">
-            FAQ
-          </Link>
-          <Link href="#contact" className="transition-colors hover:text-foreground">
-            Contact
-          </Link>
-        </nav>
-        <div className="flex items-center gap-2">
-          <ContactButton className="hidden sm:inline-flex" />
-          <MarketingMobileNav />
+          <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
+            <Link href="#accueil" className="transition-colors hover:text-foreground">
+              Accueil
+            </Link>
+            <Link href="#fonctionnalites" className="transition-colors hover:text-foreground">
+              Fonctionnalités
+            </Link>
+            <Link href="#pourquoi" className="transition-colors hover:text-foreground">
+              Pourquoi nous
+            </Link>
+            <Link href="#faq" className="transition-colors hover:text-foreground">
+              FAQ
+            </Link>
+            <Link href="#contact" className="transition-colors hover:text-foreground">
+              Contact
+            </Link>
+          </nav>
+          <div className="flex items-center gap-2">
+            <ContactButton className="hidden sm:inline-flex" />
+            <MarketingMobileNav />
+          </div>
         </div>
       </header>
 
@@ -222,7 +225,6 @@ async function MarketingHome() {
                 <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
                   <ShoppingCart className="size-5" />
                 </span>
-                <p className="text-sm font-medium text-foreground">Vente encaissée</p>
                 <div className="flex flex-col gap-1.5 text-xs text-muted-foreground">
                   <div className="flex items-center justify-between">
                     <span>3 × Boisson 33cl</span>
