@@ -12,6 +12,7 @@ import {
   FileUp,
   Home,
   LayoutDashboard,
+  LogOut,
   Mail,
   Menu,
   Package,
@@ -160,7 +161,34 @@ type SidebarProps = {
   brand?: string;
   topLinks?: NavLink[];
   groups?: NavGroup[];
+  // URL d'action du formulaire de déconnexion — distincte entre l'admin
+  // tenant (/api/auth/logout) et l'admin plateforme (/api/platform/auth/logout),
+  // jamais codée en dur ici. Optionnel : une sidebar sans contexte de session
+  // (aucun cas actuel) n'a simplement pas ce bouton.
+  logoutAction?: string;
 };
+
+// Visible en permanence en bas de la sidebar — avant ça, la déconnexion
+// n'existait que dans le menu déroulant de l'avatar en en-tête, pas assez
+// visible (signalé par un utilisateur réel qui ne l'a pas trouvée).
+function SidebarFooter({ logoutAction }: { logoutAction?: string }) {
+  if (!logoutAction) return null;
+  return (
+    <form
+      action={logoutAction}
+      method="POST"
+      className="shrink-0 border-t border-sidebar-border px-3 py-3"
+    >
+      <button
+        type="submit"
+        className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      >
+        <LogOut className="size-4 shrink-0" />
+        Se déconnecter
+      </button>
+    </form>
+  );
+}
 
 // Coquille de sidebar partagée entre l'admin tenant (app/(admin)/layout.tsx)
 // et l'admin plateforme (app/platform/(authenticated)/layout.tsx) — même
@@ -171,13 +199,19 @@ type SidebarProps = {
 // Fixe uniquement à partir de lg (1024px) : en dessous, 240px de sidebar
 // permanente ne laisseraient presque rien au contenu — c'est MobileNav (dans
 // l'en-tête) qui prend le relais.
-export function SidebarNav({ brand = "Tacynt Shop", topLinks = [], groups = [] }: SidebarProps) {
+export function SidebarNav({
+  brand = "Tacynt Shop",
+  topLinks = [],
+  groups = [],
+  logoutAction,
+}: SidebarProps) {
   return (
     <aside className="no-print hidden min-h-0 w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
       <div className="flex shrink-0 items-center gap-2 px-5 py-4">
         <Brand brand={brand} />
       </div>
       <NavList topLinks={topLinks} groups={groups} />
+      <SidebarFooter logoutAction={logoutAction} />
     </aside>
   );
 }
@@ -186,7 +220,12 @@ export function SidebarNav({ brand = "Tacynt Shop", topLinks = [], groups = [] }
 // au clic sur un lien (onNavigate) plutôt qu'en réagissant à pathname : un
 // clic sur le lien de la page courante ne change pas l'URL mais doit quand
 // même refermer le menu.
-export function MobileNav({ brand = "Tacynt Shop", topLinks = [], groups = [] }: SidebarProps) {
+export function MobileNav({
+  brand = "Tacynt Shop",
+  topLinks = [],
+  groups = [],
+  logoutAction,
+}: SidebarProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -201,6 +240,7 @@ export function MobileNav({ brand = "Tacynt Shop", topLinks = [], groups = [] }:
           <SheetTitle className="sr-only">Menu de navigation</SheetTitle>
         </div>
         <NavList topLinks={topLinks} groups={groups} onNavigate={() => setOpen(false)} />
+        <SidebarFooter logoutAction={logoutAction} />
       </SheetContent>
     </Sheet>
   );

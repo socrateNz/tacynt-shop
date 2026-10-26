@@ -196,14 +196,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <div className="flex h-dvh min-h-0" style={brandingStyle}>
-      <SidebarNav topLinks={TOP_LINKS} groups={navGroups} />
+      <SidebarNav topLinks={TOP_LINKS} groups={navGroups} logoutAction="/api/auth/logout" />
       {/* min-w-0 : sans lui, un flex-item row ne descend jamais sous la largeur
           min-content de son contenu, et un tableau large élargirait toute la
           page au lieu de défiler dans son propre conteneur. */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
         <header className="no-print flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3 lg:px-6 lg:py-4">
           <div className="flex min-w-0 items-center gap-2 lg:gap-4">
-            <MobileNav topLinks={TOP_LINKS} groups={navGroups} />
+            <MobileNav topLinks={TOP_LINKS} groups={navGroups} logoutAction="/api/auth/logout" />
             {branding?.hasLogo ? (
               // eslint-disable-next-line @next/next/no-img-element -- logo servi dynamiquement par organisation, pas un asset statique optimisable par next/image
               <img src="/api/branding/logo" alt={organization?.nom ?? ""} className="h-6 w-auto shrink-0" />

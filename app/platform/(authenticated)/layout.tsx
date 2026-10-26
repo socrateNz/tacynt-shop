@@ -35,11 +35,11 @@ export default async function PlatformLayout({ children }: { children: ReactNode
 
   return (
     <div className="flex h-dvh min-h-0">
-      <SidebarNav brand="Tacynt Shop" topLinks={topLinks} />
+      <SidebarNav brand="Tacynt Shop" topLinks={topLinks} logoutAction="/api/platform/auth/logout" />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
         <header className="no-print flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3 lg:px-6 lg:py-4">
           <div className="flex min-w-0 items-center gap-2">
-            <MobileNav brand="Tacynt Shop" topLinks={topLinks} />
+            <MobileNav brand="Tacynt Shop" topLinks={topLinks} logoutAction="/api/platform/auth/logout" />
             <span className="truncate text-sm font-semibold text-foreground">Espace admin plateforme</span>
           </div>
           <DropdownMenu>
