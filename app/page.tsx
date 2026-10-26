@@ -218,7 +218,6 @@ async function MarketingHome() {
         </ScrollReveal>
       </section>
 
-      {/* Pourquoi Tacynt Shop */}
       <section id="pourquoi" className="px-6 py-20 lg:px-16">
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 lg:grid-cols-2">
           <ScrollReveal className="relative order-2 lg:order-1">
