@@ -31,6 +31,14 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Un build à froid (sans cache Docker côté serveur) a pris jusqu'à ~6 min
+    # en pratique sur ce VPS partagé, parfois plus sous charge (MedDoc/Shede/
+    # blanchix tournent en même temps) — le defaut command_timeout
+    # d'appleboy/ssh-action (10m) a déjà coupé la connexion en plein build une
+    # fois, laissant le script serveur tourner sans que cette Action ne le
+    # sache (ni ne puisse faire échouer le job en conséquence) : marge large
+    # des deux côtés.
+    timeout-minutes: 30
     steps:
       - name: Déployer sur le serveur partagé (clé restreinte à deployer-tacynt-shop.sh)
         uses: appleboy/ssh-action@v1.2.0
@@ -38,4 +46,5 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 25m
           script: ${{ github.sha }}
