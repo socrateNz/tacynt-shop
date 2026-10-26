@@ -14,10 +14,12 @@ document doit respecter ce qui existe déjà :
 - `etarcosdev` n'est **pas** membre du groupe `docker` (ça donnerait root
   sans mot de passe) : **toujours `sudo docker …`**, jamais `docker …` seul.
 - Ne **jamais** toucher `~/apps/ecosystem.config.cjs` (configuration PM2 de
-  MedDoc et Shede), ni aux ports déjà pris : 3000 (MedDoc), 3001 (Shede),
-  8000/54322/5433 (Supabase de Shede), 27017 (MongoDB). tacynt-shop prend le
-  port suivant disponible selon la convention déjà en place sur ce serveur
-  (« nouvelles applications → 3002, 3003… ») : **3002**.
+  MedDoc, Shede et blanchix), ni aux ports déjà pris : 3000 (MedDoc), 3001
+  (Shede), **3002 (blanchix — une 3ᵉ app PM2 sur ce serveur, découverte au
+  moment du déploiement, non documentée avant)**, 8000/54322/5433 (Supabase
+  de Shede), 27017 (MongoDB). tacynt-shop prend le port suivant réellement
+  libre (vérifié avec `sudo ss -tlnp` avant de choisir — ne jamais supposer
+  qu'un port est libre sans vérifier) : **3003**.
 - Ne jamais modifier les vhosts nginx `meddoc.tacynt.com` ou
   `shede.tacynt.com`, ni le vhost `00-refus-par-defaut` (refuse tout nom
   d'hôte inconnu — à laisser tel quel).
@@ -27,7 +29,7 @@ document doit respecter ce qui existe déjà :
   Internet. Règle du serveur : **toujours `127.0.0.1:` explicite dans chaque
   port de `docker-compose.prod.yml`** (déjà respecté ici), vérifié avec
   `sudo ss -tlnp | grep docker-proxy` (aucun `0.0.0.0` ni `[::]` pour le port
-  3002) puis, **[PC]**, `Test-NetConnection 169.58.213.108 -Port 3002`
+  3003) puis, **[PC]**, `Test-NetConnection 169.58.213.108 -Port 3003`
   (doit répondre `False`).
 - Toute commande touchant `/etc/nginx`, `/etc/systemd/system`, `certbot`, ou
   `docker` demande `sudo` (mot de passe requis — `etarcosdev` n'a pas de
@@ -41,7 +43,7 @@ Architecture : `shop.tacynt.com` (app) + `{organisation}.shop.tacynt.com`
 (par boutique) → nginx sur le VPS partagé (déjà installé, TLS Let's Encrypt
 via le Certbot déjà en place pour MedDoc/Shede — pas de Cloudflare, pas de
 wildcard de certificat, HTTP-01 classique) → conteneur Docker de l'app
-(`127.0.0.1:3002`, jamais exposé publiquement) → conteneur Docker Postgres
+(`127.0.0.1:3003`, jamais exposé publiquement) → conteneur Docker Postgres
 (propre à tacynt-shop, aucun port exposé à l'hôte — aucun conflit possible
 avec MongoDB ou le Postgres de Shede).
 
@@ -83,7 +85,7 @@ sudo docker compose -f docker-compose.prod.yml --env-file .env.production run --
 sudo docker compose -f docker-compose.prod.yml --env-file .env.production up -d
 ```
 
-Vérifier : `curl -I http://127.0.0.1:3002/` répond `200`, et
+Vérifier : `curl -I http://127.0.0.1:3003/` répond `200`, et
 `sudo docker compose -f docker-compose.prod.yml ps` montre les deux
 conteneurs `healthy`.
 

@@ -62,8 +62,9 @@ services:
       # Bind sur 127.0.0.1 uniquement : le conteneur n'est jamais exposé
       # publiquement, nginx (sur l'hôte) est le seul point d'entrée. Port
       # choisi selon la convention du serveur partagé (3000 MedDoc, 3001
-      # Shede déjà pris — nouvelles applications : 3002, 3003…).
-      - "127.0.0.1:3002:3000"
+      # Shede déjà pris, 3002 pris par "blanchix" (découvert au déploiement,
+      # non documenté avant) — nouvelles applications : 3003, 3004…).
+      - "127.0.0.1:3003:3000"
     volumes:
       # Répertoire créé et chown 1001:1001 (uid "nextjs" du Dockerfile) lors
       # du premier déploiement — voir docs/deployment.md section 3.

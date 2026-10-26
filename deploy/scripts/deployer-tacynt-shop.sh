@@ -28,7 +28,7 @@ esac
 REPO_DIR="/home/etarcosdev/apps/tacynt-shop"
 LOG_FILE="/home/etarcosdev/apps/deploiements.log"
 LOCK_FILE="/home/etarcosdev/apps/.deploy-tacynt-shop.lock"
-APP_PORT=3002
+APP_PORT=3003
 APP_IMAGE="tacynt-shop-app:latest"
 ROLLBACK_IMAGE="tacynt-shop-app:rollback"
 COMPOSE="sudo docker compose -f docker-compose.prod.yml --env-file .env.production"
