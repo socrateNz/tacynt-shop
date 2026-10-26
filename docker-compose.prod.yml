@@ -22,6 +22,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    # Nom explicite : deploy/scripts/deployer-tacynt-shop.sh retague cette
+    # image (:rollback) avant de reconstruire, pour pouvoir revenir en
+    # arrière sur le conteneur applicatif seul si le healthcheck post-déploi
+    # échoue. Sans ce nom, Compose en choisirait un implicitement selon le
+    # nom du projet — pas assez fiable pour un script qui doit le cibler
+    # précisément.
+    image: tacynt-shop-app:latest
     container_name: tacynt-shop-app-prod
     restart: always
     depends_on:
@@ -53,8 +60,10 @@ services:
       PENDING_DOMAINS_DIR: /pending-domains
     ports:
       # Bind sur 127.0.0.1 uniquement : le conteneur n'est jamais exposé
-      # publiquement, nginx (sur l'hôte) est le seul point d'entrée.
-      - "127.0.0.1:3005:3000"
+      # publiquement, nginx (sur l'hôte) est le seul point d'entrée. Port
+      # choisi selon la convention du serveur partagé (3000 MedDoc, 3001
+      # Shede déjà pris — nouvelles applications : 3002, 3003…).
+      - "127.0.0.1:3002:3000"
     volumes:
       # Répertoire créé et chown 1001:1001 (uid "nextjs" du Dockerfile) lors
       # du premier déploiement — voir docs/deployment.md section 3.
@@ -72,6 +81,9 @@ services:
       context: .
       dockerfile: Dockerfile
       target: builder
+    # Cible une étape différente du même Dockerfile que "app" (builder, pas
+    # l'image finale) : pas de collision de tag malgré le nom proche.
+    image: tacynt-shop-migrate:latest
     profiles: ["tools"]
     depends_on:
       postgres:

@@ -1,10 +1,18 @@
 name: Deploy
 
 # Pas de build en CI, pas de registre d'images (décision verrouillée du plan
-# de déploiement) : la CI se contente de déclencher un build + redémarrage
+# de déploiement) : la CI se contente de déclencher le script de déploiement
 # directement sur le serveur Contabo via SSH. Secrets requis dans les
 # paramètres du dépôt (Settings > Secrets and variables > Actions) :
 # SSH_HOST, SSH_USER, SSH_PRIVATE_KEY. Voir docs/deployment.md.
+#
+# La clé SSH_PRIVATE_KEY est RESTREINTE côté serveur (authorized_keys,
+# command="…/deployer-tacynt-shop.sh $SSH_ORIGINAL_COMMAND",restrict …) :
+# quoi que ce job envoie comme "script", le serveur force l'exécution de ce
+# seul script et ne lui passe que $SSH_ORIGINAL_COMMAND en argument — une clé
+# compromise ne peut donc jamais exécuter de commande arbitraire sur ce VPS
+# partagé (MedDoc, Shede). Le script lui-même revalide que cet argument est
+# bien un SHA de commit avant d'y toucher.
 on:
   push:
     branches: [main]
@@ -24,17 +32,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy on Contabo via SSH
+      - name: Déployer sur le serveur partagé (clé restreinte à deployer-tacynt-shop.sh)
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -euo pipefail
-            cd /home/etarcos/apps/tacynt-shop
-            git pull --ff-only origin main
-            docker compose -f docker-compose.prod.yml --env-file .env.production build app migrate
-            docker compose -f docker-compose.prod.yml --env-file .env.production up -d
-            docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate npx prisma migrate deploy
-            docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate npx tsx scripts/ensure-runtime-role-password.ts
+          script: ${{ github.sha }}

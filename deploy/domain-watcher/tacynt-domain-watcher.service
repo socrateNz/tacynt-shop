@@ -3,4 +3,4 @@ Description=Étend le certificat TLS de tacynt-shop avec les boutiques nouvellem
 
 [Service]
 Type=oneshot
-ExecStart=/home/etarcos/apps/tacynt-shop/deploy/domain-watcher/sync-certs.sh
+ExecStart=/home/etarcosdev/apps/tacynt-shop/deploy/domain-watcher/sync-certs.sh
