@@ -3,7 +3,7 @@
 // verrouillée en Phase 1). Portée : rendre toute l'app installable et
 // permettre à la caisse de survivre à un démarrage à froid hors ligne, pas
 // de cache "complet" des pages admin (données vivantes par nature).
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const CACHE_NAME = `tacynt-shop-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 

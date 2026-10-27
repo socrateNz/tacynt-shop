@@ -20,14 +20,16 @@
     .card { max-width: 360px; }
     h1 { font-size: 1.25rem; margin-bottom: 0.5rem; }
     p { color: #57534e; font-size: 0.9rem; }
-    a {
+    button {
       display: inline-block;
       margin-top: 1rem;
       padding: 0.5rem 1rem;
       background: #b8431a;
       color: white;
+      border: none;
       border-radius: 6px;
-      text-decoration: none;
+      font: inherit;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -35,7 +37,7 @@
   <div class="card">
     <h1>Vous êtes hors ligne</h1>
     <p>Cette page a besoin d&apos;une connexion. La caisse, elle, continue de fonctionner sans réseau.</p>
-    <a href="/">Réessayer</a>
+    <button type="button" onclick="location.reload()">Réessayer</button>
   </div>
 </body>
 </html>
