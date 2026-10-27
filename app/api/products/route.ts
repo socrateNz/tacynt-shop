@@ -34,21 +34,44 @@ export async function POST(request: Request) {
   const suiviStock = formData.get("suiviStock") === "on";
   const suiviLots = formData.get("suiviLots") === "on";
   const suiviSerie = formData.get("suiviSerie") === "on";
-  const codeBarres = String(formData.get("codeBarres") ?? "").trim() || null;
-  const prixAchatRef = Number(formData.get("prixAchatRef") ?? 0);
-  const prixVente = Number(formData.get("prixVente") ?? 0);
-  const prixPlancherRaw = String(formData.get("prixPlancher") ?? "").trim();
-  const prixPlancher = prixPlancherRaw ? Number(prixPlancherRaw) : null;
-  const seuilAlerteRaw = String(formData.get("seuilAlerte") ?? "").trim();
-  const seuilAlerte = seuilAlerteRaw ? Number(seuilAlerteRaw) : null;
   const description = String(formData.get("description") ?? "").trim() || null;
   const images = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
 
-  if (!designation || !Number.isFinite(prixVente) || prixVente < 0) {
+  // Au moins 1 variante par produit, chacune porte son propre code-barres/
+  // prix d'achat/prix de vente — jamais directement sur Product (voir
+  // schema.prisma). Le client (product-form.tsx) sérialise la liste en JSON
+  // plutôt qu'en champs positionnels, pour un nombre de variantes/attributs
+  // variable sans parsing fragile ; ici on ne fait confiance qu'à ce qui est
+  // revalidé ligne par ligne, jamais à la validation côté client seule.
+  type VariantInput = {
+    attributs?: Record<string, string>;
+    codeBarres?: string | null;
+    prixAchatRef?: number;
+    prixVente: number;
+    prixPlancher?: number | null;
+    seuilAlerte?: number | null;
+  };
+  let variantInputs: VariantInput[];
+  try {
+    const parsed = JSON.parse(String(formData.get("variantsJson") ?? "[]"));
+    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("empty");
+    variantInputs = parsed;
+  } catch {
+    return NextResponse.json({ error: "Au moins une variante valide est requise." }, { status: 400 });
+  }
+  if (
+    variantInputs.some(
+      (v) => typeof v.prixVente !== "number" || !Number.isFinite(v.prixVente) || v.prixVente < 0,
+    )
+  ) {
     return NextResponse.json(
-      { error: "Désignation et prix de vente (valide) sont requis." },
+      { error: "Chaque variante doit avoir un prix de vente (valide) requis." },
       { status: 400 },
     );
+  }
+
+  if (!designation) {
+    return NextResponse.json({ error: "Désignation requise." }, { status: 400 });
   }
   if (images.length > MAX_IMAGES) {
     return NextResponse.json(
@@ -98,28 +121,32 @@ export async function POST(request: Request) {
         },
       });
 
-      // Catalogue simple (Phase 1) : chaque produit reçoit une variante par
-      // défaut — stock/prix/code-barres s'accrochent toujours à une
-      // variante, jamais directement au produit.
-      const variant = await tx.productVariant.create({
-        data: {
-          organizationId: ctx.organizationId,
-          productId: product.id,
-          codeBarres,
-          prixAchatRef,
-        },
-      });
+      // Chaque produit reçoit au moins une variante — stock/prix/code-barres
+      // s'accrochent toujours à une variante, jamais directement au produit
+      // (voir schema.prisma). Plusieurs variantes peuvent être créées en une
+      // seule fois depuis ce formulaire (tailles, couleurs...).
+      for (const v of variantInputs) {
+        const variant = await tx.productVariant.create({
+          data: {
+            organizationId: ctx.organizationId,
+            productId: product.id,
+            attributs: v.attributs ?? {},
+            codeBarres: v.codeBarres?.trim() || null,
+            prixAchatRef: v.prixAchatRef ?? 0,
+          },
+        });
 
-      await tx.shopPrice.create({
-        data: {
-          organizationId: ctx.organizationId,
-          variantId: variant.id,
-          shopId,
-          prixVente,
-          prixPlancher,
-          seuilAlerte,
-        },
-      });
+        await tx.shopPrice.create({
+          data: {
+            organizationId: ctx.organizationId,
+            variantId: variant.id,
+            shopId,
+            prixVente: v.prixVente,
+            prixPlancher: v.prixPlancher ?? null,
+            seuilAlerte: v.seuilAlerte ?? null,
+          },
+        });
+      }
 
       if (imagePayloads.length > 0) {
         await tx.productImage.createMany({
@@ -138,7 +165,7 @@ export async function POST(request: Request) {
         action: "PRODUCT_CREATED",
         entite: "product",
         entiteId: product.id,
-        apres: { reference, designation, prixVente },
+        apres: { reference, designation, variantsCount: variantInputs.length },
       });
 
       return product;

@@ -116,18 +116,20 @@ export default async function ProductsPage() {
       },
       variants: p.variants.map((v) => {
         const attrs = v.attributs as Record<string, string>;
+        const attrEntries = Object.entries(attrs);
         const attrLabel =
-          Object.entries(attrs).length > 0
-            ? Object.entries(attrs)
-                .map(([k, val]) => `${k}: ${val}`)
-                .join(", ")
-            : "—";
+          attrEntries.length > 0 ? attrEntries.map(([k, val]) => `${k}: ${val}`).join(", ") : "—";
         const shopPrice = v.shopPrices[0];
         return {
           id: v.id,
           attrLabel,
+          attributs: attrEntries.map(([name, value]) => ({ name, value })),
           codeBarres: v.codeBarres,
           priceLabel: shopPrice ? formatMoney(shopPrice.prixVente, organization.devise) : "—",
+          prixAchatRef: Number(v.prixAchatRef),
+          prixVente: shopPrice ? Number(shopPrice.prixVente) : 0,
+          prixPlancher: shopPrice?.prixPlancher ? Number(shopPrice.prixPlancher) : null,
+          seuilAlerte: shopPrice?.seuilAlerte ?? null,
           actif: v.actif,
         };
       }),

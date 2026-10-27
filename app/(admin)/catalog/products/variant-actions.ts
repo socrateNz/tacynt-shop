@@ -95,6 +95,77 @@ export async function createVariant(
   return { error: null };
 }
 
+export async function updateVariant(
+  _prevState: VariantFormState,
+  formData: FormData,
+): Promise<VariantFormState> {
+  const ctx = await getTenantContext();
+  await assertCapability(ctx.role, "catalog:write");
+
+  const variantId = String(formData.get("variantId") ?? "");
+  const attributeNames = formData.getAll("attributeName") as string[];
+  const attributeValues = formData.getAll("attributeValue") as string[];
+  const codeBarres = String(formData.get("codeBarres") ?? "").trim() || null;
+  const prixAchatRef = Number(formData.get("prixAchatRef") ?? 0);
+  const prixVente = Number(formData.get("prixVente") ?? 0);
+  const prixPlancherRaw = String(formData.get("prixPlancher") ?? "").trim();
+  const prixPlancher = prixPlancherRaw ? Number(prixPlancherRaw) : null;
+  const seuilAlerteRaw = String(formData.get("seuilAlerte") ?? "").trim();
+  const seuilAlerte = seuilAlerteRaw ? Number(seuilAlerteRaw) : null;
+
+  if (!variantId || !Number.isFinite(prixVente) || prixVente < 0) {
+    return { error: "Variante et prix de vente (valide) sont requis." };
+  }
+
+  const attributs: Record<string, string> = {};
+  attributeNames.forEach((name, i) => {
+    const trimmedName = name.trim();
+    const value = (attributeValues[i] ?? "").trim();
+    if (trimmedName && value) attributs[trimmedName] = value;
+  });
+
+  const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
+
+  try {
+    await withTenantContext({ organizationId: ctx.organizationId, shopId }, async (tx) => {
+      await tx.productVariant.update({
+        where: { id: variantId },
+        data: { attributs, codeBarres, prixAchatRef },
+      });
+
+      await tx.shopPrice.upsert({
+        where: { variantId_shopId: { variantId, shopId } },
+        create: {
+          organizationId: ctx.organizationId,
+          variantId,
+          shopId,
+          prixVente,
+          prixPlancher,
+          seuilAlerte,
+        },
+        update: { prixVente, prixPlancher, seuilAlerte },
+      });
+
+      await recordAuditLog(tx, {
+        organizationId: ctx.organizationId,
+        userId: ctx.userId,
+        action: "VARIANT_UPDATED",
+        entite: "product_variant",
+        entiteId: variantId,
+        apres: { attributs, codeBarres, prixAchatRef, prixVente },
+      });
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return { error: "Ce code-barres existe déjà." };
+    }
+    throw error;
+  }
+
+  revalidatePath("/catalog/products");
+  return { error: null };
+}
+
 export async function deactivateVariant(formData: FormData) {
   const ctx = await getTenantContext();
   await assertCapability(ctx.role, "catalog:write");

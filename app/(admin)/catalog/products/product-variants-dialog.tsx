@@ -1,5 +1,8 @@
 "use client";
 
+import { Pencil } from "lucide-react";
+import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,10 +27,45 @@ import { VariantForm } from "./variant-form";
 export type ProductVariantRow = {
   id: string;
   attrLabel: string;
+  attributs: { name: string; value: string }[];
   codeBarres: string | null;
   priceLabel: string;
+  prixAchatRef: number;
+  prixVente: number;
+  prixPlancher: number | null;
+  seuilAlerte: number | null;
   actif: boolean;
 };
+
+function VariantEditTrigger({ variant }: { variant: ProductVariantRow }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
+        <Pencil className="size-3.5" />
+        <span className="sr-only">Modifier la variante</span>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Modifier la variante</DialogTitle>
+        </DialogHeader>
+        <VariantForm
+          variant={{
+            id: variant.id,
+            attributs: variant.attributs,
+            codeBarres: variant.codeBarres,
+            prixAchatRef: variant.prixAchatRef,
+            prixVente: variant.prixVente,
+            prixPlancher: variant.prixPlancher,
+            seuilAlerte: variant.seuilAlerte,
+          }}
+          onSuccess={() => setOpen(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export function ProductVariantsDialog({
   productId,
@@ -78,14 +116,17 @@ export function ProductVariantsDialog({
                   </TableCell>
                   {canWrite && (
                     <TableCell>
-                      {v.actif && (
-                        <form action={deactivateVariant}>
-                          <input type="hidden" name="variantId" value={v.id} />
-                          <Button type="submit" variant="ghost" size="sm">
-                            Désactiver
-                          </Button>
-                        </form>
-                      )}
+                      <div className="flex items-center gap-1">
+                        <VariantEditTrigger variant={v} />
+                        {v.actif && (
+                          <form action={deactivateVariant}>
+                            <input type="hidden" name="variantId" value={v.id} />
+                            <Button type="submit" variant="ghost" size="sm">
+                              Désactiver
+                            </Button>
+                          </form>
+                        )}
+                      </div>
                     </TableCell>
                   )}
                 </TableRow>
