@@ -1,5 +1,7 @@
 "use client";
 
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -579,13 +581,22 @@ export function PosClient({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 lg:px-6">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-foreground">
-            {organizationNom} — {registerNom}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {pendingCount > 0 ? `${pendingCount} vente(s) en attente de synchro` : "À jour"}
-          </p>
+        <div className="flex min-w-0 items-center gap-3">
+          <Link
+            href="/dashboard"
+            className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" />
+            Dashboard
+          </Link>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              {organizationNom} — {registerNom}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {pendingCount > 0 ? `${pendingCount} vente(s) en attente de synchro` : "À jour"}
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {pendingCount > 0 && (
