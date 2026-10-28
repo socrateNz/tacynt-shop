@@ -74,7 +74,7 @@ BEGIN
     'product_variants', 'audit_logs', 'sessions', 'import_batches',
     'customers', 'customer_ledger', 'loyalty_ledger',
     'suppliers', 'supplier_products', 'supplier_ledger',
-    'organization_branding'
+    'organization_branding', 'push_subscriptions'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);

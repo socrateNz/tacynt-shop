@@ -82,3 +82,28 @@ self.addEventListener("fetch", (event) => {
     }),
   );
 });
+
+// Notifications push (M37) — nouvelle commande en ligne. Indépendant du cache
+// ci-dessus, ne touche à aucune des URLs qu'il gère.
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+  const data = event.data.json();
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/icons/icon-192.png",
+      data: { url: data.url },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/online-orders";
+  event.waitUntil(
+    clients.matchAll({ type: "window" }).then((list) => {
+      const existing = list.find((c) => c.url.includes(url));
+      return existing ? existing.focus() : clients.openWindow(url);
+    }),
+  );
+});

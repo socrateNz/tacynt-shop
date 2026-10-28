@@ -205,6 +205,7 @@ model Organization {
   onlineOrders     OnlineOrder[]
   productImages    ProductImage[]
   onlineOrderPayments OnlineOrderPayment[]
+  pushSubscriptions   PushSubscription[]
 
   @@map("organizations")
 }
@@ -358,9 +359,10 @@ model User {
   lockedUntil    DateTime? @map("locked_until")
   createdAt      DateTime  @default(now()) @map("created_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  userShops    UserShop[]
-  sessions     Session[]
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  userShops         UserShop[]
+  sessions          Session[]
+  pushSubscriptions PushSubscription[]
 
   @@unique([organizationId, email])
   @@index([organizationId])
@@ -427,7 +429,6 @@ model Product {
   reference      String
   designation    String
   categoryId     String?  @map("category_id") @db.Uuid
-  unite          String   @default("piece")
   tauxTaxe       Decimal  @default(0) @map("taux_taxe") @db.Decimal(5, 2)
   suiviStock     Boolean  @default(true) @map("suivi_stock")
   // Activable seulement si le profil métier de l'organisation le permet
@@ -503,6 +504,12 @@ model ProductVariant {
   // qui n'ont aucune raison d'être liées entre tenants.
   codeBarres     String? @map("code_barres")
   prixAchatRef   Decimal @default(0) @map("prix_achat_ref") @db.Decimal(12, 2)
+  // Déplacé depuis Product (M36) : chaque variante peut maintenant avoir sa
+  // propre unité de vente (ex. "Coca Cola" en variante 1L vs variante
+  // 250ml). uniteQuantite + unite se combinent à l'affichage (formatUnite(),
+  // lib/tenant/units.ts) — jamais stockés pré-combinés.
+  unite          String  @default("piece")
+  uniteQuantite  Decimal @default(1) @map("unite_quantite") @db.Decimal(10, 3)
   // Une variante retirée ne se supprime pas (mouvements/lignes de vente
   // déjà rattachés) — même contrainte que Product.actif.
   actif          Boolean @default(true)
@@ -1384,4 +1391,28 @@ model AuditLog {
 
   @@index([organizationId])
   @@map("audit_logs")
+}
+
+// Abonnement push d'un admin pour un navigateur/appareil donné (M37) — scope
+// organisation uniquement, jamais par boutique (un admin peut être affecté à
+// plusieurs boutiques, on filtre par UserShop côté code, pas ici). Jamais de
+// suppression physique (règle du projet, voir prisma/rls-manifest.sql :
+// tacynt_app n'a jamais DELETE) — un abonnement expiré ou désactivé se
+// désactive, comme Product.actif/ProductVariant.actif ailleurs.
+model PushSubscription {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  endpoint       String   @unique
+  p256dh         String
+  auth           String
+  actif          Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([userId])
+  @@map("push_subscriptions")
 }

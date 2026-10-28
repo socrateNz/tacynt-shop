@@ -29,7 +29,6 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const designation = String(formData.get("designation") ?? "").trim();
   const categoryId = String(formData.get("categoryId") ?? "") || null;
-  const unite = String(formData.get("unite") ?? "piece").trim() || "piece";
   const tauxTaxe = Number(formData.get("tauxTaxe") ?? 0);
   const prixEmballageRaw = String(formData.get("prixEmballage") ?? "").trim();
   const prixEmballage = prixEmballageRaw ? Number(prixEmballageRaw) : null;
@@ -49,6 +48,8 @@ export async function POST(request: Request) {
     attributs?: Record<string, string>;
     codeBarres?: string | null;
     prixAchatRef?: number;
+    unite?: string;
+    uniteQuantite?: number;
     prixVente: number;
     prixPlancher?: number | null;
     seuilAlerte?: number | null;
@@ -68,6 +69,18 @@ export async function POST(request: Request) {
   ) {
     return NextResponse.json(
       { error: "Chaque variante doit avoir un prix de vente (valide) requis." },
+      { status: 400 },
+    );
+  }
+  if (
+    variantInputs.some(
+      (v) =>
+        v.uniteQuantite !== undefined &&
+        (typeof v.uniteQuantite !== "number" || !Number.isFinite(v.uniteQuantite) || v.uniteQuantite < 0),
+    )
+  ) {
+    return NextResponse.json(
+      { error: "Chaque variante doit avoir une quantité d'unité valide." },
       { status: 400 },
     );
   }
@@ -117,7 +130,6 @@ export async function POST(request: Request) {
           reference,
           designation,
           categoryId,
-          unite,
           tauxTaxe,
           prixEmballage,
           suiviStock,
@@ -139,6 +151,8 @@ export async function POST(request: Request) {
             attributs: v.attributs ?? {},
             codeBarres: v.codeBarres?.trim() || null,
             prixAchatRef: v.prixAchatRef ?? 0,
+            unite: v.unite?.trim() || "piece",
+            uniteQuantite: v.uniteQuantite ?? 1,
           },
         });
 

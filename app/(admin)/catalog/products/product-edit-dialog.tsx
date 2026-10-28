@@ -14,15 +14,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { SALE_UNITS } from "@/lib/tenant/units";
+
+import { UnitCombobox } from "./unit-combobox";
 
 const MAX_IMAGES = 3;
 
@@ -31,6 +25,7 @@ export type ProductEditValues = {
   designation: string;
   categoryId: string | null;
   unite: string;
+  uniteQuantite: number;
   tauxTaxe: number;
   prixEmballage: number | null;
   codeBarres: string | null;
@@ -128,19 +123,19 @@ export function ProductEditDialog({
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-unite">Unité de vente</Label>
-              <Select name="unite" defaultValue={product.unite}>
-                <SelectTrigger id="edit-unite" className="w-full">
-                  <SelectValue placeholder="Unité de vente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SALE_UNITS.map((u) => (
-                    <SelectItem key={u.value} value={u.value}>
-                      {u.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="edit-uniteQuantite">Quantité</Label>
+              <Input
+                id="edit-uniteQuantite"
+                name="uniteQuantite"
+                type="number"
+                step="0.001"
+                min="0"
+                defaultValue={product.uniteQuantite}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-unite">Unité</Label>
+              <UnitCombobox id="edit-unite" name="unite" defaultValue={product.unite} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="edit-codeBarres">Code-barres</Label>

@@ -4,6 +4,7 @@ import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions-server";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
+import { formatUnite } from "@/lib/tenant/units";
 
 // Snapshot complet (pas de delta par version) : à l'échelle Phase 1 (300
 // produits max en STARTER), renvoyer tout le catalogue à chaque démarrage de
@@ -47,7 +48,7 @@ export async function GET() {
           designation: attrLabel ? `${p.designation} (${attrLabel})` : p.designation,
           reference: p.reference,
           codeBarres: v.codeBarres,
-          unite: p.unite,
+          unite: formatUnite(Number(v.uniteQuantite), v.unite),
           tauxTaxe: Number(p.tauxTaxe),
           suiviStock: p.suiviStock,
           // null = pas de limite (service ou produit sans suivi de stock) ;

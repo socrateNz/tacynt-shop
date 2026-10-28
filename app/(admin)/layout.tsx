@@ -23,6 +23,7 @@ import { organizationHasModule } from "@/lib/tenant/modules";
 import { parseOrgSettings } from "@/lib/tenant/settings";
 
 import { ShopSwitcher } from "./shops/shop-switcher";
+import { ToastHost } from "./toast-host";
 
 const TOP_LINKS: NavLink[] = [
   { href: "/dashboard", label: "Accueil", icon: "LayoutDashboard" },
@@ -195,6 +196,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   });
 
   return (
+    <ToastHost>
     <div className="flex h-dvh min-h-0" style={brandingStyle}>
       <SidebarNav topLinks={TOP_LINKS} groups={navGroups} logoutAction="/api/auth/logout" />
       {/* min-w-0 : sans lui, un flex-item row ne descend jamais sous la largeur
@@ -260,5 +262,6 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </main>
       </div>
     </div>
+    </ToastHost>
   );
 }

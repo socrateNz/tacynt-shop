@@ -3,6 +3,8 @@ import type { OnlineOrderFulfillmentMode } from "@prisma/client";
 
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
+import { formatMoney } from "@/lib/money";
+import { notifyNewOnlineOrder } from "@/lib/push/notify-new-order";
 import { computeLineAmounts } from "@/lib/sales/tax";
 import { resolveStorefrontOrganization, resolveStorefrontShopId } from "@/lib/storefront/context";
 
@@ -218,6 +220,17 @@ export async function POST(request: Request) {
       });
 
       return created;
+    });
+
+    // Non attendu : ne doit jamais ralentir la réponse au client final qui
+    // vient de passer commande (route publique, non authentifiée) — toute
+    // erreur d'envoi est déjà capturée à l'intérieur de notifyNewOnlineOrder.
+    void notifyNewOnlineOrder({
+      organizationId: organization.id,
+      shopId: order.shopId,
+      numero: order.numero,
+      nomClient: order.nomClient,
+      totalTtcLabel: formatMoney(order.totalTtc, organization.devise),
     });
 
     return NextResponse.json({ id: order.id, numero: order.numero, statut: order.statut });

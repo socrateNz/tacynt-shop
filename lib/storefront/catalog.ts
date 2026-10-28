@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
+import { formatUnite } from "@/lib/tenant/units";
+
 export type StorefrontItem = {
   variantId: string;
   productId: string;
@@ -70,7 +72,7 @@ export async function getStorefrontCatalog(
         designation: v.product.designation,
         categoryName: v.product.category?.nom ?? null,
         attributs: v.attributs as Record<string, string>,
-        unite: v.product.unite,
+        unite: formatUnite(Number(v.uniteQuantite), v.unite),
         prixVente: Number(price.prixVente),
         prixEmballage: v.product.prixEmballage !== null ? Number(v.product.prixEmballage) : null,
         available,
@@ -117,7 +119,7 @@ export async function getStorefrontProductDetail(
     designation: variant.product.designation,
     categoryName: variant.product.category?.nom ?? null,
     attributs: variant.attributs as Record<string, string>,
-    unite: variant.product.unite,
+    unite: formatUnite(Number(variant.uniteQuantite), variant.unite),
     prixVente: Number(price.prixVente),
     prixEmballage: variant.product.prixEmballage !== null ? Number(variant.product.prixEmballage) : null,
     available,

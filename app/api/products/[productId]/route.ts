@@ -38,6 +38,7 @@ export async function POST(
   const designation = String(formData.get("designation") ?? "").trim();
   const categoryId = String(formData.get("categoryId") ?? "") || null;
   const unite = String(formData.get("unite") ?? "piece").trim() || "piece";
+  const uniteQuantite = Number(formData.get("uniteQuantite") ?? 1);
   const tauxTaxe = Number(formData.get("tauxTaxe") ?? 0);
   const prixEmballageRaw = String(formData.get("prixEmballage") ?? "").trim();
   const prixEmballage = prixEmballageRaw ? Number(prixEmballageRaw) : null;
@@ -62,6 +63,9 @@ export async function POST(
   }
   if (prixEmballage !== null && (!Number.isFinite(prixEmballage) || prixEmballage < 0)) {
     return NextResponse.json({ error: "Prix d'emballage invalide." }, { status: 400 });
+  }
+  if (!Number.isFinite(uniteQuantite) || uniteQuantite < 0) {
+    return NextResponse.json({ error: "Quantité d'unité invalide." }, { status: 400 });
   }
   for (const img of newImages) {
     if (img.size > MAX_IMAGE_BYTES) {
@@ -88,12 +92,12 @@ export async function POST(
 
       await tx.product.update({
         where: { id: productId },
-        data: { designation, categoryId, unite, tauxTaxe, prixEmballage, description },
+        data: { designation, categoryId, tauxTaxe, prixEmballage, description },
       });
 
       await tx.productVariant.update({
         where: { id: variant.id },
-        data: { codeBarres },
+        data: { codeBarres, unite, uniteQuantite },
       });
 
       await tx.shopPrice.upsert({
@@ -149,7 +153,7 @@ export async function POST(
         action: "PRODUCT_UPDATED",
         entite: "product",
         entiteId: productId,
-        apres: { designation, categoryId, unite, tauxTaxe, prixEmballage, codeBarres, prixVente },
+        apres: { designation, categoryId, unite, uniteQuantite, tauxTaxe, prixEmballage, codeBarres, prixVente },
       });
     });
   } catch (error) {

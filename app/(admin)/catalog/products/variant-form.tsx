@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { createVariant, updateVariant, type VariantFormState } from "./variant-actions";
+import { UnitCombobox } from "./unit-combobox";
 
 const initialState: VariantFormState = { error: null };
 
@@ -15,6 +16,8 @@ export type VariantEditValues = {
   attributs: { name: string; value: string }[];
   codeBarres: string | null;
   prixAchatRef: number;
+  unite: string;
+  uniteQuantite: number;
   prixVente: number;
   prixPlancher: number | null;
   seuilAlerte: number | null;
@@ -121,6 +124,21 @@ export function VariantForm({
             step="0.01"
             defaultValue={variant?.prixAchatRef ?? 0}
           />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="uniteQuantite">Quantité</Label>
+          <Input
+            id="uniteQuantite"
+            name="uniteQuantite"
+            type="number"
+            step="0.001"
+            min="0"
+            defaultValue={variant?.uniteQuantite ?? 1}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="unite">Unité</Label>
+          <UnitCombobox id="unite" name="unite" defaultValue={variant?.unite ?? "piece"} />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="prixVente">Prix de vente</Label>

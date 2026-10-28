@@ -31,6 +31,8 @@ export type ProductVariantRow = {
   codeBarres: string | null;
   priceLabel: string;
   prixAchatRef: number;
+  unite: string;
+  uniteQuantite: number;
   prixVente: number;
   prixPlancher: number | null;
   seuilAlerte: number | null;
@@ -56,6 +58,8 @@ function VariantEditTrigger({ variant }: { variant: ProductVariantRow }) {
             attributs: variant.attributs,
             codeBarres: variant.codeBarres,
             prixAchatRef: variant.prixAchatRef,
+            unite: variant.unite,
+            uniteQuantite: variant.uniteQuantite,
             prixVente: variant.prixVente,
             prixPlancher: variant.prixPlancher,
             seuilAlerte: variant.seuilAlerte,

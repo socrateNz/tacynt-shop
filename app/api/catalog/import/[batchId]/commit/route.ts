@@ -109,7 +109,6 @@ export async function POST(
               reference,
               designation: row.designation,
               categoryId,
-              unite: row.unite,
               tauxTaxe: row.tauxTaxe,
               suiviStock: row.suiviStock,
             },
@@ -121,6 +120,7 @@ export async function POST(
               productId: product.id,
               codeBarres: row.codeBarres,
               prixAchatRef: row.prixAchat,
+              unite: row.unite,
             },
           });
 

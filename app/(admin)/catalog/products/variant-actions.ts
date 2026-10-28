@@ -31,6 +31,8 @@ export async function createVariant(
   const attributeValues = formData.getAll("attributeValue") as string[];
   const codeBarres = String(formData.get("codeBarres") ?? "").trim() || null;
   const prixAchatRef = Number(formData.get("prixAchatRef") ?? 0);
+  const unite = String(formData.get("unite") ?? "piece").trim() || "piece";
+  const uniteQuantite = Number(formData.get("uniteQuantite") ?? 1);
   const prixVente = Number(formData.get("prixVente") ?? 0);
   const prixPlancherRaw = String(formData.get("prixPlancher") ?? "").trim();
   const prixPlancher = prixPlancherRaw ? Number(prixPlancherRaw) : null;
@@ -39,6 +41,9 @@ export async function createVariant(
 
   if (!productId || !Number.isFinite(prixVente) || prixVente < 0) {
     return { error: "Produit et prix de vente (valide) sont requis." };
+  }
+  if (!Number.isFinite(uniteQuantite) || uniteQuantite < 0) {
+    return { error: "Quantité d'unité invalide." };
   }
 
   // Attributs libres (clé/valeur) : le modèle reste générique, aucune
@@ -61,6 +66,8 @@ export async function createVariant(
           attributs,
           codeBarres,
           prixAchatRef,
+          unite,
+          uniteQuantite,
         },
       });
 
@@ -81,7 +88,7 @@ export async function createVariant(
         action: "VARIANT_CREATED",
         entite: "product_variant",
         entiteId: variant.id,
-        apres: { productId, attributs, codeBarres, prixVente },
+        apres: { productId, attributs, codeBarres, unite, uniteQuantite, prixVente },
       });
     });
   } catch (error) {
@@ -107,6 +114,8 @@ export async function updateVariant(
   const attributeValues = formData.getAll("attributeValue") as string[];
   const codeBarres = String(formData.get("codeBarres") ?? "").trim() || null;
   const prixAchatRef = Number(formData.get("prixAchatRef") ?? 0);
+  const unite = String(formData.get("unite") ?? "piece").trim() || "piece";
+  const uniteQuantite = Number(formData.get("uniteQuantite") ?? 1);
   const prixVente = Number(formData.get("prixVente") ?? 0);
   const prixPlancherRaw = String(formData.get("prixPlancher") ?? "").trim();
   const prixPlancher = prixPlancherRaw ? Number(prixPlancherRaw) : null;
@@ -115,6 +124,9 @@ export async function updateVariant(
 
   if (!variantId || !Number.isFinite(prixVente) || prixVente < 0) {
     return { error: "Variante et prix de vente (valide) sont requis." };
+  }
+  if (!Number.isFinite(uniteQuantite) || uniteQuantite < 0) {
+    return { error: "Quantité d'unité invalide." };
   }
 
   const attributs: Record<string, string> = {};
@@ -130,7 +142,7 @@ export async function updateVariant(
     await withTenantContext({ organizationId: ctx.organizationId, shopId }, async (tx) => {
       await tx.productVariant.update({
         where: { id: variantId },
-        data: { attributs, codeBarres, prixAchatRef },
+        data: { attributs, codeBarres, prixAchatRef, unite, uniteQuantite },
       });
 
       await tx.shopPrice.upsert({
@@ -152,7 +164,7 @@ export async function updateVariant(
         action: "VARIANT_UPDATED",
         entite: "product_variant",
         entiteId: variantId,
-        apres: { attributs, codeBarres, prixAchatRef, prixVente },
+        apres: { attributs, codeBarres, prixAchatRef, unite, uniteQuantite, prixVente },
       });
     });
   } catch (error) {

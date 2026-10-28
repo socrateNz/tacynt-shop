@@ -6,15 +6,9 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { SALE_UNITS } from "@/lib/tenant/units";
+
+import { UnitCombobox } from "./unit-combobox";
 
 const MAX_IMAGES = 3;
 
@@ -98,6 +92,8 @@ export function ProductForm({
         attributs,
         codeBarres: String(formData.get(`variant-${row.id}-codeBarres`) ?? "").trim() || null,
         prixAchatRef: Number(formData.get(`variant-${row.id}-prixAchatRef`) ?? 0),
+        unite: String(formData.get(`variant-${row.id}-unite`) ?? "piece").trim() || "piece",
+        uniteQuantite: Number(formData.get(`variant-${row.id}-uniteQuantite`) ?? 1),
         prixVente: Number(formData.get(`variant-${row.id}-prixVente`) ?? 0),
         prixPlancher: prixPlancherRaw ? Number(prixPlancherRaw) : null,
         seuilAlerte: seuilAlerteRaw ? Number(seuilAlerteRaw) : null,
@@ -106,6 +102,10 @@ export function ProductForm({
 
     if (variants.some((v) => !Number.isFinite(v.prixVente) || v.prixVente < 0)) {
       setError("Chaque variante doit avoir un prix de vente valide.");
+      return;
+    }
+    if (variants.some((v) => !Number.isFinite(v.uniteQuantite) || v.uniteQuantite < 0)) {
+      setError("Chaque variante doit avoir une quantité d'unité valide.");
       return;
     }
 
@@ -162,21 +162,6 @@ export function ProductForm({
               </option>
             ))}
           </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="unite">Unité de vente</Label>
-          <Select name="unite" defaultValue="piece">
-            <SelectTrigger id="unite" className="w-full">
-              <SelectValue placeholder="Unité de vente" />
-            </SelectTrigger>
-            <SelectContent>
-              {SALE_UNITS.map((u) => (
-                <SelectItem key={u.value} value={u.value}>
-                  {u.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="tauxTaxe">Taux de taxe (%)</Label>
@@ -266,6 +251,21 @@ export function ProductForm({
                   step="0.01"
                   defaultValue="0"
                 />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`variant-${row.id}-uniteQuantite`}>Quantité</Label>
+                <Input
+                  id={`variant-${row.id}-uniteQuantite`}
+                  name={`variant-${row.id}-uniteQuantite`}
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  defaultValue="1"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`variant-${row.id}-unite`}>Unité</Label>
+                <UnitCombobox id={`variant-${row.id}-unite`} name={`variant-${row.id}-unite`} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor={`variant-${row.id}-prixVente`}>Prix de vente</Label>
