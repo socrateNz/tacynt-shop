@@ -22,6 +22,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Inliné dans le bundle client au build — voir le commentaire dans
+        # le Dockerfile. Doit rester la MÊME valeur que VAPID_PUBLIC_KEY
+        # (runtime, ci-dessous) : les deux viennent de la même paire de clés.
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
     # Nom explicite : deploy/scripts/deployer-tacynt-shop.sh retague cette
     # image (:rollback) avant de reconstruire, pour pouvoir revenir en
     # arrière sur le conteneur applicatif seul si le healthcheck post-déploi
@@ -54,6 +59,13 @@ services:
       SMTP_USER: ${SMTP_USER}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       EMAIL_FROM: ${EMAIL_FROM}
+      # Notifications push (M37) — VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY lus au
+      # runtime par lib/push/notify-new-order.ts (code serveur classique,
+      # pas de contrainte de build). NEXT_PUBLIC_VAPID_PUBLIC_KEY, lui, doit
+      # EN PLUS être passé en --build-arg ci-dessus (inliné côté client).
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT}
       # Canal vers deploy/domain-watcher/ (hôte, hors conteneur) : chaque
       # inscription y dépose la liste à jour des boutiques pour étendre le
       # certificat Certbot au nouveau sous-domaine (lib/tenant/request-cert-refresh.ts).
@@ -82,6 +94,11 @@ services:
       context: .
       dockerfile: Dockerfile
       target: builder
+      args:
+        # Même étape "builder" que app (voir commentaire au-dessus) : même
+        # arg nécessaire pour que le cache Docker soit partagé entre les
+        # deux builds plutôt que de forcer une reconstruction complète.
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
     # Cible une étape différente du même Dockerfile que "app" (builder, pas
     # l'image finale) : pas de collision de tag malgré le nom proche.
     image: tacynt-shop-migrate:latest

@@ -21,6 +21,12 @@ COPY . .
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 ENV RUNTIME_DATABASE_URL="postgresql://build:build@localhost:5432/build"
 ENV APP_ROOT_DOMAIN="shop.tacynt.com"
+# NEXT_PUBLIC_* est inliné dans le bundle client par `next build` lui-même —
+# contrairement aux autres secrets (CODEES_*, SMTP_*...), le fournir comme
+# variable d'environnement au conteneur à l'exécution (docker-compose.prod.yml)
+# arrive trop tard. Doit être passé en --build-arg (voir docker-compose.prod.yml).
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY=""
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 RUN npx prisma generate
 RUN npm run build
 
