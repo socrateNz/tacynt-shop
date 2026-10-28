@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid: "Identifiants incorrects.",
@@ -38,7 +39,7 @@ export default async function PlatformLoginPage({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="password">Mot de passe</Label>
-            <Input id="password" name="password" type="password" required />
+            <PasswordInput id="password" name="password" required />
           </div>
           <Button type="submit" className="mt-2">
             Se connecter

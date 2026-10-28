@@ -3,10 +3,13 @@ import type { OnlineOrderFulfillmentMode } from "@prisma/client";
 
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
+import { newOnlineOrderEmail } from "@/lib/email/templates";
+import { sendMail } from "@/lib/email/send";
 import { formatMoney } from "@/lib/money";
 import { notifyNewOnlineOrder } from "@/lib/push/notify-new-order";
 import { computeLineAmounts } from "@/lib/sales/tax";
 import { resolveStorefrontOrganization, resolveStorefrontShopId } from "@/lib/storefront/context";
+import { parseOrgSettings } from "@/lib/tenant/settings";
 
 const FULFILLMENT_MODES: OnlineOrderFulfillmentMode[] = ["RETRAIT_BOUTIQUE", "LIVRAISON"];
 
@@ -219,12 +222,13 @@ export async function POST(request: Request) {
         apres: { numero: created.numero, totalTtc: totalHt + totalTaxe + emballageMontant, emballageQuantite },
       });
 
-      return created;
+      return { ...created, shopNom: shop.nom };
     });
 
     // Non attendu : ne doit jamais ralentir la réponse au client final qui
     // vient de passer commande (route publique, non authentifiée) — toute
-    // erreur d'envoi est déjà capturée à l'intérieur de notifyNewOnlineOrder.
+    // erreur d'envoi est déjà capturée à l'intérieur de notifyNewOnlineOrder
+    // / du try/catch ci-dessous.
     void notifyNewOnlineOrder({
       organizationId: organization.id,
       shopId: order.shopId,
@@ -232,6 +236,19 @@ export async function POST(request: Request) {
       nomClient: order.nomClient,
       totalTtcLabel: formatMoney(order.totalTtc, organization.devise),
     });
+
+    const emailAlert = parseOrgSettings(organization.settings).onlineOrderEmailAlert;
+    if (emailAlert?.enabled && emailAlert.email) {
+      const { subject, html, text } = newOnlineOrderEmail({
+        numero: order.numero,
+        nomClient: order.nomClient,
+        totalTtcLabel: formatMoney(order.totalTtc, organization.devise),
+        shopNom: order.shopNom,
+      });
+      sendMail({ to: emailAlert.email, subject, html, text }).catch((error) => {
+        console.error("Échec de l'envoi de l'alerte email nouvelle commande :", error);
+      });
+    }
 
     return NextResponse.json({ id: order.id, numero: order.numero, statut: order.statut });
   } catch (error) {

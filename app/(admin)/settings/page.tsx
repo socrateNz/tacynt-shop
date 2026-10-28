@@ -9,14 +9,15 @@ import { resolveAccountingMapping } from "@/lib/reports/accounting-mapping";
 import { parseOrgSettings } from "@/lib/tenant/settings";
 
 import { AccountingMappingForm } from "./accounting-mapping-form";
-import { DeviseForm, ProfilMetierForm } from "./settings-form";
+import { DeviseForm, OnlineOrderEmailAlertForm, ProfilMetierForm } from "./settings-form";
 import { WhiteLabelForm } from "./white-label-form";
 
 export default async function SettingsPage() {
   const ctx = await getTenantContext();
   const canManageShop = hasCapability(ctx.role, "shops:manage");
   const canManageAccounting = hasCapability(ctx.role, "accounting:manage");
-  if (!canManageShop && !canManageAccounting) {
+  const canManageOnlineOrders = hasCapability(ctx.role, "ecommerce:manage");
+  if (!canManageShop && !canManageAccounting && !canManageOnlineOrders) {
     redirect("/dashboard");
   }
 
@@ -77,6 +78,13 @@ export default async function SettingsPage() {
 
       {canManageAccounting && organizationHasModule(organization.enabledModules, "accounting_connectors") && (
         <AccountingMappingForm mapping={resolveAccountingMapping(settings)} />
+      )}
+
+      {canManageOnlineOrders && organizationHasModule(organization.enabledModules, "ecommerce") && (
+        <OnlineOrderEmailAlertForm
+          enabled={settings.onlineOrderEmailAlert?.enabled ?? false}
+          email={settings.onlineOrderEmailAlert?.email ?? null}
+        />
       )}
     </div>
   );

@@ -33,6 +33,16 @@ export type OrgSettings = {
     paiementComptes?: Partial<Record<PaymentMode, string>>;
     chargesCompteParDefaut?: string;
   };
+  // Alerte email à chaque nouvelle commande en ligne (M38) — un seul
+  // destinataire, pas forcément un compte utilisateur de l'app (ex. une
+  // boîte partagée) donc jamais lié à User, contrairement aux abonnements
+  // push (PushSubscription, par admin). enabled=false ignore email même
+  // s'il est resté renseigné, pour ne jamais réactiver silencieusement en
+  // vidant juste le champ.
+  onlineOrderEmailAlert?: {
+    enabled: boolean;
+    email: string | null;
+  };
 };
 
 // organizations.settings est un Json libre — jamais fait confiance sans

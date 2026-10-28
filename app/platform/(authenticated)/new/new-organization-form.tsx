@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { CURRENCIES } from "@/lib/tenant/currency";
 
 import { createOrganization, type CreateOrganizationState } from "./actions";
@@ -54,7 +55,7 @@ export function NewOrganizationForm() {
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="password">Mot de passe initial</Label>
-        <Input id="password" name="password" type="password" required minLength={8} />
+        <PasswordInput id="password" name="password" required minLength={8} />
         <p className="text-xs text-muted-foreground">
           À transmettre vous-même au propriétaire — aucun email n&apos;est envoyé.
         </p>

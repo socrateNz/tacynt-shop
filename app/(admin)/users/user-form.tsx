@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 
 import { createUser, type UserFormState } from "./actions";
 
@@ -39,7 +40,7 @@ export function UserForm() {
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="password">Mot de passe initial</Label>
-          <Input id="password" name="password" type="password" required minLength={8} />
+          <PasswordInput id="password" name="password" required minLength={8} />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="role">Rôle</Label>

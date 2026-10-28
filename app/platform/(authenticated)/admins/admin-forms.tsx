@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 
 import { createPlatformAdmin, type CreatePlatformAdminState } from "./actions";
 
@@ -27,7 +28,7 @@ export function NewAdminForm() {
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="password">Mot de passe initial</Label>
-        <Input id="password" name="password" type="password" required minLength={8} />
+        <PasswordInput id="password" name="password" required minLength={8} />
         <p className="text-xs text-muted-foreground">
           À transmettre vous-même à la personne concernée — aucun email n&apos;est envoyé.
         </p>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ type CommitResult = {
 };
 
 export function ImportClient() {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [commitResult, setCommitResult] = useState<CommitResult | null>(null);
@@ -83,6 +85,7 @@ export function ImportClient() {
         return;
       }
       setCommitResult(data as CommitResult);
+      router.refresh();
     } catch {
       setError("Échec de la validation de l'import.");
     } finally {

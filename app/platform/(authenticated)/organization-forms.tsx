@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 
 import { MODULE_CATALOG } from "@/lib/tenant/modules";
 
@@ -264,10 +265,9 @@ export function OwnerCredentialsForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="ownerPassword">Nouveau mot de passe</Label>
-          <Input
+          <PasswordInput
             id="ownerPassword"
             name="password"
-            type="password"
             minLength={8}
             placeholder="Laisser vide pour ne pas changer"
             disabled={!ownerEmail}

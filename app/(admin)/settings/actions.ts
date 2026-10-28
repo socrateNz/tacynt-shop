@@ -88,6 +88,53 @@ export async function updateDevise(
   return { error: null };
 }
 
+// Même capacité que la page qu'elle concerne (app/(admin)/online-orders/
+// page.tsx) — pas shops:manage, cette alerte n'a de sens que pour qui gère
+// déjà les commandes en ligne.
+export async function updateOnlineOrderEmailAlert(
+  _prevState: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  const ctx = await getTenantContext();
+  await assertCapability(ctx.role, "ecommerce:manage");
+
+  const enabled = formData.get("onlineOrderEmailAlertEnabled") === "on";
+  const email = String(formData.get("onlineOrderEmailAlertEmail") ?? "").trim();
+
+  if (enabled && !email) {
+    return { error: "Une adresse email est requise pour activer cette alerte." };
+  }
+
+  await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
+    const organization = await tx.organization.findUniqueOrThrow({
+      where: { id: ctx.organizationId },
+    });
+    const settings = parseOrgSettings(organization.settings);
+
+    await tx.organization.update({
+      where: { id: ctx.organizationId },
+      data: {
+        settings: {
+          ...settings,
+          onlineOrderEmailAlert: { enabled, email: email || null },
+        },
+      },
+    });
+
+    await recordAuditLog(tx, {
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+      action: "ONLINE_ORDER_EMAIL_ALERT_UPDATED",
+      entite: "organization",
+      entiteId: ctx.organizationId,
+      apres: { enabled, email: email || null },
+    });
+  });
+
+  revalidatePath("/settings");
+  return { error: null };
+}
+
 export type UpdateAccountingMappingState = { error: string | null };
 
 // Connecteur comptable (Phase 4, M28) : point de départ éditable, jamais
