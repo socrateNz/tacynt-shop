@@ -9,6 +9,15 @@ import { getTenantContext } from "@/lib/tenant/context";
 
 import { SalesTable, type SaleRow } from "./sales-table";
 
+// Même format que app/api/pos/catalog/route.ts (designation de la caisse en
+// direct) : un ticket réimprimé depuis l'historique doit afficher la variante
+// exactement comme à l'impression d'origine.
+function lineDesignation(variant: { product: { designation: string }; attributs: unknown }): string {
+  const attrs = variant.attributs as Record<string, string>;
+  const attrLabel = Object.values(attrs).join(", ");
+  return attrLabel ? `${variant.product.designation} (${attrLabel})` : variant.product.designation;
+}
+
 export default async function SalesPage() {
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "reports:read") && !hasCapability(ctx.role, "pos:cancel_ticket")) {
@@ -47,7 +56,7 @@ export default async function SalesPage() {
       createdAt: s.createdAt.toISOString(),
       organizationNom: organization.nom,
       lines: s.lines.map((l) => ({
-        designation: l.variant.product.designation,
+        designation: lineDesignation(l.variant),
         quantite: Number(l.quantite),
         prixUnitaire: Number(l.prixUnitaire),
         remise: Number(l.remise),

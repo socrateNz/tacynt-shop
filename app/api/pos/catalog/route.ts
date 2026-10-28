@@ -22,7 +22,10 @@ export async function GET() {
         where: { actif: true },
         include: {
           variants: {
-            include: { shopPrices: { where: { shopId } } },
+            include: {
+              shopPrices: { where: { shopId } },
+              stockLevels: { where: { shopId } },
+            },
           },
         },
       });
@@ -47,6 +50,12 @@ export async function GET() {
           unite: p.unite,
           tauxTaxe: Number(p.tauxTaxe),
           suiviStock: p.suiviStock,
+          // null = pas de limite (service ou produit sans suivi de stock) ;
+          // la caisse doit pouvoir plafonner la vente sur ce qui est
+          // réellement disponible (StockLevel.quantite), pas juste afficher
+          // un prix. Toujours une photo au dernier sync, jamais revérifiée en
+          // direct — cohérent avec le fonctionnement hors ligne de la caisse.
+          stockQuantite: p.suiviStock ? Number(v.stockLevels[0]?.quantite ?? 0) : null,
           prixVente: Number(v.shopPrices[0].prixVente),
           prixPlancher: v.shopPrices[0].prixPlancher
             ? Number(v.shopPrices[0].prixPlancher)

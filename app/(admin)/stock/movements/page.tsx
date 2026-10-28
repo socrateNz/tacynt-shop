@@ -29,6 +29,14 @@ import { profileHasLots, profileHasSerialNumbers } from "@/lib/tenant/profile";
 import { AdjustStockForm } from "./adjust-stock-form";
 import { ReceiveStockForm } from "./receive-stock-form";
 
+function variantLabel(variant: { product: { designation: string }; attributs: unknown; codeBarres: string | null }) {
+  const attrs = variant.attributs as Record<string, string>;
+  const attrLabel = Object.entries(attrs)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(", ");
+  return `${variant.product.designation}${attrLabel ? ` — ${attrLabel}` : ""}${variant.codeBarres ? ` (${variant.codeBarres})` : ""}`;
+}
+
 const TYPE_LABELS: Record<string, string> = {
   RECEPTION: "Réception",
   VENTE: "Vente",
@@ -128,7 +136,7 @@ export default async function StockMovementsPage() {
               {levels.map((l) => (
                 <TableRow key={`${l.variantId}-${l.shopId}`}>
                   <TableCell className="text-foreground">
-                    {l.variant.product.designation}
+                    {variantLabel(l.variant)}
                   </TableCell>
                   <TableCell className="num text-right">{l.quantite.toString()}</TableCell>
                   <TableCell className="num text-right">
@@ -164,7 +172,7 @@ export default async function StockMovementsPage() {
                     key={l.id}
                     className={joursRestants !== null && joursRestants <= 7 ? "text-destructive" : "text-foreground"}
                   >
-                    {l.variant.product.designation} — lot {l.numero} — {l.quantite.toString()} unité(s) —
+                    {variantLabel(l.variant)} — lot {l.numero} — {l.quantite.toString()} unité(s) —
                     {joursRestants !== null && joursRestants < 0
                       ? " périmé"
                       : ` J-${joursRestants}`}
@@ -192,7 +200,7 @@ export default async function StockMovementsPage() {
                 showSerial={showSerial}
                 variants={variants.map((v) => ({
                   id: v.id,
-                  label: `${v.product.designation}${v.codeBarres ? ` (${v.codeBarres})` : ""}`,
+                  label: variantLabel(v),
                 }))}
               />
             </DialogContent>
@@ -209,7 +217,7 @@ export default async function StockMovementsPage() {
               <AdjustStockForm
                 variants={variants.map((v) => ({
                   id: v.id,
-                  label: `${v.product.designation}${v.codeBarres ? ` (${v.codeBarres})` : ""}`,
+                  label: variantLabel(v),
                 }))}
               />
             </DialogContent>
@@ -238,7 +246,7 @@ export default async function StockMovementsPage() {
                     {m.createdAt.toLocaleString("fr-FR")}
                   </TableCell>
                   <TableCell className="text-foreground">
-                    {m.variant.product.designation}
+                    {variantLabel(m.variant)}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{m.type}</TableCell>
                   <TableCell className="num text-right">{m.quantite.toString()}</TableCell>
@@ -250,7 +258,7 @@ export default async function StockMovementsPage() {
                       title="Mouvement de stock"
                       rows={[
                         { label: "Date", value: m.createdAt.toLocaleString("fr-FR") },
-                        { label: "Produit", value: m.variant.product.designation },
+                        { label: "Produit", value: variantLabel(m.variant) },
                         { label: "Type", value: TYPE_LABELS[m.type] ?? m.type },
                         { label: "Quantité", value: m.quantite.toString() },
                         {

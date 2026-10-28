@@ -16,6 +16,7 @@ import { formatMoney } from "@/lib/money";
 import { hasCapability, type Role } from "@/lib/permissions";
 import {
   countPendingSales,
+  decrementCatalogStock,
   getCatalog,
   getCustomers,
   getSyncMeta,
@@ -233,7 +234,24 @@ export function PosClient({
     return override?.prixVente ?? product.prixVente;
   }
 
+  // null = pas de limite (service ou suiviStock=false) — la caisse ne doit
+  // jamais vendre au-delà de ce que la dernière photo de stock connaît,
+  // même hors ligne (le serveur, lui, n'annule jamais une vente déjà
+  // encaissée après coup — voir lib/sales/apply-sale.ts).
+  function availableStock(product: CatalogProduct): number | null {
+    return product.suiviStock ? (product.stockQuantite ?? 0) : null;
+  }
+
   function addToCart(product: CatalogProduct) {
+    const available = availableStock(product);
+    const existingQty = cart.find((l) => l.variantId === product.variantId)?.quantite ?? 0;
+    if (available !== null && existingQty + 1 > available) {
+      setError(
+        `Stock insuffisant pour ${product.designation} (${available} disponible${available > 1 ? "s" : ""}).`,
+      );
+      return;
+    }
+
     const prixUnitaire = getEffectivePrice(product);
     setCart((prev) => {
       const existing = prev.find((l) => l.variantId === product.variantId);
@@ -267,10 +285,17 @@ export function PosClient({
   }
 
   function updateQuantity(variantId: string, quantite: number) {
+    const product = catalog.find((p) => p.variantId === variantId);
+    const available = product ? availableStock(product) : null;
+    let clamped = Math.max(0, quantite);
+    if (available !== null && clamped > available) {
+      setError(
+        `Stock insuffisant pour ${product!.designation} (${available} disponible${available > 1 ? "s" : ""}).`,
+      );
+      clamped = available;
+    }
     setCart((prev) =>
-      prev
-        .map((l) => (l.variantId === variantId ? { ...l, quantite: Math.max(0, quantite) } : l))
-        .filter((l) => l.quantite > 0),
+      prev.map((l) => (l.variantId === variantId ? { ...l, quantite: clamped } : l)).filter((l) => l.quantite > 0),
     );
   }
 
@@ -363,6 +388,11 @@ export function PosClient({
     const paymentLines = payments.map((p) => ({ mode: p.mode, montant: Number(p.montant) || 0 }));
 
     const sale = await createLocalSale({ lines, payments: paymentLines, customerId });
+
+    // Même principe que la dette ci-dessous : sans décrémenter le cache
+    // catalogue tout de suite, un deuxième ticket hors ligne dans la même
+    // session pourrait resurvendre ce qui vient d'être écoulé sur celui-ci.
+    setCatalog(await decrementCatalogStock(lines));
 
     // Reflète immédiatement la dette dans le cache local (IndexedDB) : sans
     // ça, "Solde (dernière synchro)" et le bouton "Dettes" resteraient
@@ -592,19 +622,28 @@ export function PosClient({
             />
             {filteredCatalog.length > 0 && (
               <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
-                {filteredCatalog.map((p) => (
-                  <button
-                    key={p.variantId}
-                    type="button"
-                    onClick={() => addToCart(p)}
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
-                  >
-                    <span>{p.designation}</span>
-                    <span className="num text-muted-foreground">
-                      {formatMoney(p.prixVente, devise)}
-                    </span>
-                  </button>
-                ))}
+                {filteredCatalog.map((p) => {
+                  const available = availableStock(p);
+                  const outOfStock = available !== null && available <= 0;
+                  return (
+                    <button
+                      key={p.variantId}
+                      type="button"
+                      disabled={outOfStock}
+                      onClick={() => addToCart(p)}
+                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                    >
+                      <span>{p.designation}</span>
+                      {outOfStock ? (
+                        <span className="text-xs text-destructive">Rupture de stock</span>
+                      ) : (
+                        <span className="num text-muted-foreground">
+                          {formatMoney(p.prixVente, devise)}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

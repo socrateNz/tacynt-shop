@@ -9,6 +9,9 @@ export type CatalogProduct = {
   unite: string;
   tauxTaxe: number;
   suiviStock: boolean;
+  // null = pas de limite (service ou suiviStock=false) ; sinon photo de
+  // StockLevel.quantite au dernier sync catalogue.
+  stockQuantite: number | null;
   prixVente: number;
   prixPlancher: number | null;
 };
@@ -111,6 +114,27 @@ export async function saveCatalog(products: CatalogProduct[]): Promise<void> {
 
 export async function getCatalog(): Promise<CatalogProduct[]> {
   const db = await getPosDB();
+  return db.getAll("catalog_products");
+}
+
+// Appelé juste après une vente locale (createLocalSale) : sans ça, le cache
+// catalogue ne reflète le stock vendu qu'à la prochaine synchro complète
+// (en ligne uniquement) — un deuxième ticket hors ligne dans la même
+// session pourrait resurvendre ce qui vient d'être écoulé sur le premier.
+export async function decrementCatalogStock(
+  lines: { variantId: string; quantite: number }[],
+): Promise<CatalogProduct[]> {
+  const db = await getPosDB();
+  const tx = db.transaction("catalog_products", "readwrite");
+  for (const line of lines) {
+    const product = await tx.store.get(line.variantId);
+    if (!product || product.stockQuantite === null) continue;
+    await tx.store.put({
+      ...product,
+      stockQuantite: Math.max(0, product.stockQuantite - line.quantite),
+    });
+  }
+  await tx.done;
   return db.getAll("catalog_products");
 }
 
