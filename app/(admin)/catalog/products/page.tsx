@@ -105,16 +105,30 @@ export default async function ProductsPage() {
         id: p.id,
         designation: p.designation,
         categoryId: p.categoryId,
-        unite: p.variants[0]?.unite ?? "piece",
-        uniteQuantite: p.variants[0] ? Number(p.variants[0].uniteQuantite) : 1,
         tauxTaxe: Number(p.tauxTaxe),
         prixEmballage: p.prixEmballage ? Number(p.prixEmballage) : null,
-        codeBarres: p.variants[0]?.codeBarres ?? null,
-        prixVente: price ? Number(price.prixVente) : 0,
-        prixPlancher: price?.prixPlancher ? Number(price.prixPlancher) : null,
-        seuilAlerte: price?.seuilAlerte ?? null,
         description: p.description,
+        suiviStock: p.suiviStock,
+        suiviLots: p.suiviLots,
+        suiviSerie: p.suiviSerie,
         images: p.images.map((img) => ({ id: img.id })),
+        variants: p.variants
+          .filter((v) => v.actif)
+          .map((v) => {
+            const attrs = v.attributs as Record<string, string>;
+            const shopPrice = v.shopPrices[0];
+            return {
+              id: v.id,
+              attributs: Object.entries(attrs).map(([name, value]) => ({ name, value })),
+              codeBarres: v.codeBarres,
+              prixAchatRef: Number(v.prixAchatRef),
+              unite: v.unite,
+              uniteQuantite: Number(v.uniteQuantite),
+              prixVente: shopPrice ? Number(shopPrice.prixVente) : 0,
+              prixPlancher: shopPrice?.prixPlancher ? Number(shopPrice.prixPlancher) : null,
+              seuilAlerte: shopPrice?.seuilAlerte ?? null,
+            };
+          }),
       },
       variants: p.variants.map((v) => {
         const attrs = v.attributs as Record<string, string>;

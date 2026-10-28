@@ -20,11 +20,10 @@ function isUniqueViolation(error: unknown): boolean {
 
 // Route Handler (pas Server Action) pour la même raison que POST
 // /api/products : une nouvelle photo peut dépasser le plafond de 1 Mo des
-// Server Actions. Modifie le produit, sa variante par défaut (Phase 1/2 :
-// un produit créé depuis ce formulaire n'en a toujours qu'une) et le prix
-// de la boutique active — jamais suiviStock/suiviLots/suiviSerie ni le prix
-// d'achat de référence ici, trop risqué de les rouvrir après coup une fois
-// des mouvements de stock déjà enregistrés dessus.
+// Server Actions. Même structure que ce POST de création (product-form.tsx
+// / product-edit-dialog.tsx partagent le même patron variantsJson) : ce
+// dialogue n'est plus scopé à variants[0] seul, il gère toutes les
+// variantes du produit, exactement comme à la création.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ productId: string }> },
@@ -37,26 +36,47 @@ export async function POST(
   const formData = await request.formData();
   const designation = String(formData.get("designation") ?? "").trim();
   const categoryId = String(formData.get("categoryId") ?? "") || null;
-  const unite = String(formData.get("unite") ?? "piece").trim() || "piece";
-  const uniteQuantite = Number(formData.get("uniteQuantite") ?? 1);
   const tauxTaxe = Number(formData.get("tauxTaxe") ?? 0);
   const prixEmballageRaw = String(formData.get("prixEmballage") ?? "").trim();
   const prixEmballage = prixEmballageRaw ? Number(prixEmballageRaw) : null;
-  const codeBarres = String(formData.get("codeBarres") ?? "").trim() || null;
-  const prixVente = Number(formData.get("prixVente") ?? 0);
-  const prixPlancherRaw = String(formData.get("prixPlancher") ?? "").trim();
-  const prixPlancher = prixPlancherRaw ? Number(prixPlancherRaw) : null;
-  const seuilAlerteRaw = String(formData.get("seuilAlerte") ?? "").trim();
-  const seuilAlerte = seuilAlerteRaw ? Number(seuilAlerteRaw) : null;
   const description = String(formData.get("description") ?? "").trim() || null;
+  const suiviStock = formData.get("suiviStock") === "on";
+  const suiviLots = formData.get("suiviLots") === "on";
+  const suiviSerie = formData.get("suiviSerie") === "on";
   const newImages = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
   const removeImageIds = new Set(formData.getAll("removeImageIds").map(String));
 
-  if (!designation || !Number.isFinite(prixVente) || prixVente < 0) {
-    return NextResponse.json(
-      { error: "Désignation et prix de vente (valide) sont requis." },
-      { status: 400 },
-    );
+  // Jamais fait confiance qu'à ce qui est revalidé ligne par ligne, jamais à
+  // la seule validation côté client — même principe que POST /api/products.
+  type VariantInput = {
+    variantId?: string | null;
+    attributs?: Record<string, string>;
+    codeBarres?: string | null;
+    prixAchatRef?: number;
+    unite?: string;
+    uniteQuantite?: number;
+    prixVente: number;
+    prixPlancher?: number | null;
+    seuilAlerte?: number | null;
+  };
+  let variantInputs: VariantInput[];
+  try {
+    const parsed = JSON.parse(String(formData.get("variantsJson") ?? "[]"));
+    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("empty");
+    variantInputs = parsed;
+  } catch {
+    return NextResponse.json({ error: "Au moins une variante valide est requise." }, { status: 400 });
+  }
+  let deactivatedVariantIds: string[];
+  try {
+    const parsed = JSON.parse(String(formData.get("deactivatedVariantIdsJson") ?? "[]"));
+    deactivatedVariantIds = Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+  } catch {
+    deactivatedVariantIds = [];
+  }
+
+  if (!designation) {
+    return NextResponse.json({ error: "Désignation requise." }, { status: 400 });
   }
   if (!Number.isFinite(tauxTaxe) || tauxTaxe < 0) {
     return NextResponse.json({ error: "Taux de taxe invalide." }, { status: 400 });
@@ -64,8 +84,27 @@ export async function POST(
   if (prixEmballage !== null && (!Number.isFinite(prixEmballage) || prixEmballage < 0)) {
     return NextResponse.json({ error: "Prix d'emballage invalide." }, { status: 400 });
   }
-  if (!Number.isFinite(uniteQuantite) || uniteQuantite < 0) {
-    return NextResponse.json({ error: "Quantité d'unité invalide." }, { status: 400 });
+  if (
+    variantInputs.some(
+      (v) => typeof v.prixVente !== "number" || !Number.isFinite(v.prixVente) || v.prixVente < 0,
+    )
+  ) {
+    return NextResponse.json(
+      { error: "Chaque variante doit avoir un prix de vente (valide) requis." },
+      { status: 400 },
+    );
+  }
+  if (
+    variantInputs.some(
+      (v) =>
+        v.uniteQuantite !== undefined &&
+        (typeof v.uniteQuantite !== "number" || !Number.isFinite(v.uniteQuantite) || v.uniteQuantite < 0),
+    )
+  ) {
+    return NextResponse.json(
+      { error: "Chaque variante doit avoir une quantité d'unité valide." },
+      { status: 400 },
+    );
   }
   for (const img of newImages) {
     if (img.size > MAX_IMAGE_BYTES) {
@@ -87,31 +126,78 @@ export async function POST(
         where: { id: productId },
         include: { variants: true },
       });
-      const variant = product.variants[0];
-      if (!variant) throw new Error("PRODUCT_HAS_NO_VARIANT");
+      const existingVariantIds = new Set(product.variants.map((v) => v.id));
+
+      // Les id transmis doivent appartenir à CE produit — jamais faire
+      // confiance à un variantId arbitraire envoyé par le client.
+      for (const v of variantInputs) {
+        if (v.variantId && !existingVariantIds.has(v.variantId)) {
+          throw new Error("VARIANT_NOT_FOUND");
+        }
+      }
+      for (const id of deactivatedVariantIds) {
+        if (!existingVariantIds.has(id)) throw new Error("VARIANT_NOT_FOUND");
+      }
 
       await tx.product.update({
         where: { id: productId },
-        data: { designation, categoryId, tauxTaxe, prixEmballage, description },
+        data: { designation, categoryId, tauxTaxe, prixEmballage, description, suiviStock, suiviLots, suiviSerie },
       });
 
-      await tx.productVariant.update({
-        where: { id: variant.id },
-        data: { codeBarres, unite, uniteQuantite },
-      });
+      for (const v of variantInputs) {
+        if (v.variantId) {
+          await tx.productVariant.update({
+            where: { id: v.variantId },
+            data: {
+              attributs: v.attributs ?? {},
+              codeBarres: v.codeBarres?.trim() || null,
+              prixAchatRef: v.prixAchatRef ?? 0,
+              unite: v.unite?.trim() || "piece",
+              uniteQuantite: v.uniteQuantite ?? 1,
+            },
+          });
+          await tx.shopPrice.upsert({
+            where: { variantId_shopId: { variantId: v.variantId, shopId } },
+            create: {
+              organizationId: ctx.organizationId,
+              variantId: v.variantId,
+              shopId,
+              prixVente: v.prixVente,
+              prixPlancher: v.prixPlancher ?? null,
+              seuilAlerte: v.seuilAlerte ?? null,
+            },
+            update: { prixVente: v.prixVente, prixPlancher: v.prixPlancher ?? null, seuilAlerte: v.seuilAlerte ?? null },
+          });
+        } else {
+          const variant = await tx.productVariant.create({
+            data: {
+              organizationId: ctx.organizationId,
+              productId,
+              attributs: v.attributs ?? {},
+              codeBarres: v.codeBarres?.trim() || null,
+              prixAchatRef: v.prixAchatRef ?? 0,
+              unite: v.unite?.trim() || "piece",
+              uniteQuantite: v.uniteQuantite ?? 1,
+            },
+          });
+          await tx.shopPrice.create({
+            data: {
+              organizationId: ctx.organizationId,
+              variantId: variant.id,
+              shopId,
+              prixVente: v.prixVente,
+              prixPlancher: v.prixPlancher ?? null,
+              seuilAlerte: v.seuilAlerte ?? null,
+            },
+          });
+        }
+      }
 
-      await tx.shopPrice.upsert({
-        where: { variantId_shopId: { variantId: variant.id, shopId } },
-        create: {
-          organizationId: ctx.organizationId,
-          variantId: variant.id,
-          shopId,
-          prixVente,
-          prixPlancher,
-          seuilAlerte,
-        },
-        update: { prixVente, prixPlancher, seuilAlerte },
-      });
+      // Jamais de suppression physique (mouvements/lignes de vente déjà
+      // rattachés) — même règle que deactivateVariant.
+      for (const id of deactivatedVariantIds) {
+        await tx.productVariant.update({ where: { id }, data: { actif: false } });
+      }
 
       const existingImages = await tx.productImage.findMany({
         where: { productId },
@@ -153,13 +239,29 @@ export async function POST(
         action: "PRODUCT_UPDATED",
         entite: "product",
         entiteId: productId,
-        apres: { designation, categoryId, unite, uniteQuantite, tauxTaxe, prixEmballage, codeBarres, prixVente },
+        apres: {
+          designation,
+          categoryId,
+          tauxTaxe,
+          prixEmballage,
+          suiviStock,
+          suiviLots,
+          suiviSerie,
+          variantsCount: variantInputs.length,
+          deactivatedVariantsCount: deactivatedVariantIds.length,
+        },
       });
     });
   } catch (error) {
     if (error instanceof Error && error.message === "TOO_MANY_IMAGES") {
       return NextResponse.json(
         { error: `${MAX_IMAGES} photos maximum par produit — supprimez-en avant d'en ajouter.` },
+        { status: 400 },
+      );
+    }
+    if (error instanceof Error && error.message === "VARIANT_NOT_FOUND") {
+      return NextResponse.json(
+        { error: "Une variante référencée n'appartient pas à ce produit." },
         { status: 400 },
       );
     }

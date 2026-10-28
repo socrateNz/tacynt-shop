@@ -319,7 +319,14 @@ export function ProductsTable({
                   </TableCell>
                 )}
                 <TableCell className="text-right">
-                  {canWrite && <ProductEditDialog product={p.edit} categories={categories} />}
+                  {canWrite && (
+                    <ProductEditDialog
+                      product={p.edit}
+                      categories={categories}
+                      showLots={showLots}
+                      showSerial={showSerial}
+                    />
+                  )}
                 </TableCell>
               </TableRow>
             ))}
