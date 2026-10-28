@@ -9,7 +9,7 @@ import { resolveAccountingMapping } from "@/lib/reports/accounting-mapping";
 import { parseOrgSettings } from "@/lib/tenant/settings";
 
 import { AccountingMappingForm } from "./accounting-mapping-form";
-import { ProfilMetierForm } from "./settings-form";
+import { DeviseForm, ProfilMetierForm } from "./settings-form";
 import { WhiteLabelForm } from "./white-label-form";
 
 export default async function SettingsPage() {
@@ -34,6 +34,7 @@ export default async function SettingsPage() {
       {canManageShop && (
         <>
           <ProfilMetierForm profilMetier={organization.profilMetier} />
+          <DeviseForm devise={organization.devise} />
 
           <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6">
             <h2 className="text-sm font-medium text-foreground">Modules premium</h2>

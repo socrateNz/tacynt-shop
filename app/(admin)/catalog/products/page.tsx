@@ -107,6 +107,7 @@ export default async function ProductsPage() {
         categoryId: p.categoryId,
         unite: p.unite,
         tauxTaxe: Number(p.tauxTaxe),
+        prixEmballage: p.prixEmballage ? Number(p.prixEmballage) : null,
         codeBarres: p.variants[0]?.codeBarres ?? null,
         prixVente: price ? Number(price.prixVente) : 0,
         prixPlancher: price?.prixPlancher ? Number(price.prixPlancher) : null,

@@ -31,6 +31,8 @@ export async function POST(request: Request) {
   const categoryId = String(formData.get("categoryId") ?? "") || null;
   const unite = String(formData.get("unite") ?? "piece").trim() || "piece";
   const tauxTaxe = Number(formData.get("tauxTaxe") ?? 0);
+  const prixEmballageRaw = String(formData.get("prixEmballage") ?? "").trim();
+  const prixEmballage = prixEmballageRaw ? Number(prixEmballageRaw) : null;
   const suiviStock = formData.get("suiviStock") === "on";
   const suiviLots = formData.get("suiviLots") === "on";
   const suiviSerie = formData.get("suiviSerie") === "on";
@@ -73,6 +75,9 @@ export async function POST(request: Request) {
   if (!designation) {
     return NextResponse.json({ error: "Désignation requise." }, { status: 400 });
   }
+  if (prixEmballage !== null && (!Number.isFinite(prixEmballage) || prixEmballage < 0)) {
+    return NextResponse.json({ error: "Prix d'emballage invalide." }, { status: 400 });
+  }
   if (images.length > MAX_IMAGES) {
     return NextResponse.json(
       { error: `${MAX_IMAGES} photos maximum par produit.` },
@@ -114,6 +119,7 @@ export async function POST(request: Request) {
           categoryId,
           unite,
           tauxTaxe,
+          prixEmballage,
           suiviStock,
           suiviLots,
           suiviSerie,

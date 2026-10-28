@@ -7,6 +7,7 @@ import type { PaymentMode } from "@prisma/client";
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions-server";
+import { isValidCurrency } from "@/lib/tenant/currency";
 import { PROFILES } from "@/lib/tenant/profile";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
@@ -48,6 +49,38 @@ export async function updateProfilMetier(
       entite: "organization",
       entiteId: ctx.organizationId,
       apres: { profilMetier },
+    });
+  });
+
+  revalidatePath("/settings");
+  return { error: null };
+}
+
+export async function updateDevise(
+  _prevState: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  const ctx = await getTenantContext();
+  await assertCapability(ctx.role, "shops:manage");
+
+  const devise = String(formData.get("devise") ?? "");
+  if (!isValidCurrency(devise)) {
+    return { error: "Devise invalide." };
+  }
+
+  await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
+    await tx.organization.update({
+      where: { id: ctx.organizationId },
+      data: { devise },
+    });
+
+    await recordAuditLog(tx, {
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+      action: "DEVISE_UPDATED",
+      entite: "organization",
+      entiteId: ctx.organizationId,
+      apres: { devise },
     });
   });
 

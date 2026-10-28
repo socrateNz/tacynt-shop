@@ -443,6 +443,13 @@ model Product {
   // (M34) — jamais utilisé ailleurs (pas repris sur le ticket, pas dans le
   // catalogue admin en liste), donc simplement optionnel partout.
   description    String?
+  // Optionnel (M35) : service d'emballage proposé sur la vitrine. Par
+  // produit (pas par variante, pas par boutique) pour différencier un
+  // produit fragile d'un produit standard — mais la vitrine ne force jamais
+  // une correspondance 1-pour-1 article/emballage (voir OnlineOrder.
+  // emballageQuantite), le client choisit lui-même combien d'emballages il
+  // lui faut.
+  prixEmballage  Decimal? @map("prix_emballage") @db.Decimal(12, 2)
   actif          Boolean  @default(true)
   createdAt      DateTime @default(now()) @map("created_at")
 
@@ -752,7 +759,16 @@ model OnlineOrder {
   statut           OnlineOrderStatus          @default(EN_ATTENTE)
   totalHt          Decimal                    @map("total_ht") @db.Decimal(14, 2)
   totalTaxe        Decimal                    @map("total_taxe") @db.Decimal(14, 2)
+  // Inclut l'emballage (ci-dessous) : totalTtc est ce qui est réellement dû
+  // par le client, repris tel quel par le paiement en ligne (Codees) et par
+  // le montant pré-rempli au fulfillment — jamais un second calcul ailleurs.
   totalTtc         Decimal                    @map("total_ttc") @db.Decimal(14, 2)
+  // Nombre d'emballages choisi librement par le client (M35, pas lié au
+  // nombre d'articles — un emballage peut en contenir plusieurs). Prix
+  // unitaire figé au moment de la commande (jamais recalculé après coup),
+  // null si quantité 0.
+  emballageQuantite      Int     @default(0) @map("emballage_quantite")
+  emballagePrixUnitaire  Decimal? @map("emballage_prix_unitaire") @db.Decimal(12, 2)
   // Renseigné uniquement au passage RECUPEREE : la vente réelle générée à
   // l'encaissement en boutique (lib/sales/apply-sale.ts, extrait de
   // processOneSale, M31). Une commande ne génère jamais plus d'une vente.

@@ -54,6 +54,8 @@ export function OnlineOrderDialog({
   adresseLivraison,
   notes,
   lines,
+  emballageQuantite,
+  emballagePrixUnitaireLabel,
   totalTtc,
   totalTtcLabel,
   saleId,
@@ -68,6 +70,8 @@ export function OnlineOrderDialog({
   adresseLivraison: string | null;
   notes: string | null;
   lines: OnlineOrderLine[];
+  emballageQuantite: number;
+  emballagePrixUnitaireLabel: string | null;
   totalTtc: number;
   totalTtcLabel: string;
   saleId: string | null;
@@ -124,6 +128,13 @@ export function OnlineOrderDialog({
                   <TableCell className="num text-right">{l.prixUnitaireLabel}</TableCell>
                 </TableRow>
               ))}
+              {emballageQuantite > 0 && emballagePrixUnitaireLabel && (
+                <TableRow>
+                  <TableCell className="text-foreground">Emballage</TableCell>
+                  <TableCell className="num text-right">{emballageQuantite}</TableCell>
+                  <TableCell className="num text-right">{emballagePrixUnitaireLabel}</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>

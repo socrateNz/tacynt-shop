@@ -13,7 +13,7 @@ import { useCart } from "../../cart-context";
 
 export function CheckoutForm({ devise }: { devise: string }) {
   const router = useRouter();
-  const { cart, loaded, total, clear } = useCart();
+  const { cart, loaded, total, clear, emballageUnitPrice, emballageTotal } = useCart();
   const [modeRetrait, setModeRetrait] = useState<"RETRAIT_BOUTIQUE" | "LIVRAISON">("RETRAIT_BOUTIQUE");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -79,6 +79,7 @@ export function CheckoutForm({ devise }: { devise: string }) {
           adresseLivraison: formData.get("adresseLivraison"),
           notes: formData.get("notes"),
           lines: cart.items.map((i) => ({ variantId: i.variantId, quantite: i.quantite })),
+          emballageQuantite: cart.emballageQuantite,
         }),
       });
       const body = (await res.json()) as { id?: string; error?: string };
@@ -141,9 +142,15 @@ export function CheckoutForm({ devise }: { devise: string }) {
         <ul className="mt-2 flex flex-col gap-1 text-sm text-muted-foreground">
           {cart.items.map((i) => (
             <li key={i.variantId}>
-              {i.quantite} × {i.designation} — {formatMoney(i.prixVente * i.quantite, devise)}
+              {i.quantite} {i.unite} × {i.designation} — {formatMoney(i.prixVente * i.quantite, devise)}
             </li>
           ))}
+          {cart.emballageQuantite > 0 && emballageUnitPrice > 0 && (
+            <li>
+              {cart.emballageQuantite} emballage(s) × {formatMoney(emballageUnitPrice, devise)} —{" "}
+              {formatMoney(emballageTotal, devise)}
+            </li>
+          )}
         </ul>
         <p className="num mt-2 text-lg font-semibold text-foreground">
           Total : {formatMoney(total, devise)}

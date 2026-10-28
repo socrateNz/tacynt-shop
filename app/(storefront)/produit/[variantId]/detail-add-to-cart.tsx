@@ -9,13 +9,19 @@ import { useCart } from "../../../cart-context";
 export function DetailAddToCart({
   variantId,
   designation,
+  unite,
   prixVente,
+  stockQuantite,
+  prixEmballage,
   shopId,
   available,
 }: {
   variantId: string;
   designation: string;
+  unite: string;
   prixVente: number;
+  stockQuantite: number | null;
+  prixEmballage: number | null;
   shopId: string;
   available: boolean;
 }) {
@@ -23,7 +29,7 @@ export function DetailAddToCart({
   const [added, setAdded] = useState(false);
 
   function handleAdd() {
-    addItem(shopId, { variantId, designation, prixVente });
+    addItem(shopId, { variantId, designation, unite, prixVente, stockQuantite, prixEmballage });
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1500);
   }

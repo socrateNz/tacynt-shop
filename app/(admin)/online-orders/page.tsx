@@ -131,6 +131,12 @@ export default async function OnlineOrdersPage() {
                       quantite: Number(l.quantite),
                       prixUnitaireLabel: formatMoney(l.prixUnitaire, organization.devise),
                     }))}
+                    emballageQuantite={o.emballageQuantite}
+                    emballagePrixUnitaireLabel={
+                      o.emballagePrixUnitaire !== null
+                        ? formatMoney(o.emballagePrixUnitaire, organization.devise)
+                        : null
+                    }
                     totalTtc={Number(o.totalTtc)}
                     totalTtcLabel={formatMoney(o.totalTtc, organization.devise)}
                     saleId={o.saleId}

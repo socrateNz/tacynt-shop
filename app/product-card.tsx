@@ -22,11 +22,16 @@ export function ProductCard({
   const [added, setAdded] = useState(false);
   const attrLabel = Object.values(item.attributs).join(", ");
 
+  const outOfStock = item.stockQuantite !== null && item.stockQuantite <= 0;
+
   function handleAdd() {
     addItem(shopId, {
       variantId: item.variantId,
       designation: item.designation,
+      unite: item.unite,
       prixVente: item.prixVente,
+      stockQuantite: item.stockQuantite,
+      prixEmballage: item.prixEmballage,
     });
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1500);
@@ -50,9 +55,12 @@ export function ProductCard({
         {item.designation}
         {attrLabel ? ` — ${attrLabel}` : ""}
       </Link>
-      <p className="num text-base font-semibold text-foreground sm:text-lg">{formatMoney(item.prixVente, devise)}</p>
-      <span className={item.available ? "text-xs text-primary" : "text-xs text-muted-foreground"}>
-        {item.available ? "En stock" : "Indisponible"}
+      <p className="num text-base font-semibold text-foreground sm:text-lg">
+        {formatMoney(item.prixVente, devise)}
+        <span className="text-xs font-normal text-muted-foreground"> / {item.unite}</span>
+      </p>
+      <span className={outOfStock ? "text-xs text-destructive" : item.available ? "text-xs text-primary" : "text-xs text-muted-foreground"}>
+        {outOfStock ? "Rupture de stock" : item.available ? "En stock" : "Indisponible"}
       </span>
       <Button type="button" size="sm" disabled={!item.available} onClick={handleAdd}>
         {added ? "Ajouté" : "Ajouter au panier"}

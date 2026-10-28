@@ -37,6 +37,7 @@ export default async function ProduitPage({
   }
 
   const attrLabel = Object.values(item.attributs).join(", ");
+  const outOfStock = item.stockQuantite !== null && item.stockQuantite <= 0;
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -64,10 +65,25 @@ export default async function ProduitPage({
 
           <p className="num text-2xl font-semibold text-foreground">
             {formatMoney(item.prixVente, organization.devise)}
+            <span className="text-sm font-normal text-muted-foreground"> / {item.unite}</span>
           </p>
 
-          <span className={item.available ? "text-sm text-primary" : "text-sm text-muted-foreground"}>
-            {item.available ? "En stock" : "Indisponible"}
+          <span
+            className={
+              outOfStock
+                ? "text-sm text-destructive"
+                : item.available
+                  ? "text-sm text-primary"
+                  : "text-sm text-muted-foreground"
+            }
+          >
+            {outOfStock
+              ? "Rupture de stock"
+              : item.available
+                ? item.stockQuantite !== null
+                  ? `En stock — ${item.stockQuantite} ${item.unite} disponible${item.stockQuantite > 1 ? "s" : ""}`
+                  : "En stock"
+                : "Indisponible"}
           </span>
 
           {item.description && (
@@ -77,7 +93,10 @@ export default async function ProduitPage({
           <DetailAddToCart
             variantId={item.variantId}
             designation={item.designation}
+            unite={item.unite}
             prixVente={item.prixVente}
+            stockQuantite={item.stockQuantite}
+            prixEmballage={item.prixEmballage}
             shopId={shopId}
             available={item.available}
           />

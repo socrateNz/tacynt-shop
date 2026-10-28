@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CURRENCIES } from "@/lib/tenant/currency";
 
 import { createOrganization, type CreateOrganizationState } from "./actions";
 
@@ -31,6 +32,21 @@ export function NewOrganizationForm() {
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="ownerNom">Nom du propriétaire</Label>
         <Input id="ownerNom" name="ownerNom" required placeholder="Awa Ndiaye" />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="devise">Devise</Label>
+        <select
+          id="devise"
+          name="devise"
+          defaultValue="XOF"
+          className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
+        >
+          {CURRENCIES.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="email">Email du propriétaire</Label>

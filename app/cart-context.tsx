@@ -7,7 +7,9 @@ import {
   cartCount,
   cartTotal,
   clearCart as clearCartStorage,
+  emballageUnitPrice,
   getCart,
+  setEmballageQty as setEmballageQtyStorage,
   updateQuantity as updateQuantityStorage,
   type Cart,
   type CartItem,
@@ -20,6 +22,9 @@ type CartContextValue = {
   count: number;
   addItem: (shopId: string, item: Omit<CartItem, "quantite">, quantite?: number) => void;
   updateQty: (shopId: string, variantId: string, quantite: number) => void;
+  setEmballageQty: (shopId: string, quantite: number) => void;
+  emballageUnitPrice: number;
+  emballageTotal: number;
   clear: () => void;
 };
 
@@ -53,14 +58,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCart(updateQuantityStorage(shopId, variantId, quantite));
   }
 
+  function setEmballageQty(shopId: string, quantite: number) {
+    setCart(setEmballageQtyStorage(shopId, quantite));
+  }
+
   function clear() {
     clearCartStorage();
     setCart(null);
   }
 
+  const unitPrice = emballageUnitPrice(cart);
+
   return (
     <CartContext.Provider
-      value={{ cart, loaded, total: cartTotal(cart), count: cartCount(cart), addItem, updateQty, clear }}
+      value={{
+        cart,
+        loaded,
+        total: cartTotal(cart),
+        count: cartCount(cart),
+        addItem,
+        updateQty,
+        setEmballageQty,
+        emballageUnitPrice: unitPrice,
+        emballageTotal: (cart?.emballageQuantite ?? 0) * unitPrice,
+        clear,
+      }}
     >
       {children}
     </CartContext.Provider>

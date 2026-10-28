@@ -42,6 +42,7 @@ export async function POST(request: Request) {
     adresseLivraison?: string;
     notes?: string;
     lines?: OrderLineInput[];
+    emballageQuantite?: number;
   } | null;
 
   if (!body) {
@@ -59,6 +60,10 @@ export async function POST(request: Request) {
     (l): l is Required<OrderLineInput> =>
       typeof l.variantId === "string" && Number.isFinite(l.quantite) && (l.quantite ?? 0) > 0,
   );
+  // Jamais le prix envoyé par le client (même principe que prixUnitaire
+  // ci-dessous) — seule la quantité choisie est retenue, le prix unitaire
+  // est recalculé plus bas à partir des produits réellement validés.
+  const emballageQuantite = Math.max(0, Math.trunc(Number(body.emballageQuantite ?? 0)));
 
   if (
     !shopId ||
@@ -84,6 +89,10 @@ export async function POST(request: Request) {
 
       let totalHt = 0;
       let totalTaxe = 0;
+      // Le plus élevé parmi les prixEmballage des produits réellement
+      // commandés — jamais une correspondance 1-pour-1 article/emballage,
+      // voir Product.prixEmballage et Cart.emballageQuantite.
+      let emballagePrixUnitaire = 0;
       const preparedLines: {
         variantId: string;
         quantite: number;
@@ -105,11 +114,19 @@ export async function POST(request: Request) {
 
         // Garde de saisie en temps réel, pas un rejet rétroactif d'une vente
         // déjà encaissée : rien n'est encore encaissé à ce stade, refuser une
-        // ligne à stock nul ici est équivalent à ce que ferait un vendeur au
-        // comptoir avant d'ajouter l'article au panier.
+        // ligne à stock nul OU à quantité supérieure au stock réel ici est
+        // équivalent à ce que ferait un vendeur au comptoir avant d'ajouter
+        // l'article au panier.
         const stock = variant.stockLevels[0];
-        if (variant.product.suiviStock && (!stock || Number(stock.quantite) <= 0)) {
-          throw new Error(`STOCK_INSUFFISANT:${line.variantId}`);
+        const stockDisponible = stock ? Number(stock.quantite) : 0;
+        if (variant.product.suiviStock && line.quantite > stockDisponible) {
+          throw new Error(
+            `STOCK_INSUFFISANT:${line.variantId}:${stockDisponible}:${encodeURIComponent(variant.product.designation)}`,
+          );
+        }
+
+        if (variant.product.prixEmballage !== null) {
+          emballagePrixUnitaire = Math.max(emballagePrixUnitaire, Number(variant.product.prixEmballage));
         }
 
         const prixUnitaire = Number(price.prixVente);
@@ -144,6 +161,10 @@ export async function POST(request: Request) {
         });
       }
 
+      // Si le panier demandait un emballage mais qu'aucun produit validé
+      // n'en propose un, pas de montant — jamais inventé côté serveur.
+      const emballageMontant = emballageQuantite > 0 ? emballageQuantite * emballagePrixUnitaire : 0;
+
       // Numéro séquentiel par boutique, retry sur collision rarissime
       // (décision #14/M30) plutôt qu'un compteur dédié comme le ticket-range
       // POS — un volume de commandes en ligne bien plus faible ne justifie
@@ -167,7 +188,9 @@ export async function POST(request: Request) {
               notes,
               totalHt,
               totalTaxe,
-              totalTtc: totalHt + totalTaxe,
+              totalTtc: totalHt + totalTaxe + emballageMontant,
+              emballageQuantite,
+              emballagePrixUnitaire: emballageMontant > 0 ? emballagePrixUnitaire : null,
               lines: {
                 create: preparedLines.map((l) => ({
                   organizationId: organization.id,
@@ -191,7 +214,7 @@ export async function POST(request: Request) {
         action: "ONLINE_ORDER_CREATED",
         entite: "online_order",
         entiteId: created.id,
-        apres: { numero: created.numero, totalTtc: totalHt + totalTaxe },
+        apres: { numero: created.numero, totalTtc: totalHt + totalTaxe + emballageMontant, emballageQuantite },
       });
 
       return created;
@@ -203,7 +226,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Un article de la commande n'est plus disponible." }, { status: 400 });
     }
     if (error instanceof Error && error.message.startsWith("STOCK_INSUFFISANT:")) {
-      return NextResponse.json({ error: "Un article de la commande est en rupture de stock." }, { status: 400 });
+      const [, , stockDisponible, designationEncoded] = error.message.split(":");
+      const designation = designationEncoded ? decodeURIComponent(designationEncoded) : null;
+      const message =
+        designation && stockDisponible
+          ? `Il ne reste que ${stockDisponible} ${designation} en stock.`
+          : "Un article de la commande est en rupture de stock.";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
     if (error instanceof Error && error.message === "EMAIL_REQUIS") {
       return NextResponse.json(

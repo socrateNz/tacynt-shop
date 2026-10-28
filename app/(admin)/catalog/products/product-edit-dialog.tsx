@@ -32,6 +32,7 @@ export type ProductEditValues = {
   categoryId: string | null;
   unite: string;
   tauxTaxe: number;
+  prixEmballage: number | null;
   codeBarres: string | null;
   prixVente: number;
   prixPlancher: number | null;
@@ -158,6 +159,17 @@ export function ProductEditDialog({
                 type="number"
                 step="0.01"
                 defaultValue={product.tauxTaxe}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-prixEmballage">Prix d&apos;emballage (optionnel)</Label>
+              <Input
+                id="edit-prixEmballage"
+                name="prixEmballage"
+                type="number"
+                step="0.01"
+                min="0"
+                defaultValue={product.prixEmballage ?? ""}
               />
             </div>
             <div className="flex flex-col gap-1.5">

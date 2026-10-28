@@ -6,8 +6,19 @@ export type StorefrontItem = {
   designation: string;
   categoryName: string | null;
   attributs: Record<string, string>;
+  unite: string;
   prixVente: number;
+  // Optionnel (M35) : prix d'un emballage si ce produit en propose un.
+  // Jamais une correspondance 1-pour-1 avec l'article — voir
+  // Cart.emballageQuantite, le client choisit librement combien
+  // d'emballages il lui faut, indépendamment du nombre d'articles.
+  prixEmballage: number | null;
   available: boolean;
+  // null = pas de limite (service ou suiviStock=false) ; sinon
+  // StockLevel.quantite réel — un simple affichage/plafond de saisie côté
+  // client, jamais l'autorité finale (voir POST /api/storefront/orders, qui
+  // revalide toujours).
+  stockQuantite: number | null;
   coverImageId: string | null;
 };
 
@@ -50,7 +61,8 @@ export async function getStorefrontCatalog(
     .map((v) => {
       const price = v.shopPrices[0];
       const stock = v.stockLevels[0];
-      const available = !v.product.suiviStock || (stock ? Number(stock.quantite) > 0 : false);
+      const stockQuantite = v.product.suiviStock ? Number(stock?.quantite ?? 0) : null;
+      const available = stockQuantite === null || stockQuantite > 0;
 
       return {
         variantId: v.id,
@@ -58,8 +70,11 @@ export async function getStorefrontCatalog(
         designation: v.product.designation,
         categoryName: v.product.category?.nom ?? null,
         attributs: v.attributs as Record<string, string>,
+        unite: v.product.unite,
         prixVente: Number(price.prixVente),
+        prixEmballage: v.product.prixEmballage !== null ? Number(v.product.prixEmballage) : null,
         available,
+        stockQuantite,
         coverImageId: v.product.images[0]?.id ?? null,
       };
     });
@@ -92,7 +107,8 @@ export async function getStorefrontProductDetail(
 
   const price = variant.shopPrices[0];
   const stock = variant.stockLevels[0];
-  const available = !variant.product.suiviStock || (stock ? Number(stock.quantite) > 0 : false);
+  const stockQuantite = variant.product.suiviStock ? Number(stock?.quantite ?? 0) : null;
+  const available = stockQuantite === null || stockQuantite > 0;
   const imageIds = variant.product.images.map((img) => img.id);
 
   return {
@@ -101,8 +117,11 @@ export async function getStorefrontProductDetail(
     designation: variant.product.designation,
     categoryName: variant.product.category?.nom ?? null,
     attributs: variant.attributs as Record<string, string>,
+    unite: variant.product.unite,
     prixVente: Number(price.prixVente),
+    prixEmballage: variant.product.prixEmballage !== null ? Number(variant.product.prixEmballage) : null,
     available,
+    stockQuantite,
     coverImageId: imageIds[0] ?? null,
     description: variant.product.description,
     imageIds,

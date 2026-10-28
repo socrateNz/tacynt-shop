@@ -1,3 +1,4 @@
+import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -45,14 +46,25 @@ export default async function MerciPage({
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Commande enregistrée</h1>
-        <p className="text-sm text-muted-foreground">
-          Numéro {order.numero} — {STATUS_LABELS[order.statut] ?? order.statut}
-        </p>
+      <header className="flex items-start gap-3 rounded-xl border border-success/30 bg-success/10 p-4">
+        <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-success" />
+        <div>
+          <h1 className="text-xl font-semibold text-success">
+            Commande enregistrée avec succès
+          </h1>
+          <p className="text-sm text-success/80">
+            Numéro {order.numero} — {STATUS_LABELS[order.statut] ?? order.statut}
+          </p>
+        </div>
       </header>
 
       <div className="rounded-xl border border-border bg-card p-4">
+        {order.emballageQuantite > 0 && order.emballagePrixUnitaire !== null && (
+          <p className="num text-sm text-muted-foreground">
+            Emballage : {order.emballageQuantite} ×{" "}
+            {formatMoney(order.emballagePrixUnitaire, organization.devise)}
+          </p>
+        )}
         <p className="num text-lg font-semibold text-foreground">
           Total : {formatMoney(order.totalTtc, organization.devise)}
         </p>

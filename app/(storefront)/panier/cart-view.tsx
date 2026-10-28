@@ -9,7 +9,7 @@ import { formatMoney } from "@/lib/money";
 import { useCart } from "../../cart-context";
 
 export function CartView({ devise }: { devise: string }) {
-  const { cart, loaded, total, updateQty } = useCart();
+  const { cart, loaded, total, updateQty, setEmballageQty, emballageUnitPrice } = useCart();
 
   function handleQuantityChange(variantId: string, quantite: number) {
     if (!cart) return;
@@ -38,12 +38,20 @@ export function CartView({ devise }: { devise: string }) {
         >
           <div className="flex min-w-0 flex-col gap-1">
             <p className="text-sm font-medium text-foreground">{item.designation}</p>
-            <p className="num text-sm text-muted-foreground">{formatMoney(item.prixVente, devise)}</p>
+            <p className="num text-sm text-muted-foreground">
+              {formatMoney(item.prixVente, devise)} / {item.unite}
+            </p>
+            {item.stockQuantite !== null && (
+              <p className="text-xs text-muted-foreground">
+                Il reste {item.stockQuantite} {item.unite} en stock
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Input
               type="number"
               min={0}
+              max={item.stockQuantite ?? undefined}
               value={item.quantite}
               onChange={(e) => handleQuantityChange(item.variantId, Number(e.target.value))}
               className="w-20"
@@ -59,6 +67,25 @@ export function CartView({ devise }: { devise: string }) {
           </div>
         </div>
       ))}
+
+      {emballageUnitPrice > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium text-foreground">Emballage</p>
+            <p className="num text-sm text-muted-foreground">
+              {formatMoney(emballageUnitPrice, devise)} / unité — combien en voulez-vous ?
+            </p>
+          </div>
+          <Input
+            type="number"
+            min={0}
+            value={cart.emballageQuantite}
+            onChange={(e) => setEmballageQty(cart.shopId, Number(e.target.value))}
+            className="w-20"
+            aria-label="Nombre d'emballages"
+          />
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
         <p className="num text-lg font-semibold text-foreground">Total : {formatMoney(total, devise)}</p>

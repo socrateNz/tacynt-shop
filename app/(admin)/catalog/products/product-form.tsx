@@ -183,6 +183,14 @@ export function ProductForm({
           <Input id="tauxTaxe" name="tauxTaxe" type="number" step="0.01" defaultValue="0" />
         </div>
         <div className="flex flex-col gap-1.5">
+          <Label htmlFor="prixEmballage">Prix d&apos;emballage (optionnel)</Label>
+          <Input id="prixEmballage" name="prixEmballage" type="number" step="0.01" min="0" />
+          <p className="text-xs text-muted-foreground">
+            Si défini, le client peut choisir un nombre d&apos;emballages à la commande sur la
+            vitrine.
+          </p>
+        </div>
+        <div className="flex flex-col gap-1.5">
           <Label htmlFor="images">Photos (jusqu&apos;à {MAX_IMAGES}, optionnel)</Label>
           <input
             id="images"

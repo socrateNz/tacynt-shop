@@ -27,6 +27,7 @@ import { getTenantContext } from "@/lib/tenant/context";
 import { profileHasLots, profileHasSerialNumbers } from "@/lib/tenant/profile";
 
 import { AdjustStockForm } from "./adjust-stock-form";
+import { resolveStockAlert } from "./actions";
 import { ReceiveStockForm } from "./receive-stock-form";
 
 function variantLabel(variant: { product: { designation: string }; attributs: unknown; codeBarres: string | null }) {
@@ -67,12 +68,14 @@ export default async function StockMovementsPage() {
   // même côté serveur.
   const now = new Date();
 
-  const [levels, movements, variants, expiringLots] = await withTenantContext(
+  const [levels, movements, variants, expiringLots, stockAlerts] = await withTenantContext(
     { organizationId: ctx.organizationId, shopId },
     async (tx) => {
       const levels = await tx.stockLevel.findMany({
         where: { shopId },
-        include: { variant: { include: { product: true } } },
+        include: {
+          variant: { include: { product: true, shopPrices: { where: { shopId } } } },
+        },
         orderBy: { variant: { product: { designation: "asc" } } },
       });
       const movements = await tx.stockMovement.findMany({
@@ -99,11 +102,27 @@ export default async function StockMovementsPage() {
             orderBy: { datePeremption: "asc" },
           })
         : [];
-      return [levels, movements, variants, expiringLots] as const;
+      // Écrit depuis Phase 3 (lib/sales/apply-sale.ts, stock négatif après
+      // resynchro offline) mais jamais lu nulle part avant ça — simple
+      // oubli, le modèle (resolvedAt) prévoyait déjà ce flux.
+      const stockAlerts = await tx.stockAlert.findMany({
+        where: { shopId, resolvedAt: null },
+        include: { variant: { include: { product: true } } },
+        orderBy: { createdAt: "desc" },
+      });
+      return [levels, movements, variants, expiringLots, stockAlerts] as const;
     },
   );
 
   const canWrite = hasCapability(ctx.role, "stock:write");
+
+  // Dérivé à la volée (pas de nouveau modèle) : seuilAlerte est configuré
+  // par variante/boutique sur ShopPrice (formulaire produit/variante), mais
+  // rien ne le confrontait jamais au stock réel avant ça.
+  const lowStockLevels = levels.filter((l) => {
+    const seuil = l.variant.shopPrices[0]?.seuilAlerte;
+    return seuil !== null && seuil !== undefined && Number(l.quantite) <= seuil;
+  });
 
   const userIds = [...new Set(movements.map((m) => m.userId).filter((id): id is string => !!id))];
   const users = userIds.length
@@ -179,6 +198,48 @@ export default async function StockMovementsPage() {
                   </li>
                 );
               })}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {stockAlerts.length > 0 && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-sm font-medium text-foreground">Alertes de stock négatif</h2>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4">
+            <ul className="flex flex-col gap-2 text-sm">
+              {stockAlerts.map((a) => (
+                <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 text-destructive">
+                  <span>
+                    {variantLabel(a.variant)} — écart {a.ecart.toString()} —{" "}
+                    {a.createdAt.toLocaleString("fr-FR")}
+                  </span>
+                  {canWrite && (
+                    <form action={resolveStockAlert}>
+                      <input type="hidden" name="alertId" value={a.id} />
+                      <Button type="submit" variant="ghost" size="sm">
+                        Marquer résolu
+                      </Button>
+                    </form>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {lowStockLevels.length > 0 && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-sm font-medium text-foreground">Stock bas</h2>
+          <div className="rounded-xl border border-warning/30 bg-warning/10 p-4">
+            <ul className="flex flex-col gap-1 text-sm text-foreground">
+              {lowStockLevels.map((l) => (
+                <li key={`${l.variantId}-${l.shopId}`}>
+                  {variantLabel(l.variant)} — {l.quantite.toString()} restant(s) (seuil{" "}
+                  {l.variant.shopPrices[0]?.seuilAlerte})
+                </li>
+              ))}
             </ul>
           </div>
         </section>

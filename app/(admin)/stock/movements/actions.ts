@@ -174,3 +174,34 @@ export async function adjustStock(
   revalidatePath("/stock/movements");
   return { error: null };
 }
+
+// Marque une alerte "stock négatif après resynchro" (section 7.3) comme
+// traitée, une fois l'inventaire vérifié — ne touche jamais le stock
+// lui-même, uniquement le suivi de l'alerte.
+export async function resolveStockAlert(formData: FormData): Promise<void> {
+  const ctx = await getTenantContext();
+  await assertCapability(ctx.role, "stock:write");
+
+  const alertId = String(formData.get("alertId") ?? "");
+  if (!alertId) return;
+
+  const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
+
+  await withTenantContext({ organizationId: ctx.organizationId, shopId }, async (tx) => {
+    await tx.stockAlert.update({
+      where: { id: alertId },
+      data: { resolvedAt: new Date() },
+    });
+
+    await recordAuditLog(tx, {
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+      action: "STOCK_ALERT_RESOLVED",
+      entite: "stock_alert",
+      entiteId: alertId,
+      apres: {},
+    });
+  });
+
+  revalidatePath("/stock/movements");
+}

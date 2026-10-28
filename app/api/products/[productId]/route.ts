@@ -39,6 +39,8 @@ export async function POST(
   const categoryId = String(formData.get("categoryId") ?? "") || null;
   const unite = String(formData.get("unite") ?? "piece").trim() || "piece";
   const tauxTaxe = Number(formData.get("tauxTaxe") ?? 0);
+  const prixEmballageRaw = String(formData.get("prixEmballage") ?? "").trim();
+  const prixEmballage = prixEmballageRaw ? Number(prixEmballageRaw) : null;
   const codeBarres = String(formData.get("codeBarres") ?? "").trim() || null;
   const prixVente = Number(formData.get("prixVente") ?? 0);
   const prixPlancherRaw = String(formData.get("prixPlancher") ?? "").trim();
@@ -57,6 +59,9 @@ export async function POST(
   }
   if (!Number.isFinite(tauxTaxe) || tauxTaxe < 0) {
     return NextResponse.json({ error: "Taux de taxe invalide." }, { status: 400 });
+  }
+  if (prixEmballage !== null && (!Number.isFinite(prixEmballage) || prixEmballage < 0)) {
+    return NextResponse.json({ error: "Prix d'emballage invalide." }, { status: 400 });
   }
   for (const img of newImages) {
     if (img.size > MAX_IMAGE_BYTES) {
@@ -83,7 +88,7 @@ export async function POST(
 
       await tx.product.update({
         where: { id: productId },
-        data: { designation, categoryId, unite, tauxTaxe, description },
+        data: { designation, categoryId, unite, tauxTaxe, prixEmballage, description },
       });
 
       await tx.productVariant.update({
@@ -144,7 +149,7 @@ export async function POST(
         action: "PRODUCT_UPDATED",
         entite: "product",
         entiteId: productId,
-        apres: { designation, categoryId, unite, tauxTaxe, codeBarres, prixVente },
+        apres: { designation, categoryId, unite, tauxTaxe, prixEmballage, codeBarres, prixVente },
       });
     });
   } catch (error) {
