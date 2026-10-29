@@ -28,6 +28,7 @@ export default async function PlatformLayout({ children }: { children: ReactNode
 
   const topLinks: NavLink[] = [
     { href: "/platform", label: "Organisations", icon: "Building2" },
+    { href: "/platform/revenue", label: "Chiffre d'affaires", icon: "BarChart3" },
     { href: "/platform/new", label: "Nouvelle organisation", icon: "PlusCircle" },
     { href: "/platform/requests", label: "Demandes", icon: "Mail", badge: pendingRequests },
     { href: "/platform/admins", label: "Comptes admin", icon: "UserCog" },
