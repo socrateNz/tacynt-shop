@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import type { Organization } from "@prisma/client";
 
@@ -35,7 +36,18 @@ export function StorefrontShell({
             <span className="truncate text-lg font-semibold text-foreground">{organization.nom}</span>
           )}
           <span className="hidden text-sm text-muted-foreground sm:inline">Boutique en ligne</span>
-          <CartHeaderLink />
+          <div className="ml-auto flex items-center gap-3">
+            {/* Discret à dessein : utile au propriétaire/personnel de la
+                boutique pour rejoindre leur tableau de bord, pas une
+                invitation destinée aux clients qui naviguent la vitrine. */}
+            <Link
+              href="/login"
+              className="shrink-0 text-sm text-muted-foreground hover:text-foreground hover:underline"
+            >
+              Se connecter
+            </Link>
+            <CartHeaderLink />
+          </div>
         </header>
         <main className="flex flex-1 flex-col px-4 py-6 sm:px-6 sm:py-10">{children}</main>
       </CartProvider>
