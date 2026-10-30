@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { StorefrontItem } from "@/lib/storefront/catalog";
 
-import { CartPanel } from "./cart-panel";
+import { CartPanel, MobileCartAccordion } from "./cart-panel";
 import { FiltersSidebar, type FiltersState } from "./filters-sidebar";
 import { ProductCard } from "./product-card";
 
@@ -35,18 +35,23 @@ export function CatalogueClient({
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return items.filter((item) => {
-      if (term && !item.designation.toLowerCase().includes(term)) return false;
-      if (
-        filters.categories.size > 0 &&
-        (!item.categoryName || !filters.categories.has(item.categoryName))
-      ) {
-        return false;
-      }
-      if (item.prixVente < filters.minPrice || item.prixVente > filters.maxPrice) return false;
-      if (filters.availableOnly && !item.available) return false;
-      return true;
-    });
+    return items
+      .filter((item) => {
+        if (term && !item.designation.toLowerCase().includes(term)) return false;
+        if (
+          filters.categories.size > 0 &&
+          (!item.categoryName || !filters.categories.has(item.categoryName))
+        ) {
+          return false;
+        }
+        if (item.prixVente < filters.minPrice || item.prixVente > filters.maxPrice) return false;
+        if (filters.availableOnly && !item.available) return false;
+        return true;
+      })
+      // En stock d'abord — Array.prototype.sort est stable (ES2019+), donc
+      // l'ordre alphabétique déjà renvoyé par getStorefrontCatalog est
+      // conservé à l'intérieur de chacun des deux groupes.
+      .sort((a, b) => Number(b.available) - Number(a.available));
   }, [items, search, filters]);
 
   const activeFilterCount =
@@ -98,6 +103,8 @@ export function CatalogueClient({
             </SheetContent>
           </Sheet>
         </div>
+
+        <MobileCartAccordion devise={devise} />
 
         <p className="text-sm text-muted-foreground">
           {filtered.length} article{filtered.length > 1 ? "s" : ""}

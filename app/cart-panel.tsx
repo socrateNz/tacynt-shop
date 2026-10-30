@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingCart } from "lucide-react";
+import { ChevronDown, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -8,16 +8,11 @@ import { formatMoney } from "@/lib/money";
 
 import { useCart } from "./cart-context";
 
-export function CartPanel({ devise }: { devise: string }) {
+function CartContents({ devise }: { devise: string }) {
   const { cart, loaded, total, updateQty, setEmballageQty, emballageUnitPrice } = useCart();
 
   return (
-    <aside className="flex h-fit flex-col gap-4 rounded-xl border border-border bg-card p-4 lg:sticky lg:top-6">
-      <div className="flex items-center gap-2">
-        <ShoppingCart className="size-4 text-foreground" />
-        <h2 className="text-sm font-semibold text-foreground">Votre panier</h2>
-      </div>
-
+    <>
       {!loaded ? null : !cart || cart.items.length === 0 ? (
         <p className="text-sm text-muted-foreground">Aucun article ajouté pour l&apos;instant.</p>
       ) : (
@@ -100,6 +95,55 @@ export function CartPanel({ devise }: { devise: string }) {
           </Link>
         </>
       )}
+    </>
+  );
+}
+
+export function CartPanel({ devise }: { devise: string }) {
+  return (
+    <aside className="hidden h-fit flex-col gap-4 rounded-xl border border-border bg-card p-4 lg:sticky lg:top-6 lg:flex">
+      <div className="flex items-center gap-2">
+        <ShoppingCart className="size-4 text-foreground" />
+        <h2 className="text-sm font-semibold text-foreground">Votre panier</h2>
+      </div>
+      <CartContents devise={devise} />
     </aside>
+  );
+}
+
+// Mobile uniquement : sous lg la grille passe en une colonne et le panier
+// (dernier élément du DOM) se retrouve après tous les produits — repoussé
+// hors écran pendant que le client parcourt le catalogue. Un accordéon
+// replié par défaut, affiché avant la grille de produits (voir
+// catalogue-client.tsx), garde le nombre d'articles/total visibles sans
+// pousser les produits plus bas.
+export function MobileCartAccordion({ devise }: { devise: string }) {
+  const { cart, loaded, total, count } = useCart();
+
+  return (
+    <details className="group rounded-xl border border-border bg-card lg:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 marker:content-none">
+        <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <ShoppingCart className="size-4" />
+          Votre panier
+          {loaded && count > 0 && (
+            <span className="num flex size-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+              {count}
+            </span>
+          )}
+        </span>
+        <span className="flex items-center gap-2">
+          {loaded && cart && cart.items.length > 0 && (
+            <span className="num text-sm font-medium text-foreground">
+              {formatMoney(total, devise)}
+            </span>
+          )}
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+        </span>
+      </summary>
+      <div className="flex flex-col gap-4 border-t border-border px-4 py-4">
+        <CartContents devise={devise} />
+      </div>
+    </details>
   );
 }
