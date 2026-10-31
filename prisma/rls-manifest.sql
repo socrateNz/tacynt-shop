@@ -109,7 +109,9 @@ BEGIN
     'expenses', 'cash_movements',
     'inventory_sessions', 'inventory_counts',
     'lots', 'serial_numbers',
-    'online_orders', 'online_order_lines'
+    'online_orders', 'online_order_lines',
+    'rental_units', 'rental_unit_images', 'rental_contracts',
+    'rental_installments', 'rental_payments'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);

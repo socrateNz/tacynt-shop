@@ -16,6 +16,11 @@ export const MODULE_CATALOG = [
     label: "E-commerce",
     desc: "Boutique en ligne : commande à distance, paiement au retrait/à la livraison.",
   },
+  {
+    key: "location",
+    label: "Location",
+    desc: "Location de logements (chambres, studios, appartements, villas) : échéancier et suivi des paiements.",
+  },
 ] as const;
 
 export type ModuleKey = (typeof MODULE_CATALOG)[number]["key"];

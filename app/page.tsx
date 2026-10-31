@@ -27,10 +27,12 @@ import { Button } from "@/components/ui/button";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { getStorefrontCatalog } from "@/lib/storefront/catalog";
 import { getRootPageContext, resolveStorefrontShopId } from "@/lib/storefront/context";
+import { getStorefrontRentalUnits } from "@/lib/storefront/rentals";
 
 import { CatalogueClient } from "./catalogue-client";
 import { ContactForm } from "./contact-form";
 import { MarketingMobileNav } from "./marketing-mobile-nav";
+import { RentalUnitGrid } from "./rental-unit-grid";
 import { ScrollReveal } from "./scroll-reveal";
 import { StorefrontShell } from "./storefront-shell";
 
@@ -503,11 +505,36 @@ export default async function Home({
     return <MarketingHome />;
   }
 
-  const { organization } = context;
+  const { organization, activeModule } = context;
   const { shop: requestedShopId } = await searchParams;
   const shopId = await resolveStorefrontShopId(organization.id, requestedShopId);
   if (!shopId) {
     notFound();
+  }
+
+  // Priorité au catalogue produit quand les deux modules sont actifs
+  // (comportement historique inchangé) — /locations reste par ailleurs
+  // toujours joignable directement, voir app/(location)/layout.tsx.
+  if (activeModule === "location") {
+    const units = await withTenantContext({ organizationId: organization.id, shopId }, (tx) =>
+      getStorefrontRentalUnits(tx, shopId),
+    );
+
+    return (
+      <StorefrontShell organization={organization}>
+        <div className="flex flex-col gap-6">
+          <header>
+            <h1 className="text-xl font-semibold text-foreground">Logements à louer</h1>
+            <p className="text-sm text-muted-foreground">
+              {units.length} logement{units.length > 1 ? "s" : ""} disponible
+              {units.length > 1 ? "s" : ""}.
+            </p>
+          </header>
+
+          <RentalUnitGrid units={units} devise={organization.devise} shopId={shopId} />
+        </div>
+      </StorefrontShell>
+    );
   }
 
   const items = await withTenantContext({ organizationId: organization.id, shopId }, (tx) =>

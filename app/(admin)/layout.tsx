@@ -49,10 +49,14 @@ function buildGroups({
   role,
   ecommerceEnabled,
   onlineOrders,
+  locationEnabled,
+  pendingRentalRequests,
 }: {
   role: Role;
   ecommerceEnabled: boolean;
   onlineOrders: number;
+  locationEnabled: boolean;
+  pendingRentalRequests: number;
 }): NavGroup[] {
   const can = (capability: Capability) => hasCapability(role, capability);
 
@@ -74,6 +78,24 @@ function buildGroups({
           badge: onlineOrders,
           // Deux axes distincts : la capacité du rôle ET le module payé.
           show: can("ecommerce:manage") && ecommerceEnabled,
+        },
+      ],
+    },
+    {
+      label: "Location",
+      links: [
+        {
+          href: "/rentals/units",
+          label: "Logements",
+          icon: "Home",
+          show: can("location:manage") && locationEnabled,
+        },
+        {
+          href: "/rentals/contracts",
+          label: "Locations",
+          icon: "ReceiptText",
+          badge: pendingRentalRequests,
+          show: can("location:manage") && locationEnabled,
         },
       ],
     },
@@ -155,7 +177,8 @@ function buildGroups({
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const ctx = await getTenantContext();
   const canManageOnlineOrders = hasCapability(ctx.role, "ecommerce:manage");
-  const [organization, activeShopId, userShops, user, pendingOnlineOrders] = await Promise.all([
+  const canManageRentals = hasCapability(ctx.role, "location:manage");
+  const [organization, activeShopId, userShops, user, pendingOnlineOrders, pendingRentalRequests] = await Promise.all([
     systemPrisma.organization.findUnique({ where: { id: ctx.organizationId } }),
     getActiveShopId(ctx.organizationId, ctx.userId),
     withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
@@ -172,6 +195,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     canManageOnlineOrders
       ? withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
           tx.onlineOrder.count({ where: { statut: { in: ["EN_ATTENTE", "CONFIRMEE"] } } }),
+        )
+      : Promise.resolve(0),
+    canManageRentals
+      ? withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
+          tx.rentalContract.count({ where: { statut: "DEMANDE" } }),
         )
       : Promise.resolve(0),
   ]);
@@ -193,6 +221,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     role: ctx.role,
     ecommerceEnabled: organizationHasModule(organization?.enabledModules, "ecommerce"),
     onlineOrders: pendingOnlineOrders,
+    locationEnabled: organizationHasModule(organization?.enabledModules, "location"),
+    pendingRentalRequests,
   });
 
   return (

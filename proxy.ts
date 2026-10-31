@@ -25,6 +25,7 @@ const PUBLIC_PATHS = new Set([
 ]);
 
 const PRODUCT_IMAGE_PATH = /^\/api\/products\/[^/]+\/images\/[^/]+$/;
+const RENTAL_UNIT_IMAGE_PATH = /^\/api\/rentals\/units\/[^/]+\/images\/[^/]+$/;
 
 // Chemins publics UNIQUEMENT pour certaines méthodes — /api/branding/logo
 // sert (GET, anonyme, résout l'organisation par host lui-même comme
@@ -37,17 +38,21 @@ const PRODUCT_IMAGE_PATH = /^\/api\/products\/[^/]+\/images\/[^/]+$/;
 function isPublicForMethod(pathname: string, method: string): boolean {
   return (
     method === "GET" &&
-    (pathname === "/api/branding/logo" || PRODUCT_IMAGE_PATH.test(pathname))
+    (pathname === "/api/branding/logo" ||
+      PRODUCT_IMAGE_PATH.test(pathname) ||
+      RENTAL_UNIT_IMAGE_PATH.test(pathname))
   );
 }
 
-// Vitrine e-commerce (Phase 4, M29) : entièrement anonyme, aucune session
-// tenant requise — resolveStorefrontOrganization/resolveRootPageContext
-// (lib/storefront/context.ts) refont leur propre résolution par host et
-// répondent 404 elles-mêmes si le module "ecommerce" n'est pas actif,
-// jamais confiance au client sur ce point ici. La racine "/" EST la vitrine
-// (M32) — plus de mini tableau de bord authentifié à cette URL, voir
-// app/page.tsx et le nouveau /dashboard.
+// Vitrine e-commerce (Phase 4, M29) + vitrine Location (M38) : entièrement
+// anonymes, aucune session tenant requise —
+// resolveStorefrontOrganization/resolveRootPageContext (lib/storefront/
+// context.ts) refont leur propre résolution par host et répondent 404
+// elles-mêmes si le module correspondant ("ecommerce" ou "location") n'est
+// pas actif, jamais confiance au client sur ce point ici. La racine "/" EST
+// l'une des deux vitrines (M32) — plus de mini tableau de bord authentifié
+// à cette URL, voir app/page.tsx et le nouveau /dashboard. /locations suit
+// le même principe que /produit pour le module Location.
 function isStorefrontPath(pathname: string): boolean {
   return (
     pathname === "/" ||
@@ -57,6 +62,8 @@ function isStorefrontPath(pathname: string): boolean {
     pathname.startsWith("/merci/") ||
     pathname === "/produit" ||
     pathname.startsWith("/produit/") ||
+    pathname === "/locations" ||
+    pathname.startsWith("/locations/") ||
     pathname.startsWith("/api/storefront/")
   );
 }

@@ -206,6 +206,8 @@ model Organization {
   productImages    ProductImage[]
   onlineOrderPayments OnlineOrderPayment[]
   pushSubscriptions   PushSubscription[]
+  rentalUnits         RentalUnit[]
+  rentalContracts     RentalContract[]
 
   @@map("organizations")
 }
@@ -340,6 +342,8 @@ model Shop {
   serialNumbers     SerialNumber[]
   onlineOrders      OnlineOrder[]
   onlineOrderPayments OnlineOrderPayment[]
+  rentalUnits       RentalUnit[]
+  rentalContracts   RentalContract[]
 
   @@index([organizationId])
   @@map("shops")
@@ -947,6 +951,7 @@ model Customer {
   ledgerEntries CustomerLedger[]
   loyaltyEntries LoyaltyLedger[]
   onlineOrders   OnlineOrder[]
+  rentalContracts RentalContract[]
 
   @@index([organizationId])
   @@map("customers")
@@ -1415,4 +1420,182 @@ model PushSubscription {
   @@index([organizationId])
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+// Module Location (M38) : l'app va au-delà de la simple vente de produits —
+// un logement (chambre, studio, appartement, villa...) n'a ni code-barres ni
+// stock ni variantes, c'est un bien unique avec un cycle de location. Jamais
+// réutilisé sur Product/ProductVariant : domaine entièrement séparé.
+enum RentalUnitType {
+  CHAMBRE
+  STUDIO
+  APPARTEMENT
+  VILLA
+  AUTRE
+
+  @@map("rental_unit_type")
+}
+
+model RentalUnit {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  shopId         String         @map("shop_id") @db.Uuid
+  type           RentalUnitType
+  designation    String
+  description    String?
+  montantMensuel Decimal        @map("montant_mensuel") @db.Decimal(12, 2)
+  dureeMinMois   Int            @map("duree_min_mois")
+  // Montant fixe (pas un %) — décision verrouillée avec l'utilisateur,
+  // configurable logement par logement.
+  commissionMontant Decimal     @default(0) @map("commission_montant") @db.Decimal(12, 2)
+  // Un logement retiré ne se supprime pas (contrats déjà rattachés) — même
+  // contrainte que Product.actif.
+  actif          Boolean        @default(true)
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  shop         Shop             @relation(fields: [shopId], references: [id])
+  images       RentalUnitImage[]
+  contracts    RentalContract[]
+
+  @@index([organizationId])
+  @@index([shopId])
+  @@map("rental_units")
+}
+
+// Photos stockées en base (bytea), même précédent que ProductImage — modèle
+// séparé pour ne jamais alourdir rentalUnit.findMany() avec image_data.
+// Jusqu'à 3 photos par logement, limite imposée côté application.
+model RentalUnitImage {
+  id             String  @id @default(uuid()) @db.Uuid
+  rentalUnitId   String  @map("rental_unit_id") @db.Uuid
+  // Dénormalisés depuis le logement parent au moment de l'insertion (jamais
+  // recalculés) — même règle que sale_lines, policy RLS sans jointure.
+  organizationId String  @map("organization_id") @db.Uuid
+  shopId         String  @map("shop_id") @db.Uuid
+  position       Int     @default(0)
+  imageData      Bytes?  @map("image_data")
+  imageMimeType  String? @map("image_mime_type")
+
+  rentalUnit RentalUnit @relation(fields: [rentalUnitId], references: [id])
+
+  @@index([organizationId])
+  @@index([rentalUnitId])
+  @@map("rental_unit_images")
+}
+
+enum RentalContractStatus {
+  DEMANDE
+  CONFIRMEE
+  EN_COURS
+  TERMINEE
+  ANNULEE
+
+  @@map("rental_contract_status")
+}
+
+// Équivalent "commande" pour une location (jamais une Sale ni un
+// OnlineOrder — le cycle de vie, l'acompte et les échéances mensuelles
+// n'ont rien de commun avec un achat ponctuel).
+model RentalContract {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  shopId         String               @map("shop_id") @db.Uuid
+  rentalUnitId   String               @map("rental_unit_id") @db.Uuid
+  numero         String
+  customerId     String?              @map("customer_id") @db.Uuid
+  // Dénormalisés comme OnlineOrder.nomClient/telephoneClient — identité au
+  // moment de la demande, jamais recalculée si la fiche client change.
+  nomClient       String              @map("nom_client")
+  telephoneClient String              @map("telephone_client")
+  statut         RentalContractStatus @default(DEMANDE)
+  dateDebut      DateTime             @map("date_debut") @db.Date
+  dureeMois      Int                  @map("duree_mois")
+  // Snapshots au moment de la demande — jamais recalculés si le logement
+  // change de prix ensuite (même règle que ShopPrice -> SaleLine.prixUnitaire).
+  montantMensuel    Decimal @map("montant_mensuel") @db.Decimal(12, 2)
+  commissionMontant Decimal @map("commission_montant") @db.Decimal(12, 2)
+  commissionPayee   Boolean @default(false) @map("commission_payee")
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  confirmedAt    DateTime? @map("confirmed_at")
+  cancelledAt    DateTime? @map("cancelled_at")
+
+  organization Organization         @relation(fields: [organizationId], references: [id])
+  shop         Shop                 @relation(fields: [shopId], references: [id])
+  rentalUnit   RentalUnit           @relation(fields: [rentalUnitId], references: [id])
+  customer     Customer?            @relation(fields: [customerId], references: [id])
+  installments RentalInstallment[]
+  payments     RentalPayment[]
+
+  @@unique([shopId, numero])
+  @@index([organizationId])
+  @@index([shopId])
+  @@index([rentalUnitId])
+  @@map("rental_contracts")
+}
+
+// Une ligne par mois dû, générées toutes en une fois au passage CONFIRMEE
+// (dureeMois lignes) — jamais recalculées après coup. "En retard" se calcule
+// à la lecture (statut DUE + echeance < aujourd'hui), jamais stocké : aucun
+// job planifié n'existe ailleurs dans ce projet pour le maintenir à jour.
+enum RentalInstallmentStatus {
+  DUE
+  PAYEE
+
+  @@map("rental_installment_status")
+}
+
+model RentalInstallment {
+  id               String                  @id @default(uuid()) @db.Uuid
+  organizationId   String                  @map("organization_id") @db.Uuid
+  shopId           String                  @map("shop_id") @db.Uuid
+  rentalContractId String                  @map("rental_contract_id") @db.Uuid
+  // 1..dureeMois
+  moisIndex        Int                     @map("mois_index")
+  echeance         DateTime                @db.Date
+  montantDu        Decimal                 @map("montant_du") @db.Decimal(12, 2)
+  statut           RentalInstallmentStatus @default(DUE)
+  payeLe           DateTime?               @map("paye_le")
+
+  rentalContract RentalContract  @relation(fields: [rentalContractId], references: [id])
+  payments       RentalPayment[]
+
+  @@unique([rentalContractId, moisIndex])
+  @@index([organizationId])
+  @@index([shopId])
+  @@index([rentalContractId])
+  @@map("rental_installments")
+}
+
+enum RentalPaymentMode {
+  ESPECES
+  MOBILE_MONEY
+  CARTE
+  VIREMENT
+
+  @@map("rental_payment_mode")
+}
+
+// Journal append-only des encaissements réels, même principe que
+// Payment/CustomerLedger — jamais mutable. installmentId NULL = règlement de
+// la commission (pas un mois de loyer).
+model RentalPayment {
+  id               String            @id @default(uuid()) @db.Uuid
+  organizationId   String            @map("organization_id") @db.Uuid
+  shopId           String            @map("shop_id") @db.Uuid
+  rentalContractId String            @map("rental_contract_id") @db.Uuid
+  installmentId    String?           @map("installment_id") @db.Uuid
+  mode             RentalPaymentMode
+  montant          Decimal           @db.Decimal(12, 2)
+  userId           String            @map("user_id") @db.Uuid
+  createdAt        DateTime          @default(now()) @map("created_at")
+
+  rentalContract RentalContract     @relation(fields: [rentalContractId], references: [id])
+  installment    RentalInstallment? @relation(fields: [installmentId], references: [id])
+
+  @@index([organizationId])
+  @@index([shopId])
+  @@index([rentalContractId])
+  @@map("rental_payments")
 }
