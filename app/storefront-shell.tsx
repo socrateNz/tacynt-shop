@@ -58,7 +58,7 @@ export async function StorefrontShell({
     >
       <CartProvider>
         <header className="sticky top-0 z-30 border-b border-border bg-card/80 px-4 py-3 backdrop-blur-md sm:px-6">
-          <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
+          <div className="mx-auto flex w-full max-w-[1920px] items-center gap-3">
             <Link href="/" className="flex min-w-0 items-center gap-2">
               {branding?.hasLogo ? (
                 // eslint-disable-next-line @next/next/no-img-element -- logo servi dynamiquement par organisation, pas un asset statique optimisable par next/image
@@ -83,12 +83,12 @@ export async function StorefrontShell({
           </div>
         </header>
 
-        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-6 sm:px-6 sm:py-10">
+        <main className="mx-auto flex w-full max-w-[1920px] flex-1 flex-col px-4 py-6 sm:px-6 sm:py-10">
           {children}
         </main>
 
         <footer className="border-t border-border px-4 py-10 sm:px-6">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 sm:flex-row sm:justify-between">
+          <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-8 sm:flex-row sm:justify-between">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 {branding?.hasLogo ? (
@@ -137,7 +137,7 @@ export async function StorefrontShell({
               )}
             </div>
           </div>
-          <div className="mx-auto mt-8 flex w-full max-w-6xl flex-col gap-2 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <div className="mx-auto mt-8 flex w-full max-w-[1920px] flex-col gap-2 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span>
               © {new Date().getFullYear()} {organization.nom}
             </span>
