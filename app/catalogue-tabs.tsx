@@ -5,7 +5,7 @@ import type { StorefrontItem } from "@/lib/storefront/catalog";
 import type { StorefrontRentalUnit } from "@/lib/storefront/rentals";
 
 import { CatalogueClient } from "./catalogue-client";
-import { RentalUnitGrid } from "./rental-unit-grid";
+import { RentalCatalogueClient } from "./rental-catalogue-client";
 
 // Catalogue produit + logements à louer sous forme de deux onglets (M38),
 // jamais deux pages séparées — une seule page "/" quand les deux modules
@@ -20,6 +20,8 @@ export function CatalogueTabs({
   devise,
   allCategories,
   priceCeiling,
+  rentalPriceCeiling,
+  dureeCeiling,
 }: {
   defaultTab: "produits" | "logements";
   items: StorefrontItem[];
@@ -28,6 +30,8 @@ export function CatalogueTabs({
   devise: string;
   allCategories: string[];
   priceCeiling: number;
+  rentalPriceCeiling: number;
+  dureeCeiling: number;
 }) {
   return (
     <Tabs defaultValue={defaultTab} className="flex flex-col gap-6">
@@ -47,13 +51,13 @@ export function CatalogueTabs({
       </TabsPanel>
 
       <TabsPanel value="logements">
-        <div className="flex flex-col gap-6">
-          <p className="text-sm text-muted-foreground">
-            {units.length} logement{units.length > 1 ? "s" : ""} disponible
-            {units.length > 1 ? "s" : ""}.
-          </p>
-          <RentalUnitGrid units={units} devise={devise} shopId={shopId} />
-        </div>
+        <RentalCatalogueClient
+          units={units}
+          shopId={shopId}
+          devise={devise}
+          priceCeiling={rentalPriceCeiling}
+          dureeCeiling={dureeCeiling}
+        />
       </TabsPanel>
     </Tabs>
   );

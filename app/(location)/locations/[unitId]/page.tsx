@@ -3,19 +3,12 @@ import { notFound } from "next/navigation";
 
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
+import { RENTAL_UNIT_TYPE_LABELS } from "@/lib/rentals/types";
 import { getStorefrontOrganization, resolveStorefrontShopId } from "@/lib/storefront/context";
 import { getStorefrontRentalUnitDetail } from "@/lib/storefront/rentals";
 
 import { MediaGallery } from "../../../media-gallery";
 import { BookingForm } from "./booking-form";
-
-const TYPE_LABELS: Record<string, string> = {
-  CHAMBRE: "Chambre",
-  STUDIO: "Studio",
-  APPARTEMENT: "Appartement",
-  VILLA: "Villa",
-  AUTRE: "Logement",
-};
 
 export default async function RentalUnitDetailPage({
   params,
@@ -57,7 +50,9 @@ export default async function RentalUnitDetailPage({
 
         <div className="flex flex-col gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">{TYPE_LABELS[unit.type] ?? unit.type}</p>
+            <p className="text-sm text-muted-foreground">
+              {RENTAL_UNIT_TYPE_LABELS[unit.type] ?? unit.type}
+            </p>
             <h1 className="text-xl font-semibold text-foreground">{unit.designation}</h1>
             <p className="num mt-1 text-lg font-semibold text-foreground">
               {formatMoney(unit.montantMensuel, organization.devise)} / mois

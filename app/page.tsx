@@ -33,7 +33,7 @@ import { CatalogueClient } from "./catalogue-client";
 import { CatalogueTabs } from "./catalogue-tabs";
 import { ContactForm } from "./contact-form";
 import { MarketingMobileNav } from "./marketing-mobile-nav";
-import { RentalUnitGrid } from "./rental-unit-grid";
+import { RentalCatalogueClient } from "./rental-catalogue-client";
 import { ScrollReveal } from "./scroll-reveal";
 import { StorefrontShell } from "./storefront-shell";
 
@@ -531,6 +531,8 @@ export default async function Home({
   ).sort((a, b) => a.localeCompare(b));
 
   const priceCeiling = items.reduce((max, item) => Math.max(max, item.prixVente), 0) || 1;
+  const rentalPriceCeiling = units.reduce((max, u) => Math.max(max, u.montantMensuel), 0) || 1;
+  const dureeCeiling = units.reduce((max, u) => Math.max(max, u.dureeMinMois), 0) || 1;
 
   // Les deux modules actifs : un seul catalogue sous forme de deux onglets,
   // jamais deux pages séparées (décision explicite de l'utilisateur).
@@ -547,6 +549,8 @@ export default async function Home({
           devise={organization.devise}
           allCategories={allCategories}
           priceCeiling={priceCeiling}
+          rentalPriceCeiling={rentalPriceCeiling}
+          dureeCeiling={dureeCeiling}
         />
       </StorefrontShell>
     );
@@ -558,13 +562,15 @@ export default async function Home({
         <div className="flex flex-col gap-6">
           <header>
             <h1 className="text-xl font-semibold text-foreground">Logements à louer</h1>
-            <p className="text-sm text-muted-foreground">
-              {units.length} logement{units.length > 1 ? "s" : ""} disponible
-              {units.length > 1 ? "s" : ""}.
-            </p>
           </header>
 
-          <RentalUnitGrid units={units} devise={organization.devise} shopId={shopId} />
+          <RentalCatalogueClient
+            units={units}
+            shopId={shopId}
+            devise={organization.devise}
+            priceCeiling={rentalPriceCeiling}
+            dureeCeiling={dureeCeiling}
+          />
         </div>
       </StorefrontShell>
     );

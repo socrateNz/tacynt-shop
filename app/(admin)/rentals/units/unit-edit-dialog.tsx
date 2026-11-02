@@ -9,16 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RENTAL_UNIT_TYPES } from "@/lib/rentals/types";
 
 const MAX_IMAGES = 3;
-
-const TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: "CHAMBRE", label: "Chambre" },
-  { value: "STUDIO", label: "Studio" },
-  { value: "APPARTEMENT", label: "Appartement" },
-  { value: "VILLA", label: "Villa" },
-  { value: "AUTRE", label: "Autre" },
-];
 
 export type UnitEditValues = {
   id: string;
@@ -108,7 +101,7 @@ export function UnitEditDialog({ unit }: { unit: UnitEditValues }) {
                 defaultValue={unit.type}
                 className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
               >
-                {TYPE_OPTIONS.map((t) => (
+                {RENTAL_UNIT_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>
                     {t.label}
                   </option>

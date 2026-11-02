@@ -24,7 +24,13 @@ function TabsTab({ className, ...props }: TabsPrimitive.Tab.Props) {
     <TabsPrimitive.Tab
       data-slot="tabs-tab"
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors outline-none select-none data-selected:bg-background data-selected:text-foreground data-selected:shadow-sm disabled:pointer-events-none disabled:opacity-50",
+        // bg-background (sur une liste bg-muted) manquait de contraste en
+        // thème sombre — background/muted sont deux gris très proches
+        // (tacynt-shop-tokens.css) — l'onglet actif n'était pas distinguable
+        // à l'œil (constaté par l'utilisateur). primary tranche nettement
+        // dans les deux thèmes, même langage que les autres états
+        // "sélectionné" du projet (chip de couleur active, badges).
+        "inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors outline-none select-none data-selected:bg-primary data-selected:text-primary-foreground disabled:pointer-events-none disabled:opacity-50",
         className
       )}
       {...props}

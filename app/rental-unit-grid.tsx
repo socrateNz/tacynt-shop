@@ -1,19 +1,11 @@
 import Link from "next/link";
 
 import { formatMoney } from "@/lib/money";
+import { RENTAL_UNIT_TYPE_LABELS } from "@/lib/rentals/types";
 import type { StorefrontRentalUnit } from "@/lib/storefront/rentals";
 
-const RENTAL_TYPE_LABELS: Record<string, string> = {
-  CHAMBRE: "Chambre",
-  STUDIO: "Studio",
-  APPARTEMENT: "Appartement",
-  VILLA: "Villa",
-  AUTRE: "Logement",
-};
-
-// Partagé entre la racine "/" (quand seul le module Location est actif,
-// voir app/page.tsx) et app/(location)/locations/page.tsx (toujours
-// joignable, y compris quand les deux modules sont actifs) — même grille,
+// Partagé entre la racine "/" (module Location seul, voir app/page.tsx) et
+// app/rental-catalogue-client.tsx (onglet Logements, filtré) — même grille,
 // jamais dupliquée entre les deux points d'entrée.
 export function RentalUnitGrid({
   units,
@@ -44,7 +36,7 @@ export function RentalUnitGrid({
           )}
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">
-              {RENTAL_TYPE_LABELS[u.type] ?? u.type}
+              {RENTAL_UNIT_TYPE_LABELS[u.type] ?? u.type}
             </span>
             <span className="text-sm font-medium text-foreground">{u.designation}</span>
             <span className="num text-sm text-foreground">
@@ -56,7 +48,7 @@ export function RentalUnitGrid({
       ))}
       {units.length === 0 && (
         <p className="col-span-2 text-sm text-muted-foreground xl:col-span-4">
-          Aucun logement disponible pour l&apos;instant.
+          Aucun logement ne correspond à ces critères.
         </p>
       )}
     </div>
