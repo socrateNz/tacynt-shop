@@ -35,6 +35,7 @@ import { ContactForm } from "./contact-form";
 import { MarketingMobileNav } from "./marketing-mobile-nav";
 import { RentalCatalogueClient } from "./rental-catalogue-client";
 import { ScrollReveal } from "./scroll-reveal";
+import { StorefrontHero } from "./storefront-hero";
 import { StorefrontShell } from "./storefront-shell";
 
 type Feature = { icon: LucideIcon; title: string; description: string; featured?: boolean };
@@ -541,6 +542,9 @@ export default async function Home({
     ),
   ).sort((a, b) => a.localeCompare(b));
 
+  const itemLabel = `${items.length} article${items.length > 1 ? "s" : ""} disponible${items.length > 1 ? "s" : ""}`;
+  const unitLabel = `${units.length} logement${units.length > 1 ? "s" : ""} disponible${units.length > 1 ? "s" : ""}`;
+
   // Les deux modules actifs : un seul catalogue sous forme de deux onglets,
   // jamais deux pages séparées (décision explicite de l'utilisateur).
   // Priorité Produits par défaut, sauf catalogue produit vide — alors
@@ -548,6 +552,7 @@ export default async function Home({
   if (ecommerceEnabled && locationEnabled) {
     return (
       <StorefrontShell organization={organization}>
+        <StorefrontHero nom={organization.nom} subtitle={`${itemLabel} · ${unitLabel}`} />
         <CatalogueTabs
           defaultTab={items.length > 0 ? "produits" : "logements"}
           items={items}
@@ -567,35 +572,23 @@ export default async function Home({
   if (locationEnabled) {
     return (
       <StorefrontShell organization={organization}>
-        <div className="flex flex-col gap-6">
-          <header>
-            <h1 className="text-xl font-semibold text-foreground">Logements à louer</h1>
-          </header>
-
-          <RentalCatalogueClient
-            units={units}
-            shopId={shopId}
-            devise={organization.devise}
-            priceCeiling={rentalPriceCeiling}
-            dureeCeiling={dureeCeiling}
-            allVilles={allVilles}
-          />
-        </div>
+        <StorefrontHero nom={organization.nom} subtitle={unitLabel} />
+        <RentalCatalogueClient
+          units={units}
+          shopId={shopId}
+          devise={organization.devise}
+          priceCeiling={rentalPriceCeiling}
+          dureeCeiling={dureeCeiling}
+          allVilles={allVilles}
+        />
       </StorefrontShell>
     );
   }
 
   return (
     <StorefrontShell organization={organization}>
+      <StorefrontHero nom={organization.nom} subtitle={itemLabel} />
       <div className="flex flex-col gap-6">
-        <header>
-          <h1 className="text-xl font-semibold text-foreground">Catalogue</h1>
-          <p className="text-sm text-muted-foreground">
-            {items.length} article{items.length > 1 ? "s" : ""} disponible
-            {items.length > 1 ? "s" : ""} — paiement à la réception (espèces, Mobile Money, carte).
-          </p>
-        </header>
-
         <CatalogueClient
           items={items}
           shopId={shopId}

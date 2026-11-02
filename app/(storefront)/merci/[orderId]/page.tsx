@@ -6,6 +6,7 @@ import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
 import { getStorefrontOrganization } from "@/lib/storefront/context";
 
+import { StorefrontBreadcrumb } from "../../../storefront-breadcrumb";
 import { PaymentStatus } from "./payment-status";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -34,7 +35,20 @@ export default async function MerciPage({
   const order = await withTenantContext({ organizationId: organization.id }, (tx) =>
     tx.onlineOrder.findUnique({
       where: { id: orderId },
-      include: { shop: true, payments: { orderBy: { createdAt: "desc" }, take: 1 } },
+      include: {
+        shop: true,
+        payments: { orderBy: { createdAt: "desc" }, take: 1 },
+        // Même patron d'include que app/(admin)/online-orders/page.tsx
+        // (designation = variant.product.designation) — pas un nouveau
+        // format inventé pour la vitrine.
+        lines: {
+          include: {
+            variant: {
+              include: { product: { include: { images: { select: { id: true }, take: 1 } } } },
+            },
+          },
+        },
+      },
     }),
   );
 
@@ -46,6 +60,8 @@ export default async function MerciPage({
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      <StorefrontBreadcrumb items={[{ label: "Panier", href: "/panier" }, { label: "Confirmation" }]} />
+
       <header className="flex items-start gap-3 rounded-xl border border-success/30 bg-success/10 p-4">
         <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-success" />
         <div>
@@ -59,13 +75,39 @@ export default async function MerciPage({
       </header>
 
       <div className="rounded-xl border border-border bg-card p-4">
+        <ul className="flex flex-col gap-3">
+          {order.lines.map((line) => {
+            const coverImageId = line.variant.product.images[0]?.id ?? null;
+            return (
+              <li key={line.id} className="flex items-center gap-3">
+                {coverImageId ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- image binaire servie par la route, pas un asset statique optimisable
+                  <img
+                    src={`/api/products/${line.variant.productId}/images/${coverImageId}`}
+                    alt=""
+                    className="size-10 shrink-0 rounded-md border border-border object-cover"
+                  />
+                ) : (
+                  <div className="size-10 shrink-0 rounded-md border border-dashed border-border" />
+                )}
+                <span className="min-w-0 flex-1 text-sm text-muted-foreground">
+                  {Number(line.quantite)} × {line.variant.product.designation}
+                </span>
+                <span className="num shrink-0 text-sm text-foreground">
+                  {formatMoney(Number(line.prixUnitaire) * Number(line.quantite), organization.devise)}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+
         {order.emballageQuantite > 0 && order.emballagePrixUnitaire !== null && (
-          <p className="num text-sm text-muted-foreground">
+          <p className="num mt-3 text-sm text-muted-foreground">
             Emballage : {order.emballageQuantite} ×{" "}
             {formatMoney(order.emballagePrixUnitaire, organization.devise)}
           </p>
         )}
-        <p className="num text-lg font-semibold text-foreground">
+        <p className="num mt-3 border-t border-border pt-3 text-lg font-semibold text-foreground">
           Total : {formatMoney(order.totalTtc, organization.devise)}
         </p>
         {order.shop.paiementEnLigneActif ? (

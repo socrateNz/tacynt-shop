@@ -1,5 +1,4 @@
 import { MapPin } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { withTenantContext } from "@/lib/db/tenant-context";
@@ -9,6 +8,7 @@ import { getStorefrontOrganization, resolveStorefrontShopId } from "@/lib/storef
 import { getStorefrontRentalUnitDetail } from "@/lib/storefront/rentals";
 
 import { MediaGallery } from "../../../media-gallery";
+import { StorefrontBreadcrumb } from "../../../storefront-breadcrumb";
 import { BookingForm } from "./booking-form";
 
 export default async function RentalUnitDetailPage({
@@ -39,9 +39,9 @@ export default async function RentalUnitDetailPage({
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-      <Link href="/" className="text-sm text-primary underline-offset-4 hover:underline">
-        ← Retour au catalogue
-      </Link>
+      <StorefrontBreadcrumb
+        items={[{ label: "Logements", href: "/" }, { label: unit.designation }]}
+      />
 
       <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
         <MediaGallery
@@ -54,10 +54,7 @@ export default async function RentalUnitDetailPage({
             <p className="text-sm text-muted-foreground">
               {RENTAL_UNIT_TYPE_LABELS[unit.type] ?? unit.type}
             </p>
-            <h1 className="text-xl font-semibold text-foreground">{unit.designation}</h1>
-            <p className="num mt-1 text-lg font-semibold text-foreground">
-              {formatMoney(unit.montantMensuel, organization.devise)} / mois
-            </p>
+            <h1 className="text-2xl font-semibold text-foreground">{unit.designation}</h1>
             {unit.locality && (
               <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                 <MapPin className="size-4 shrink-0" />
@@ -66,6 +63,13 @@ export default async function RentalUnitDetailPage({
                   : unit.locality.nom}
               </p>
             )}
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
+            <p className="num text-3xl font-semibold text-foreground">
+              {formatMoney(unit.montantMensuel, organization.devise)}
+              <span className="text-sm font-normal text-muted-foreground"> / mois</span>
+            </p>
             <p className="text-sm text-muted-foreground">Durée minimale : {unit.dureeMinMois} mois</p>
             {unit.surfaceM2 !== null && (
               <p className="text-sm text-muted-foreground">Surface : {unit.surfaceM2} m²</p>

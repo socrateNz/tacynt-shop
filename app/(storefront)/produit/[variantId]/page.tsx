@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { withTenantContext } from "@/lib/db/tenant-context";
@@ -6,6 +5,7 @@ import { formatMoney } from "@/lib/money";
 import { getStorefrontProductDetail } from "@/lib/storefront/catalog";
 import { getStorefrontOrganization, resolveStorefrontShopId } from "@/lib/storefront/context";
 
+import { StorefrontBreadcrumb } from "../../../storefront-breadcrumb";
 import { DetailAddToCart } from "./detail-add-to-cart";
 import { ProductGallery } from "./product-gallery";
 
@@ -41,9 +41,12 @@ export default async function ProduitPage({
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-      <Link href="/" className="text-sm text-primary underline-offset-4 hover:underline">
-        ← Retour au catalogue
-      </Link>
+      <StorefrontBreadcrumb
+        items={[
+          ...(item.categoryName ? [{ label: item.categoryName }] : []),
+          { label: item.designation },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <ProductGallery
@@ -54,7 +57,7 @@ export default async function ProduitPage({
 
         <div className="flex flex-col gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-foreground">
+            <h1 className="text-2xl font-semibold text-foreground">
               {item.designation}
               {attrLabel ? ` — ${attrLabel}` : ""}
             </h1>
@@ -63,28 +66,30 @@ export default async function ProduitPage({
             )}
           </div>
 
-          <p className="num text-2xl font-semibold text-foreground">
-            {formatMoney(item.prixVente, organization.devise)}
-            <span className="text-sm font-normal text-muted-foreground"> / {item.unite}</span>
-          </p>
+          <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
+            <p className="num text-3xl font-semibold text-foreground">
+              {formatMoney(item.prixVente, organization.devise)}
+              <span className="text-sm font-normal text-muted-foreground"> / {item.unite}</span>
+            </p>
 
-          <span
-            className={
-              outOfStock
-                ? "text-sm text-destructive"
+            <span
+              className={
+                outOfStock
+                  ? "text-sm text-destructive"
+                  : item.available
+                    ? "text-sm text-primary"
+                    : "text-sm text-muted-foreground"
+              }
+            >
+              {outOfStock
+                ? "Rupture de stock"
                 : item.available
-                  ? "text-sm text-primary"
-                  : "text-sm text-muted-foreground"
-            }
-          >
-            {outOfStock
-              ? "Rupture de stock"
-              : item.available
-                ? item.stockQuantite !== null
-                  ? `En stock — ${item.stockQuantite} ${item.unite} disponible${item.stockQuantite > 1 ? "s" : ""}`
-                  : "En stock"
-                : "Indisponible"}
-          </span>
+                  ? item.stockQuantite !== null
+                    ? `En stock — ${item.stockQuantite} ${item.unite} disponible${item.stockQuantite > 1 ? "s" : ""}`
+                    : "En stock"
+                  : "Indisponible"}
+            </span>
+          </div>
 
           {item.description && (
             <p className="whitespace-pre-wrap text-sm text-muted-foreground">{item.description}</p>
@@ -97,6 +102,8 @@ export default async function ProduitPage({
             prixVente={item.prixVente}
             stockQuantite={item.stockQuantite}
             prixEmballage={item.prixEmballage}
+            productId={item.productId}
+            coverImageId={item.coverImageId}
             shopId={shopId}
             available={item.available}
           />

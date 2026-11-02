@@ -6,6 +6,8 @@ import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
 import { getStorefrontOrganization } from "@/lib/storefront/context";
 
+import { StorefrontBreadcrumb } from "../../../../storefront-breadcrumb";
+
 const STATUS_LABELS: Record<string, string> = {
   DEMANDE: "En attente de confirmation",
   CONFIRMEE: "Confirmée",
@@ -42,6 +44,8 @@ export default async function RentalMerciPage({
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      <StorefrontBreadcrumb items={[{ label: "Logements", href: "/" }, { label: "Confirmation" }]} />
+
       <header className="flex items-start gap-3 rounded-xl border border-success/30 bg-success/10 p-4">
         <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-success" />
         <div>

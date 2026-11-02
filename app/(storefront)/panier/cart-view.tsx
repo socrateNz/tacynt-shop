@@ -36,16 +36,28 @@ export function CartView({ devise }: { devise: string }) {
           key={item.variantId}
           className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-xl border border-border bg-card p-4"
         >
-          <div className="flex min-w-0 flex-col gap-1">
-            <p className="text-sm font-medium text-foreground">{item.designation}</p>
-            <p className="num text-sm text-muted-foreground">
-              {formatMoney(item.prixVente, devise)} / {item.unite}
-            </p>
-            {item.stockQuantite !== null && (
-              <p className="text-xs text-muted-foreground">
-                Il reste {item.stockQuantite} {item.unite} en stock
-              </p>
+          <div className="flex min-w-0 items-center gap-3">
+            {item.productId && item.coverImageId ? (
+              // eslint-disable-next-line @next/next/no-img-element -- image binaire servie par la route, pas un asset statique optimisable
+              <img
+                src={`/api/products/${item.productId}/images/${item.coverImageId}`}
+                alt=""
+                className="size-14 shrink-0 rounded-lg border border-border object-cover"
+              />
+            ) : (
+              <div className="size-14 shrink-0 rounded-lg border border-dashed border-border" />
             )}
+            <div className="flex min-w-0 flex-col gap-1">
+              <p className="text-sm font-medium text-foreground">{item.designation}</p>
+              <p className="num text-sm text-muted-foreground">
+                {formatMoney(item.prixVente, devise)} / {item.unite}
+              </p>
+              {item.stockQuantite !== null && (
+                <p className="text-xs text-muted-foreground">
+                  Il reste {item.stockQuantite} {item.unite} en stock
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Input

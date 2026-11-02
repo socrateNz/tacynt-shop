@@ -10,6 +10,11 @@ export type CartItem = {
   unite: string;
   prixVente: number;
   quantite: number;
+  // Vignette affichée dans le panier/récap de commande — optionnels pour
+  // rester compatibles avec un panier déjà écrit en localStorage avant leur
+  // ajout (M40) : absents => pas de vignette, jamais une erreur.
+  productId?: string;
+  coverImageId?: string | null;
   // Photo prise à l'ajout, même principe que prixVente ci-dessus : un
   // plafond de saisie/affichage côté client, jamais l'autorité finale (voir
   // POST /api/storefront/orders, qui revalide toujours le stock réel).

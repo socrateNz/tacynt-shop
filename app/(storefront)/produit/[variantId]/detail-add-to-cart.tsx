@@ -13,6 +13,8 @@ export function DetailAddToCart({
   prixVente,
   stockQuantite,
   prixEmballage,
+  productId,
+  coverImageId,
   shopId,
   available,
 }: {
@@ -22,6 +24,8 @@ export function DetailAddToCart({
   prixVente: number;
   stockQuantite: number | null;
   prixEmballage: number | null;
+  productId: string;
+  coverImageId: string | null;
   shopId: string;
   available: boolean;
 }) {
@@ -29,7 +33,16 @@ export function DetailAddToCart({
   const [added, setAdded] = useState(false);
 
   function handleAdd() {
-    addItem(shopId, { variantId, designation, unite, prixVente, stockQuantite, prixEmballage });
+    addItem(shopId, {
+      variantId,
+      designation,
+      unite,
+      prixVente,
+      stockQuantite,
+      prixEmballage,
+      productId,
+      coverImageId,
+    });
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1500);
   }

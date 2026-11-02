@@ -139,20 +139,37 @@ export function CheckoutForm({ devise }: { devise: string }) {
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="rounded-xl border border-border bg-card p-4">
         <p className="text-sm font-medium text-foreground">Récapitulatif</p>
-        <ul className="mt-2 flex flex-col gap-1 text-sm text-muted-foreground">
+        <ul className="mt-3 flex flex-col gap-3">
           {cart.items.map((i) => (
-            <li key={i.variantId}>
-              {i.quantite} {i.unite} × {i.designation} — {formatMoney(i.prixVente * i.quantite, devise)}
+            <li key={i.variantId} className="flex items-center gap-3">
+              {i.productId && i.coverImageId ? (
+                // eslint-disable-next-line @next/next/no-img-element -- image binaire servie par la route, pas un asset statique optimisable
+                <img
+                  src={`/api/products/${i.productId}/images/${i.coverImageId}`}
+                  alt=""
+                  className="size-10 shrink-0 rounded-md border border-border object-cover"
+                />
+              ) : (
+                <div className="size-10 shrink-0 rounded-md border border-dashed border-border" />
+              )}
+              <span className="min-w-0 flex-1 text-sm text-muted-foreground">
+                {i.quantite} {i.unite} × {i.designation}
+              </span>
+              <span className="num shrink-0 text-sm text-foreground">
+                {formatMoney(i.prixVente * i.quantite, devise)}
+              </span>
             </li>
           ))}
           {cart.emballageQuantite > 0 && emballageUnitPrice > 0 && (
-            <li>
-              {cart.emballageQuantite} emballage(s) × {formatMoney(emballageUnitPrice, devise)} —{" "}
-              {formatMoney(emballageTotal, devise)}
+            <li className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="min-w-0 flex-1">
+                {cart.emballageQuantite} emballage(s) × {formatMoney(emballageUnitPrice, devise)}
+              </span>
+              <span className="num shrink-0 text-foreground">{formatMoney(emballageTotal, devise)}</span>
             </li>
           )}
         </ul>
-        <p className="num mt-2 text-lg font-semibold text-foreground">
+        <p className="num mt-3 border-t border-border pt-3 text-lg font-semibold text-foreground">
           Total : {formatMoney(total, devise)}
         </p>
       </div>
@@ -163,46 +180,52 @@ export function CheckoutForm({ devise }: { devise: string }) {
         </p>
       )}
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="nomClient">Nom</Label>
-        <Input id="nomClient" name="nomClient" required />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="telephoneClient">Téléphone</Label>
-        <Input id="telephoneClient" name="telephoneClient" required />
-      </div>
-
-      {paiementEnLigneActif && (
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
+        <p className="text-sm font-medium text-foreground">Vos informations</p>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="emailClient">Email (requis pour le paiement en ligne)</Label>
-          <Input id="emailClient" name="emailClient" type="email" required />
+          <Label htmlFor="nomClient">Nom</Label>
+          <Input id="nomClient" name="nomClient" required />
         </div>
-      )}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="telephoneClient">Téléphone</Label>
+          <Input id="telephoneClient" name="telephoneClient" required />
+        </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="modeRetrait">Mode de retrait</Label>
-        <select
-          id="modeRetrait"
-          name="modeRetrait"
-          value={modeRetrait}
-          onChange={(e) => setModeRetrait(e.target.value as typeof modeRetrait)}
-          className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
-        >
-          <option value="RETRAIT_BOUTIQUE">Retrait en boutique</option>
-          <option value="LIVRAISON">Livraison</option>
-        </select>
+        {paiementEnLigneActif && (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="emailClient">Email (requis pour le paiement en ligne)</Label>
+            <Input id="emailClient" name="emailClient" type="email" required />
+          </div>
+        )}
       </div>
 
-      {modeRetrait === "LIVRAISON" && (
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
+        <p className="text-sm font-medium text-foreground">Livraison</p>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="adresseLivraison">Adresse de livraison</Label>
-          <Input id="adresseLivraison" name="adresseLivraison" required />
+          <Label htmlFor="modeRetrait">Mode de retrait</Label>
+          <select
+            id="modeRetrait"
+            name="modeRetrait"
+            value={modeRetrait}
+            onChange={(e) => setModeRetrait(e.target.value as typeof modeRetrait)}
+            className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
+          >
+            <option value="RETRAIT_BOUTIQUE">Retrait en boutique</option>
+            <option value="LIVRAISON">Livraison</option>
+          </select>
         </div>
-      )}
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="notes">Notes (optionnel)</Label>
-        <Input id="notes" name="notes" />
+        {modeRetrait === "LIVRAISON" && (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="adresseLivraison">Adresse de livraison</Label>
+            <Input id="adresseLivraison" name="adresseLivraison" required />
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="notes">Notes (optionnel)</Label>
+          <Input id="notes" name="notes" />
+        </div>
       </div>
 
       <p className="text-xs text-muted-foreground">

@@ -32,6 +32,8 @@ export function ProductCard({
       prixVente: item.prixVente,
       stockQuantite: item.stockQuantite,
       prixEmballage: item.prixEmballage,
+      productId: item.productId,
+      coverImageId: item.coverImageId,
     });
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1500);
