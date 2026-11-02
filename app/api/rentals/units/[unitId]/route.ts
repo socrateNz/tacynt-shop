@@ -1,15 +1,30 @@
 import { NextResponse } from "next/server";
-import type { RentalUnitType } from "@prisma/client";
+import type { RentalUnitAmenity, RentalUnitType } from "@prisma/client";
 
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions-server";
+import { RENTAL_UNIT_AMENITIES } from "@/lib/rentals/types";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGES = 3;
 const UNIT_TYPES: RentalUnitType[] = ["CHAMBRE", "STUDIO", "APPARTEMENT", "VILLA", "AUTRE"];
+const KNOWN_AMENITIES = new Set(RENTAL_UNIT_AMENITIES.map((a) => a.value));
+
+function parseAmenities(formData: FormData): RentalUnitAmenity[] {
+  return formData
+    .getAll("equipements")
+    .map(String)
+    .filter((v) => KNOWN_AMENITIES.has(v)) as RentalUnitAmenity[];
+}
+
+function parseOptionalInt(value: FormDataEntryValue | null): number | null {
+  if (value === null || value === "") return null;
+  const n = Math.trunc(Number(value));
+  return Number.isFinite(n) ? n : null;
+}
 
 // Route Handler (pas Server Action) : même raison que POST /api/rentals/units
 // — une nouvelle photo peut dépasser le plafond de 1 Mo des Server Actions.
@@ -29,6 +44,10 @@ export async function POST(
   const montantMensuel = Number(formData.get("montantMensuel") ?? 0);
   const dureeMinMois = Math.trunc(Number(formData.get("dureeMinMois") ?? 0));
   const commissionMontant = Number(formData.get("commissionMontant") ?? 0);
+  const localityId = String(formData.get("localityId") ?? "").trim() || null;
+  const surfaceM2 = parseOptionalInt(formData.get("surfaceM2"));
+  const nombrePieces = parseOptionalInt(formData.get("nombrePieces"));
+  const equipements = parseAmenities(formData);
   const actif = formData.get("actif") === "on";
   const newImages = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
   const removeImageIds = new Set(formData.getAll("removeImageIds").map(String));
@@ -44,6 +63,12 @@ export async function POST(
   }
   if (!Number.isFinite(commissionMontant) || commissionMontant < 0) {
     return NextResponse.json({ error: "Commission invalide." }, { status: 400 });
+  }
+  if (surfaceM2 !== null && surfaceM2 < 0) {
+    return NextResponse.json({ error: "Surface invalide." }, { status: 400 });
+  }
+  if (nombrePieces !== null && nombrePieces < 0) {
+    return NextResponse.json({ error: "Nombre de pièces invalide." }, { status: 400 });
   }
   for (const img of newImages) {
     if (img.size > MAX_IMAGE_BYTES) {
@@ -65,7 +90,19 @@ export async function POST(
 
       await tx.rentalUnit.update({
         where: { id: unitId },
-        data: { type, designation, description, montantMensuel, dureeMinMois, commissionMontant, actif },
+        data: {
+          type,
+          designation,
+          description,
+          montantMensuel,
+          dureeMinMois,
+          commissionMontant,
+          localityId,
+          surfaceM2,
+          nombrePieces,
+          equipements,
+          actif,
+        },
       });
 
       const existingImages = await tx.rentalUnitImage.findMany({
@@ -104,7 +141,18 @@ export async function POST(
         action: "RENTAL_UNIT_UPDATED",
         entite: "rental_unit",
         entiteId: unitId,
-        apres: { designation, type, montantMensuel, dureeMinMois, commissionMontant, actif },
+        apres: {
+          designation,
+          type,
+          montantMensuel,
+          dureeMinMois,
+          commissionMontant,
+          localityId,
+          surfaceM2,
+          nombrePieces,
+          equipements,
+          actif,
+        },
       });
     });
   } catch (error) {

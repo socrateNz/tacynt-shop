@@ -5,7 +5,7 @@ import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
 import { hasCapability } from "@/lib/permissions";
 import { OCCUPYING_STATUSES } from "@/lib/rentals/contracts";
-import { RENTAL_UNIT_TYPE_LABELS } from "@/lib/rentals/types";
+import { formatLocalityLabel, RENTAL_UNIT_TYPE_LABELS } from "@/lib/rentals/types";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
@@ -29,16 +29,24 @@ export default async function RentalUnitsPage() {
 
   const shopId = await getActiveShopId(ctx.organizationId, ctx.userId);
 
-  const units = await withTenantContext({ organizationId: ctx.organizationId, shopId }, (tx) =>
-    tx.rentalUnit.findMany({
-      where: { shopId },
-      orderBy: { designation: "asc" },
-      include: {
-        images: { select: { id: true }, orderBy: { position: "asc" } },
-        contracts: { where: { statut: { in: [...OCCUPYING_STATUSES] } }, take: 1 },
-      },
-    }),
-  );
+  const [units, localities] = await Promise.all([
+    withTenantContext({ organizationId: ctx.organizationId, shopId }, (tx) =>
+      tx.rentalUnit.findMany({
+        where: { shopId },
+        orderBy: { designation: "asc" },
+        include: {
+          images: { select: { id: true }, orderBy: { position: "asc" } },
+          contracts: { where: { statut: { in: [...OCCUPYING_STATUSES] } }, take: 1 },
+          locality: { include: { parent: true } },
+        },
+      }),
+    ),
+    withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
+      tx.rentalLocality.findMany({ orderBy: { nom: "asc" } }),
+    ),
+  ]);
+
+  const localityOptions = localities.map((l) => ({ id: l.id, nom: l.nom, parentId: l.parentId }));
 
   const rows: UnitRow[] = units.map((u) => ({
     id: u.id,
@@ -48,6 +56,7 @@ export default async function RentalUnitsPage() {
     montantMensuelLabel: formatMoney(u.montantMensuel, organization.devise),
     dureeMinMois: u.dureeMinMois,
     commissionLabel: formatMoney(u.commissionMontant, organization.devise),
+    localityLabel: formatLocalityLabel(u.locality),
     actif: u.actif,
     occupe: u.contracts.length > 0,
     coverImageId: u.images[0]?.id ?? null,
@@ -59,6 +68,10 @@ export default async function RentalUnitsPage() {
       montantMensuel: Number(u.montantMensuel),
       dureeMinMois: u.dureeMinMois,
       commissionMontant: Number(u.commissionMontant),
+      localityId: u.localityId,
+      surfaceM2: u.surfaceM2,
+      nombrePieces: u.nombrePieces,
+      equipements: u.equipements,
       actif: u.actif,
       images: u.images.map((img) => ({ id: img.id })),
     },
@@ -74,7 +87,7 @@ export default async function RentalUnitsPage() {
         </p>
       </header>
 
-      <UnitsTable units={rows} />
+      <UnitsTable units={rows} localities={localityOptions} />
     </div>
   );
 }

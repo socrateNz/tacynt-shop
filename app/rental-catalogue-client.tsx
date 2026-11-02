@@ -17,12 +17,14 @@ export function RentalCatalogueClient({
   devise,
   priceCeiling,
   dureeCeiling,
+  allVilles,
 }: {
   units: StorefrontRentalUnit[];
   shopId: string;
   devise: string;
   priceCeiling: number;
   dureeCeiling: number;
+  allVilles: string[];
 }) {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<RentalFiltersState>({
@@ -30,6 +32,7 @@ export function RentalCatalogueClient({
     minPrice: 0,
     maxPrice: priceCeiling,
     maxDureeMin: dureeCeiling,
+    ville: null,
   });
 
   const filtered = useMemo(() => {
@@ -39,6 +42,7 @@ export function RentalCatalogueClient({
       if (filters.types.size > 0 && !filters.types.has(u.type)) return false;
       if (u.montantMensuel < filters.minPrice || u.montantMensuel > filters.maxPrice) return false;
       if (u.dureeMinMois > filters.maxDureeMin) return false;
+      if (filters.ville && (u.locality?.villeNom ?? u.locality?.nom) !== filters.ville) return false;
       return true;
     });
   }, [units, search, filters]);
@@ -46,13 +50,15 @@ export function RentalCatalogueClient({
   const activeFilterCount =
     filters.types.size +
     (filters.minPrice > 0 || filters.maxPrice < priceCeiling ? 1 : 0) +
-    (filters.maxDureeMin < dureeCeiling ? 1 : 0);
+    (filters.maxDureeMin < dureeCeiling ? 1 : 0) +
+    (filters.ville ? 1 : 0);
 
   const filtersPanel = (
     <RentalFiltersSidebar
       priceCeiling={priceCeiling}
       dureeCeiling={dureeCeiling}
       devise={devise}
+      allVilles={allVilles}
       filters={filters}
       onChange={setFilters}
     />

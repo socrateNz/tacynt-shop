@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import type { RentalUnitType } from "@prisma/client";
+import type { RentalUnitAmenity, RentalUnitType } from "@prisma/client";
 
 import { recordAuditLog } from "@/lib/audit";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions-server";
+import { RENTAL_UNIT_AMENITIES } from "@/lib/rentals/types";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
@@ -12,6 +13,23 @@ import { organizationHasModule } from "@/lib/tenant/modules";
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGES = 3;
 const UNIT_TYPES: RentalUnitType[] = ["CHAMBRE", "STUDIO", "APPARTEMENT", "VILLA", "AUTRE"];
+const KNOWN_AMENITIES = new Set(RENTAL_UNIT_AMENITIES.map((a) => a.value));
+
+function parseAmenities(formData: FormData): RentalUnitAmenity[] {
+  // Filtré sur la liste connue plutôt que de planter sur une valeur
+  // inattendue — même esprit que le reste de la validation ici (erreur 400
+  // seulement sur ce qui est réellement invalide/dangereux).
+  return formData
+    .getAll("equipements")
+    .map(String)
+    .filter((v) => KNOWN_AMENITIES.has(v)) as RentalUnitAmenity[];
+}
+
+function parseOptionalInt(value: FormDataEntryValue | null): number | null {
+  if (value === null || value === "") return null;
+  const n = Math.trunc(Number(value));
+  return Number.isFinite(n) ? n : null;
+}
 
 // Route Handler plutôt que Server Action : une photo dépasse facilement le
 // plafond de 1 Mo des Server Actions — même raison que /api/products.
@@ -32,6 +50,10 @@ export async function POST(request: Request) {
   const montantMensuel = Number(formData.get("montantMensuel") ?? 0);
   const dureeMinMois = Math.trunc(Number(formData.get("dureeMinMois") ?? 0));
   const commissionMontant = Number(formData.get("commissionMontant") ?? 0);
+  const localityId = String(formData.get("localityId") ?? "").trim() || null;
+  const surfaceM2 = parseOptionalInt(formData.get("surfaceM2"));
+  const nombrePieces = parseOptionalInt(formData.get("nombrePieces"));
+  const equipements = parseAmenities(formData);
   const images = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
 
   if (!UNIT_TYPES.includes(type) || !designation) {
@@ -45,6 +67,12 @@ export async function POST(request: Request) {
   }
   if (!Number.isFinite(commissionMontant) || commissionMontant < 0) {
     return NextResponse.json({ error: "Commission invalide." }, { status: 400 });
+  }
+  if (surfaceM2 !== null && surfaceM2 < 0) {
+    return NextResponse.json({ error: "Surface invalide." }, { status: 400 });
+  }
+  if (nombrePieces !== null && nombrePieces < 0) {
+    return NextResponse.json({ error: "Nombre de pièces invalide." }, { status: 400 });
   }
   if (images.length > MAX_IMAGES) {
     return NextResponse.json({ error: `${MAX_IMAGES} photos maximum par logement.` }, { status: 400 });
@@ -74,6 +102,10 @@ export async function POST(request: Request) {
         montantMensuel,
         dureeMinMois,
         commissionMontant,
+        localityId,
+        surfaceM2,
+        nombrePieces,
+        equipements,
       },
     });
 
@@ -95,7 +127,17 @@ export async function POST(request: Request) {
       action: "RENTAL_UNIT_CREATED",
       entite: "rental_unit",
       entiteId: created.id,
-      apres: { designation, type, montantMensuel, dureeMinMois, commissionMontant },
+      apres: {
+        designation,
+        type,
+        montantMensuel,
+        dureeMinMois,
+        commissionMontant,
+        localityId,
+        surfaceM2,
+        nombrePieces,
+        equipements,
+      },
     });
 
     return created;

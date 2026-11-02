@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 
 import { UnitEditDialog, type UnitEditValues } from "./unit-edit-dialog";
-import { UnitForm } from "./unit-form";
+import { UnitForm, type LocalityOption } from "./unit-form";
 
 export type UnitRow = {
   id: string;
@@ -26,13 +26,20 @@ export type UnitRow = {
   montantMensuelLabel: string;
   dureeMinMois: number;
   commissionLabel: string;
+  localityLabel: string | null;
   actif: boolean;
   occupe: boolean;
   coverImageId: string | null;
   edit: UnitEditValues;
 };
 
-export function UnitsTable({ units }: { units: UnitRow[] }) {
+export function UnitsTable({
+  units,
+  localities,
+}: {
+  units: UnitRow[];
+  localities: LocalityOption[];
+}) {
   const [formOpen, setFormOpen] = useState(false);
 
   return (
@@ -47,7 +54,7 @@ export function UnitsTable({ units }: { units: UnitRow[] }) {
             <DialogHeader>
               <DialogTitle>Nouveau logement</DialogTitle>
             </DialogHeader>
-            <UnitForm onSuccess={() => setFormOpen(false)} />
+            <UnitForm localities={localities} onSuccess={() => setFormOpen(false)} />
           </DialogContent>
         </Dialog>
       </div>
@@ -59,6 +66,7 @@ export function UnitsTable({ units }: { units: UnitRow[] }) {
               <TableHead className="w-14" />
               <TableHead>Logement</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Localité</TableHead>
               <TableHead className="text-right">Loyer / mois</TableHead>
               <TableHead>Durée min.</TableHead>
               <TableHead className="text-right">Commission</TableHead>
@@ -83,6 +91,7 @@ export function UnitsTable({ units }: { units: UnitRow[] }) {
                 </TableCell>
                 <TableCell className="text-foreground">{u.designation}</TableCell>
                 <TableCell className="text-muted-foreground">{u.typeLabel}</TableCell>
+                <TableCell className="text-muted-foreground">{u.localityLabel ?? "—"}</TableCell>
                 <TableCell className="num text-right">{u.montantMensuelLabel}</TableCell>
                 <TableCell className="text-muted-foreground">{u.dureeMinMois} mois</TableCell>
                 <TableCell className="num text-right">{u.commissionLabel}</TableCell>
@@ -94,13 +103,13 @@ export function UnitsTable({ units }: { units: UnitRow[] }) {
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <UnitEditDialog unit={u.edit} />
+                  <UnitEditDialog unit={u.edit} localities={localities} />
                 </TableCell>
               </TableRow>
             ))}
             {units.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground">
+                <TableCell colSpan={9} className="text-center text-muted-foreground">
                   Aucun logement pour l&apos;instant.
                 </TableCell>
               </TableRow>

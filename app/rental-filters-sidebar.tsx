@@ -9,21 +9,24 @@ export type RentalFiltersState = {
   minPrice: number;
   maxPrice: number;
   maxDureeMin: number;
+  ville: string | null;
 };
 
 // Même patron que filters-sidebar.tsx (catalogue produit) : prix et une
-// liste de catégories/types à cocher, plus un filtre propre aux logements
-// (durée minimale souhaitée) sans équivalent côté produit.
+// liste de catégories/types à cocher, plus deux filtres propres aux
+// logements (durée minimale souhaitée, ville) sans équivalent côté produit.
 export function RentalFiltersSidebar({
   priceCeiling,
   dureeCeiling,
   devise,
+  allVilles,
   filters,
   onChange,
 }: {
   priceCeiling: number;
   dureeCeiling: number;
   devise: string;
+  allVilles: string[];
   filters: RentalFiltersState;
   onChange: (next: RentalFiltersState) => void;
 }) {
@@ -55,6 +58,24 @@ export function RentalFiltersSidebar({
           }}
         />
       </div>
+
+      {allVilles.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase">Ville</p>
+          <select
+            value={filters.ville ?? ""}
+            onChange={(e) => onChange({ ...filters, ville: e.target.value || null })}
+            className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
+          >
+            <option value="">Toutes les villes</option>
+            {allVilles.map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <p className="text-xs font-medium text-muted-foreground uppercase">Type</p>

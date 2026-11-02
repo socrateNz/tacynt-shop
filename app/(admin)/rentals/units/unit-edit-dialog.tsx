@@ -9,7 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RENTAL_UNIT_TYPES } from "@/lib/rentals/types";
+import { RENTAL_UNIT_AMENITIES, RENTAL_UNIT_TYPES } from "@/lib/rentals/types";
+
+import type { LocalityOption } from "./unit-form";
 
 const MAX_IMAGES = 3;
 
@@ -21,16 +23,38 @@ export type UnitEditValues = {
   montantMensuel: number;
   dureeMinMois: number;
   commissionMontant: number;
+  localityId: string | null;
+  surfaceM2: number | null;
+  nombrePieces: number | null;
+  equipements: string[];
   actif: boolean;
   images: { id: string }[];
 };
 
-export function UnitEditDialog({ unit }: { unit: UnitEditValues }) {
+export function UnitEditDialog({
+  unit,
+  localities,
+}: {
+  unit: UnitEditValues;
+  localities: LocalityOption[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [removedImageIds, setRemovedImageIds] = useState<Set<string>>(new Set());
+
+  // Si la localité actuelle du logement est un quartier, la ville
+  // pré-sélectionnée est son parent ; si c'est déjà une ville, c'est
+  // elle-même — même logique que unit-form.tsx pour les selects dépendants.
+  const currentLocality = localities.find((l) => l.id === unit.localityId);
+  const [villeId, setVilleId] = useState(
+    currentLocality ? (currentLocality.parentId ?? currentLocality.id) : "",
+  );
+  const [localityId, setLocalityId] = useState(unit.localityId ?? "");
+
+  const villes = localities.filter((l) => !l.parentId);
+  const quartiers = localities.filter((l) => l.parentId === villeId);
 
   const remainingImages = unit.images.filter((img) => !removedImageIds.has(img.id));
 
@@ -74,6 +98,8 @@ export function UnitEditDialog({ unit }: { unit: UnitEditValues }) {
         if (!next) {
           setError(null);
           setRemovedImageIds(new Set());
+          setVilleId(currentLocality ? (currentLocality.parentId ?? currentLocality.id) : "");
+          setLocalityId(unit.localityId ?? "");
         }
       }}
     >
@@ -150,6 +176,86 @@ export function UnitEditDialog({ unit }: { unit: UnitEditValues }) {
             <div className="flex flex-col gap-1.5">
               <Label htmlFor={`images-${unit.id}`}>Ajouter des photos</Label>
               <input id={`images-${unit.id}`} name="images" type="file" accept="image/*" multiple className="text-sm" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`ville-${unit.id}`}>Ville (optionnel)</Label>
+              <select
+                id={`ville-${unit.id}`}
+                value={villeId}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setVilleId(v);
+                  setLocalityId(v);
+                }}
+                className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
+              >
+                <option value="">Aucune</option>
+                {villes.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`quartier-${unit.id}`}>Quartier (optionnel)</Label>
+              <select
+                id={`quartier-${unit.id}`}
+                value={quartiers.some((q) => q.id === localityId) ? localityId : ""}
+                onChange={(e) => setLocalityId(e.target.value || villeId)}
+                disabled={!villeId}
+                className="h-8 rounded-md border border-border bg-background px-2.5 text-sm disabled:opacity-50"
+              >
+                <option value="">
+                  {villeId ? "Aucun quartier précis" : "Choisissez d'abord une ville"}
+                </option>
+                {quartiers.map((q) => (
+                  <option key={q.id} value={q.id}>
+                    {q.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <input type="hidden" name="localityId" value={localityId} />
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`surfaceM2-${unit.id}`}>Surface (m², optionnel)</Label>
+              <Input
+                id={`surfaceM2-${unit.id}`}
+                name="surfaceM2"
+                type="number"
+                step="1"
+                min="0"
+                defaultValue={unit.surfaceM2 ?? ""}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`nombrePieces-${unit.id}`}>Nombre de pièces (optionnel)</Label>
+              <Input
+                id={`nombrePieces-${unit.id}`}
+                name="nombrePieces"
+                type="number"
+                step="1"
+                min="0"
+                defaultValue={unit.nombrePieces ?? ""}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Équipements (optionnel)</Label>
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+              {RENTAL_UNIT_AMENITIES.map((a) => (
+                <label key={a.value} className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    name="equipements"
+                    value={a.value}
+                    defaultChecked={unit.equipements.includes(a.value)}
+                    className="size-4 accent-primary"
+                  />
+                  {a.label}
+                </label>
+              ))}
             </div>
           </div>
 

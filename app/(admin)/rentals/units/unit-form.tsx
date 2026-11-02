@@ -7,14 +7,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RENTAL_UNIT_TYPES } from "@/lib/rentals/types";
+import { RENTAL_UNIT_AMENITIES, RENTAL_UNIT_TYPES } from "@/lib/rentals/types";
 
 const MAX_IMAGES = 3;
 
-export function UnitForm({ onSuccess }: { onSuccess?: () => void }) {
+export type LocalityOption = { id: string; nom: string; parentId: string | null };
+
+export function UnitForm({
+  localities,
+  onSuccess,
+}: {
+  localities: LocalityOption[];
+  onSuccess?: () => void;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  // Ville/Quartier sont deux selects dépendants, mais un seul champ
+  // "localityId" est réellement soumis (celui du quartier s'il est choisi,
+  // sinon celui de la ville) — localities seront créées en amont par le
+  // personnel, jamais saisies en texte libre ici.
+  const [villeId, setVilleId] = useState("");
+  const [localityId, setLocalityId] = useState("");
+
+  const villes = localities.filter((l) => !l.parentId);
+  const quartiers = localities.filter((l) => l.parentId === villeId);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,6 +55,8 @@ export function UnitForm({ onSuccess }: { onSuccess?: () => void }) {
         return;
       }
       form.reset();
+      setVilleId("");
+      setLocalityId("");
       router.refresh();
       onSuccess?.();
     } catch {
@@ -102,6 +121,64 @@ export function UnitForm({ onSuccess }: { onSuccess?: () => void }) {
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="images">Photos (jusqu&apos;à {MAX_IMAGES}, optionnel)</Label>
           <input id="images" name="images" type="file" accept="image/*" multiple className="text-sm" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="ville">Ville (optionnel)</Label>
+          <select
+            id="ville"
+            value={villeId}
+            onChange={(e) => {
+              const v = e.target.value;
+              setVilleId(v);
+              setLocalityId(v);
+            }}
+            className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
+          >
+            <option value="">Aucune</option>
+            {villes.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.nom}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="quartier">Quartier (optionnel)</Label>
+          <select
+            id="quartier"
+            value={quartiers.some((q) => q.id === localityId) ? localityId : ""}
+            onChange={(e) => setLocalityId(e.target.value || villeId)}
+            disabled={!villeId}
+            className="h-8 rounded-md border border-border bg-background px-2.5 text-sm disabled:opacity-50"
+          >
+            <option value="">{villeId ? "Aucun quartier précis" : "Choisissez d'abord une ville"}</option>
+            {quartiers.map((q) => (
+              <option key={q.id} value={q.id}>
+                {q.nom}
+              </option>
+            ))}
+          </select>
+        </div>
+        <input type="hidden" name="localityId" value={localityId} />
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="surfaceM2">Surface (m², optionnel)</Label>
+          <Input id="surfaceM2" name="surfaceM2" type="number" step="1" min="0" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="nombrePieces">Nombre de pièces (optionnel)</Label>
+          <Input id="nombrePieces" name="nombrePieces" type="number" step="1" min="0" />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label>Équipements (optionnel)</Label>
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+          {RENTAL_UNIT_AMENITIES.map((a) => (
+            <label key={a.value} className="flex items-center gap-2 text-sm text-foreground">
+              <input type="checkbox" name="equipements" value={a.value} className="size-4 accent-primary" />
+              {a.label}
+            </label>
+          ))}
         </div>
       </div>
 

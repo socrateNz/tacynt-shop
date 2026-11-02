@@ -97,6 +97,12 @@ function buildGroups({
           badge: pendingRentalRequests,
           show: can("location:manage") && locationEnabled,
         },
+        {
+          href: "/rentals/localities",
+          label: "Villes & quartiers",
+          icon: "MapPin",
+          show: can("location:manage") && locationEnabled,
+        },
       ],
     },
     {

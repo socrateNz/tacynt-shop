@@ -2,21 +2,35 @@ import type { Prisma } from "@prisma/client";
 
 import { isRentalUnitAvailable, OCCUPYING_STATUSES } from "@/lib/rentals/contracts";
 
+export type StorefrontRentalUnitLocality = { nom: string; villeNom: string | null };
+
 export type StorefrontRentalUnit = {
   id: string;
   type: string;
   designation: string;
+  description: string | null;
   montantMensuel: number;
   dureeMinMois: number;
-  coverImageId: string | null;
+  imageIds: string[];
+  locality: StorefrontRentalUnitLocality | null;
+  surfaceM2: number | null;
+  nombrePieces: number | null;
+  equipements: string[];
 };
 
 export type StorefrontRentalUnitDetail = StorefrontRentalUnit & {
-  description: string | null;
   commissionMontant: number;
-  imageIds: string[];
   available: boolean;
 };
+
+const LOCALITY_INCLUDE = { locality: { include: { parent: true } } } as const;
+
+function toLocality(
+  unit: { locality: { nom: string; parent: { nom: string } | null } | null },
+): StorefrontRentalUnitLocality | null {
+  if (!unit.locality) return null;
+  return { nom: unit.locality.nom, villeNom: unit.locality.parent?.nom ?? null };
+}
 
 // Lecture seule : le prix/la commission/la durée minimale affichés ici ne
 // sont jamais ce qu'une demande de réservation accepte (même décision
@@ -30,8 +44,12 @@ export async function getStorefrontRentalUnits(
   const units = await tx.rentalUnit.findMany({
     where: { shopId, actif: true },
     include: {
-      images: { select: { id: true }, orderBy: { position: "asc" }, take: 1 },
+      // take: 5 pour alimenter le mini-carrousel de la carte (app/rental-unit-card.tsx),
+      // jamais toutes les images — même limite d'esprit que product-card (1 seule) mais
+      // les logements bénéficient d'un vrai carrousel comme sur la fiche détail.
+      images: { select: { id: true }, orderBy: { position: "asc" }, take: 5 },
       contracts: { where: { statut: { in: [...OCCUPYING_STATUSES] } }, take: 1 },
+      ...LOCALITY_INCLUDE,
     },
     orderBy: { designation: "asc" },
   });
@@ -42,9 +60,14 @@ export async function getStorefrontRentalUnits(
       id: u.id,
       type: u.type,
       designation: u.designation,
+      description: u.description,
       montantMensuel: Number(u.montantMensuel),
       dureeMinMois: u.dureeMinMois,
-      coverImageId: u.images[0]?.id ?? null,
+      imageIds: u.images.map((img) => img.id),
+      locality: toLocality(u),
+      surfaceM2: u.surfaceM2,
+      nombrePieces: u.nombrePieces,
+      equipements: u.equipements,
     }));
 }
 
@@ -55,12 +78,11 @@ export async function getStorefrontRentalUnitDetail(
 ): Promise<StorefrontRentalUnitDetail | null> {
   const unit = await tx.rentalUnit.findFirst({
     where: { id: unitId, shopId, actif: true },
-    include: { images: { select: { id: true }, orderBy: { position: "asc" } } },
+    include: { images: { select: { id: true }, orderBy: { position: "asc" } }, ...LOCALITY_INCLUDE },
   });
   if (!unit) return null;
 
   const available = await isRentalUnitAvailable(tx, unit.id);
-  const imageIds = unit.images.map((img) => img.id);
 
   return {
     id: unit.id,
@@ -70,8 +92,11 @@ export async function getStorefrontRentalUnitDetail(
     montantMensuel: Number(unit.montantMensuel),
     dureeMinMois: unit.dureeMinMois,
     commissionMontant: Number(unit.commissionMontant),
-    coverImageId: imageIds[0] ?? null,
-    imageIds,
+    imageIds: unit.images.map((img) => img.id),
+    locality: toLocality(unit),
+    surfaceM2: unit.surfaceM2,
+    nombrePieces: unit.nombrePieces,
+    equipements: unit.equipements,
     available,
   };
 }

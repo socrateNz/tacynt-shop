@@ -533,6 +533,13 @@ export default async function Home({
   const priceCeiling = items.reduce((max, item) => Math.max(max, item.prixVente), 0) || 1;
   const rentalPriceCeiling = units.reduce((max, u) => Math.max(max, u.montantMensuel), 0) || 1;
   const dureeCeiling = units.reduce((max, u) => Math.max(max, u.dureeMinMois), 0) || 1;
+  const allVilles = Array.from(
+    new Set(
+      units
+        .map((u) => u.locality?.villeNom ?? u.locality?.nom ?? null)
+        .filter((nom): nom is string => nom !== null),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
 
   // Les deux modules actifs : un seul catalogue sous forme de deux onglets,
   // jamais deux pages séparées (décision explicite de l'utilisateur).
@@ -551,6 +558,7 @@ export default async function Home({
           priceCeiling={priceCeiling}
           rentalPriceCeiling={rentalPriceCeiling}
           dureeCeiling={dureeCeiling}
+          allVilles={allVilles}
         />
       </StorefrontShell>
     );
@@ -570,6 +578,7 @@ export default async function Home({
             devise={organization.devise}
             priceCeiling={rentalPriceCeiling}
             dureeCeiling={dureeCeiling}
+            allVilles={allVilles}
           />
         </div>
       </StorefrontShell>

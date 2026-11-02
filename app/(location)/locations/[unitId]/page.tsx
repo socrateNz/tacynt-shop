@@ -1,9 +1,10 @@
+import { MapPin } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
-import { RENTAL_UNIT_TYPE_LABELS } from "@/lib/rentals/types";
+import { RENTAL_UNIT_AMENITY_LABELS, RENTAL_UNIT_TYPE_LABELS } from "@/lib/rentals/types";
 import { getStorefrontOrganization, resolveStorefrontShopId } from "@/lib/storefront/context";
 import { getStorefrontRentalUnitDetail } from "@/lib/storefront/rentals";
 
@@ -57,13 +58,39 @@ export default async function RentalUnitDetailPage({
             <p className="num mt-1 text-lg font-semibold text-foreground">
               {formatMoney(unit.montantMensuel, organization.devise)} / mois
             </p>
+            {unit.locality && (
+              <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+                <MapPin className="size-4 shrink-0" />
+                {unit.locality.villeNom
+                  ? `${unit.locality.nom}, ${unit.locality.villeNom}`
+                  : unit.locality.nom}
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">Durée minimale : {unit.dureeMinMois} mois</p>
+            {unit.surfaceM2 !== null && (
+              <p className="text-sm text-muted-foreground">Surface : {unit.surfaceM2} m²</p>
+            )}
+            {unit.nombrePieces !== null && (
+              <p className="text-sm text-muted-foreground">
+                {unit.nombrePieces} pièce{unit.nombrePieces > 1 ? "s" : ""}
+              </p>
+            )}
             {unit.commissionMontant > 0 && (
               <p className="text-sm text-muted-foreground">
                 Commission (à la signature) : {formatMoney(unit.commissionMontant, organization.devise)}
               </p>
             )}
           </div>
+
+          {unit.equipements.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {unit.equipements.map((a) => (
+                <span key={a} className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                  {RENTAL_UNIT_AMENITY_LABELS[a] ?? a}
+                </span>
+              ))}
+            </div>
+          )}
 
           {unit.description && <p className="text-sm text-foreground">{unit.description}</p>}
 

@@ -208,6 +208,7 @@ model Organization {
   pushSubscriptions   PushSubscription[]
   rentalUnits         RentalUnit[]
   rentalContracts     RentalContract[]
+  rentalLocalities    RentalLocality[]
 
   @@map("organizations")
 }
@@ -1436,6 +1437,47 @@ enum RentalUnitType {
   @@map("rental_unit_type")
 }
 
+// Liste fixe cochable, pas de texte libre ni de table de référence en plus —
+// contrairement à RentalLocality (ville/quartier), rien ici ne demande à
+// être configurable par l'organisation. Libellés français dans
+// lib/rentals/types.ts (RENTAL_UNIT_AMENITY_LABELS).
+enum RentalUnitAmenity {
+  WIFI
+  PARKING
+  CLIMATISATION
+  MEUBLE
+  CUISINE_EQUIPEE
+  SALLE_BAIN_PRIVEE
+  SECURITE
+  ASCENSEUR
+  BALCON
+  EAU_INCLUSE
+  ELECTRICITE_INCLUSE
+
+  @@map("rental_unit_amenity")
+}
+
+// Ville / quartier — même patron que Category (arbre auto-référencé, scope
+// organisation uniquement, pas de shopId) mais limité à exactement 2 niveaux
+// (Ville → Quartier), imposé côté application : le formulaire de création
+// ne propose comme parent que les RentalLocality qui n'ont elles-mêmes pas
+// de parent. Créées à l'avance par le personnel, puis seulement
+// sélectionnées à la création d'un logement (jamais de texte libre).
+model RentalLocality {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  parentId       String? @map("parent_id") @db.Uuid
+  nom            String
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  parent       RentalLocality?  @relation("RentalLocalityToRentalLocality", fields: [parentId], references: [id])
+  children     RentalLocality[] @relation("RentalLocalityToRentalLocality")
+  rentalUnits  RentalUnit[]
+
+  @@index([organizationId])
+  @@map("rental_localities")
+}
+
 model RentalUnit {
   id             String         @id @default(uuid()) @db.Uuid
   organizationId String         @map("organization_id") @db.Uuid
@@ -1448,6 +1490,13 @@ model RentalUnit {
   // Montant fixe (pas un %) — décision verrouillée avec l'utilisateur,
   // configurable logement par logement.
   commissionMontant Decimal     @default(0) @map("commission_montant") @db.Decimal(12, 2)
+  // Les 4 champs suivants sont optionnels : aucun logement existant n'a
+  // cette donnée, pas de backfill forcé — un logement sans localité/surface
+  // reste affichable, juste moins rempli sur la vitrine (M40).
+  localityId     String?             @map("locality_id") @db.Uuid
+  surfaceM2      Int?                @map("surface_m2")
+  nombrePieces   Int?                @map("nombre_pieces")
+  equipements    RentalUnitAmenity[] @default([])
   // Un logement retiré ne se supprime pas (contrats déjà rattachés) — même
   // contrainte que Product.actif.
   actif          Boolean        @default(true)
@@ -1455,6 +1504,7 @@ model RentalUnit {
 
   organization Organization     @relation(fields: [organizationId], references: [id])
   shop         Shop             @relation(fields: [shopId], references: [id])
+  locality     RentalLocality?  @relation(fields: [localityId], references: [id])
   images       RentalUnitImage[]
   contracts    RentalContract[]
 

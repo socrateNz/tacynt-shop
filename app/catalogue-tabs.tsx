@@ -22,6 +22,7 @@ export function CatalogueTabs({
   priceCeiling,
   rentalPriceCeiling,
   dureeCeiling,
+  allVilles,
 }: {
   defaultTab: "produits" | "logements";
   items: StorefrontItem[];
@@ -32,6 +33,7 @@ export function CatalogueTabs({
   priceCeiling: number;
   rentalPriceCeiling: number;
   dureeCeiling: number;
+  allVilles: string[];
 }) {
   return (
     <Tabs defaultValue={defaultTab} className="flex flex-col gap-6">
@@ -57,6 +59,7 @@ export function CatalogueTabs({
           devise={devise}
           priceCeiling={rentalPriceCeiling}
           dureeCeiling={dureeCeiling}
+          allVilles={allVilles}
         />
       </TabsPanel>
     </Tabs>
