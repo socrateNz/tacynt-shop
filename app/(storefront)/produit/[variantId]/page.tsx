@@ -40,7 +40,7 @@ export default async function ProduitPage({
   const outOfStock = item.stockQuantite !== null && item.stockQuantite <= 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <StorefrontBreadcrumb
         items={[
           ...(item.categoryName ? [{ label: item.categoryName }] : []),

@@ -38,7 +38,7 @@ export default async function RentalUnitDetailPage({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <StorefrontBreadcrumb
         items={[{ label: "Logements", href: "/" }, { label: unit.designation }]}
       />

@@ -83,7 +83,9 @@ export async function StorefrontShell({
           </div>
         </header>
 
-        <main className="flex flex-1 flex-col px-4 py-6 sm:px-6 sm:py-10">{children}</main>
+        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-6 sm:px-6 sm:py-10">
+          {children}
+        </main>
 
         <footer className="border-t border-border px-4 py-10 sm:px-6">
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 sm:flex-row sm:justify-between">

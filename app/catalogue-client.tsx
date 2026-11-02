@@ -110,12 +110,12 @@ export function CatalogueClient({
           {filtered.length} article{filtered.length > 1 ? "s" : ""}
         </p>
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
           {filtered.map((item) => (
             <ProductCard key={item.variantId} item={item} shopId={shopId} devise={devise} />
           ))}
           {filtered.length === 0 && (
-            <p className="col-span-2 text-sm text-muted-foreground xl:col-span-4">
+            <p className="text-sm text-muted-foreground sm:col-span-2 xl:col-span-4">
               Aucun article ne correspond à ces critères.
             </p>
           )}

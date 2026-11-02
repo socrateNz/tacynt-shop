@@ -12,7 +12,7 @@ export default async function CommandePage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <StorefrontBreadcrumb items={[{ label: "Panier", href: "/panier" }, { label: "Commande" }]} />
       <header>
         <h1 className="text-xl font-semibold text-foreground">Passer la commande</h1>

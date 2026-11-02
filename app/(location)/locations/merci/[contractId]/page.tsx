@@ -43,7 +43,7 @@ export default async function RentalMerciPage({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <StorefrontBreadcrumb items={[{ label: "Logements", href: "/" }, { label: "Confirmation" }]} />
 
       <header className="flex items-start gap-3 rounded-xl border border-success/30 bg-success/10 p-4">
