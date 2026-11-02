@@ -51,8 +51,9 @@ function isPublicForMethod(pathname: string, method: string): boolean {
 // elles-mêmes si le module correspondant ("ecommerce" ou "location") n'est
 // pas actif, jamais confiance au client sur ce point ici. La racine "/" EST
 // l'une des deux vitrines (M32) — plus de mini tableau de bord authentifié
-// à cette URL, voir app/page.tsx et le nouveau /dashboard. /locations suit
-// le même principe que /produit pour le module Location.
+// à cette URL, voir app/page.tsx et le nouveau /dashboard. /locations/*
+// (fiche détail + confirmation, pas de liste séparée) suit le même principe
+// que /produit pour le module Location.
 function isStorefrontPath(pathname: string): boolean {
   return (
     pathname === "/" ||
@@ -62,7 +63,6 @@ function isStorefrontPath(pathname: string): boolean {
     pathname.startsWith("/merci/") ||
     pathname === "/produit" ||
     pathname.startsWith("/produit/") ||
-    pathname === "/locations" ||
     pathname.startsWith("/locations/") ||
     pathname.startsWith("/api/storefront/")
   );

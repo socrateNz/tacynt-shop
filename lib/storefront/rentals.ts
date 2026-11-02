@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 
-import { isRentalUnitAvailable } from "@/lib/rentals/contracts";
+import { isRentalUnitAvailable, OCCUPYING_STATUSES } from "@/lib/rentals/contracts";
 
 export type StorefrontRentalUnit = {
   id: string;
@@ -31,7 +31,7 @@ export async function getStorefrontRentalUnits(
     where: { shopId, actif: true },
     include: {
       images: { select: { id: true }, orderBy: { position: "asc" }, take: 1 },
-      contracts: { where: { statut: { in: ["DEMANDE", "CONFIRMEE", "EN_COURS"] } }, take: 1 },
+      contracts: { where: { statut: { in: [...OCCUPYING_STATUSES] } }, take: 1 },
     },
     orderBy: { designation: "asc" },
   });

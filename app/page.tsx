@@ -30,6 +30,7 @@ import { getRootPageContext, resolveStorefrontShopId } from "@/lib/storefront/co
 import { getStorefrontRentalUnits } from "@/lib/storefront/rentals";
 
 import { CatalogueClient } from "./catalogue-client";
+import { CatalogueTabs } from "./catalogue-tabs";
 import { ContactForm } from "./contact-form";
 import { MarketingMobileNav } from "./marketing-mobile-nav";
 import { RentalUnitGrid } from "./rental-unit-grid";
@@ -505,21 +506,53 @@ export default async function Home({
     return <MarketingHome />;
   }
 
-  const { organization, activeModule } = context;
+  const { organization, ecommerceEnabled, locationEnabled } = context;
   const { shop: requestedShopId } = await searchParams;
   const shopId = await resolveStorefrontShopId(organization.id, requestedShopId);
   if (!shopId) {
     notFound();
   }
 
-  // Priorité au catalogue produit quand les deux modules sont actifs
-  // (comportement historique inchangé) — /locations reste par ailleurs
-  // toujours joignable directement, voir app/(location)/layout.tsx.
-  if (activeModule === "location") {
-    const units = await withTenantContext({ organizationId: organization.id, shopId }, (tx) =>
-      getStorefrontRentalUnits(tx, shopId),
-    );
+  const [items, units] = await Promise.all([
+    ecommerceEnabled
+      ? withTenantContext({ organizationId: organization.id, shopId }, (tx) =>
+          getStorefrontCatalog(tx, shopId),
+        )
+      : Promise.resolve([]),
+    locationEnabled
+      ? withTenantContext({ organizationId: organization.id, shopId }, (tx) =>
+          getStorefrontRentalUnits(tx, shopId),
+        )
+      : Promise.resolve([]),
+  ]);
 
+  const allCategories = Array.from(
+    new Set(items.map((item) => item.categoryName).filter((nom): nom is string => nom !== null)),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const priceCeiling = items.reduce((max, item) => Math.max(max, item.prixVente), 0) || 1;
+
+  // Les deux modules actifs : un seul catalogue sous forme de deux onglets,
+  // jamais deux pages séparées (décision explicite de l'utilisateur).
+  // Priorité Produits par défaut, sauf catalogue produit vide — alors
+  // Logements prend la priorité (même si lui aussi est vide).
+  if (ecommerceEnabled && locationEnabled) {
+    return (
+      <StorefrontShell organization={organization}>
+        <CatalogueTabs
+          defaultTab={items.length > 0 ? "produits" : "logements"}
+          items={items}
+          units={units}
+          shopId={shopId}
+          devise={organization.devise}
+          allCategories={allCategories}
+          priceCeiling={priceCeiling}
+        />
+      </StorefrontShell>
+    );
+  }
+
+  if (locationEnabled) {
     return (
       <StorefrontShell organization={organization}>
         <div className="flex flex-col gap-6">
@@ -536,16 +569,6 @@ export default async function Home({
       </StorefrontShell>
     );
   }
-
-  const items = await withTenantContext({ organizationId: organization.id, shopId }, (tx) =>
-    getStorefrontCatalog(tx, shopId),
-  );
-
-  const allCategories = Array.from(
-    new Set(items.map((item) => item.categoryName).filter((nom): nom is string => nom !== null)),
-  ).sort((a, b) => a.localeCompare(b));
-
-  const priceCeiling = items.reduce((max, item) => Math.max(max, item.prixVente), 0) || 1;
 
   return (
     <StorefrontShell organization={organization}>

@@ -4,6 +4,7 @@ import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
 import { hasCapability } from "@/lib/permissions";
+import { OCCUPYING_STATUSES } from "@/lib/rentals/contracts";
 import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
@@ -41,7 +42,7 @@ export default async function RentalUnitsPage() {
       orderBy: { designation: "asc" },
       include: {
         images: { select: { id: true }, orderBy: { position: "asc" } },
-        contracts: { where: { statut: { in: ["DEMANDE", "CONFIRMEE", "EN_COURS"] } }, take: 1 },
+        contracts: { where: { statut: { in: [...OCCUPYING_STATUSES] } }, take: 1 },
       },
     }),
   );

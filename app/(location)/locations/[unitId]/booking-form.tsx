@@ -6,23 +6,29 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatMoney } from "@/lib/money";
 
 export function BookingForm({
   unitId,
   shopId,
   dureeMinMois,
-  montantMensuelLabel,
-  commissionLabel,
+  montantMensuel,
+  commissionMontant,
+  devise,
 }: {
   unitId: string;
   shopId: string;
   dureeMinMois: number;
-  montantMensuelLabel: string;
-  commissionLabel: string | null;
+  montantMensuel: number;
+  commissionMontant: number;
+  devise: string;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [dureeMois, setDureeMois] = useState(dureeMinMois);
+
+  const total = montantMensuel * dureeMois + commissionMontant;
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -30,7 +36,6 @@ export function BookingForm({
     setError(null);
 
     const formData = new FormData(form);
-    const dureeMois = Number(formData.get("dureeMois"));
     // Garde de saisie côté client — le serveur revalide toujours contre la
     // durée minimale réelle du logement, jamais fait confiance à ceci seul.
     if (!Number.isFinite(dureeMois) || dureeMois < dureeMinMois) {
@@ -94,15 +99,18 @@ export function BookingForm({
           type="number"
           step="1"
           min={dureeMinMois}
-          defaultValue={dureeMinMois}
+          value={dureeMois}
+          onChange={(e) => setDureeMois(Number(e.target.value))}
           required
         />
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        {montantMensuelLabel} / mois{commissionLabel ? ` + ${commissionLabel} de commission à la signature` : ""}.
-        Un acompte (1er mois{commissionLabel ? " + commission" : ""}) sera demandé à la confirmation.
-      </p>
+      <div className="flex items-center justify-between rounded-md border border-border bg-muted px-3 py-2.5">
+        <span className="text-sm font-medium text-foreground">
+          Total à payer ({dureeMois} mois{commissionMontant > 0 ? " + commission" : ""})
+        </span>
+        <span className="num text-lg font-semibold text-foreground">{formatMoney(total, devise)}</span>
+      </div>
 
       <Button type="submit" disabled={isPending}>
         {isPending ? "Envoi..." : "Envoyer la demande"}

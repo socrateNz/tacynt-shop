@@ -24,11 +24,10 @@ export function StorefrontShell({
   const branding = parseOrgSettings(organization.settings).branding;
   // Le panier n'a de sens que si le module E-commerce est actif — une
   // organisation qui n'a que le module Location n'a pas de catalogue
-  // produit à vendre. Le lien Logements ne s'affiche, lui, que lorsque les
-  // DEUX modules sont actifs : sinon /locations est déjà ce que montre la
-  // racine "/" (voir app/page.tsx), pas la peine de le répéter dans l'en-tête.
+  // produit à vendre. Quand les deux modules sont actifs, les logements
+  // vivent dans l'onglet "Logements" de la racine "/" (voir
+  // app/catalogue-tabs.tsx) — pas de lien séparé à afficher ici.
   const ecommerceEnabled = organizationHasModule(organization.enabledModules, "ecommerce");
-  const locationEnabled = organizationHasModule(organization.enabledModules, "location");
 
   return (
     <div
@@ -56,14 +55,6 @@ export function StorefrontShell({
             >
               Se connecter
             </Link>
-            {ecommerceEnabled && locationEnabled && (
-              <Link
-                href="/locations"
-                className="shrink-0 text-sm text-foreground hover:underline"
-              >
-                Logements
-              </Link>
-            )}
             {ecommerceEnabled && <CartHeaderLink />}
           </div>
         </header>

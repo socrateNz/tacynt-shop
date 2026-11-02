@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { withTenantContext } from "@/lib/db/tenant-context";
@@ -5,6 +6,7 @@ import { formatMoney } from "@/lib/money";
 import { getStorefrontOrganization, resolveStorefrontShopId } from "@/lib/storefront/context";
 import { getStorefrontRentalUnitDetail } from "@/lib/storefront/rentals";
 
+import { MediaGallery } from "../../../media-gallery";
 import { BookingForm } from "./booking-form";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -43,22 +45,15 @@ export default async function RentalUnitDetailPage({
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div className="flex flex-col gap-2">
-          {unit.imageIds.length > 0 ? (
-            unit.imageIds.map((imageId) => (
-              // eslint-disable-next-line @next/next/no-img-element -- image binaire servie par la route, pas un asset statique optimisable
-              <img
-                key={imageId}
-                src={`/api/rentals/units/${unit.id}/images/${imageId}`}
-                alt={unit.designation}
-                className="aspect-video w-full rounded-xl object-cover"
-              />
-            ))
-          ) : (
-            <div className="aspect-video w-full rounded-xl border border-dashed border-border" />
-          )}
-        </div>
+      <Link href="/" className="text-sm text-primary underline-offset-4 hover:underline">
+        ← Retour au catalogue
+      </Link>
+
+      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+        <MediaGallery
+          imageUrls={unit.imageIds.map((id) => `/api/rentals/units/${unit.id}/images/${id}`)}
+          alt={unit.designation}
+        />
 
         <div className="flex flex-col gap-4">
           <div>
@@ -82,10 +77,9 @@ export default async function RentalUnitDetailPage({
               unitId={unit.id}
               shopId={shopId}
               dureeMinMois={unit.dureeMinMois}
-              montantMensuelLabel={formatMoney(unit.montantMensuel, organization.devise)}
-              commissionLabel={
-                unit.commissionMontant > 0 ? formatMoney(unit.commissionMontant, organization.devise) : null
-              }
+              montantMensuel={unit.montantMensuel}
+              commissionMontant={unit.commissionMontant}
+              devise={organization.devise}
             />
           ) : (
             <p className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">

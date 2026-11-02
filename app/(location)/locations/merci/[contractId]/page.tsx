@@ -64,8 +64,8 @@ export default async function RentalMerciPage({
         </p>
       </div>
 
-      <Link href="/locations" className="text-sm text-primary underline-offset-4 hover:underline">
-        ← Retour aux logements
+      <Link href="/" className="text-sm text-primary underline-offset-4 hover:underline">
+        ← Retour au catalogue
       </Link>
     </div>
   );

@@ -16,16 +16,21 @@ export function addMonthsClamped(date: Date, months: number): Date {
   return d;
 }
 
-// Un logement n'a qu'un contrat actif à la fois (décision assumée du plan) —
-// recalculé à la lecture, jamais un verrou applicatif complexe. DEMANDE est
-// inclus : une demande en attente de validation bloque déjà le logement,
-// sinon deux clients pourraient demander le même bien en même temps.
+// Plusieurs demandes (DEMANDE) peuvent coexister sur un même logement — ce
+// n'est qu'une fois CONFIRMEE (voir confirmContract, qui annule alors les
+// autres demandes en attente sur ce logement) ou EN_COURS que le logement
+// est réellement occupé. Décision explicite de l'utilisateur : ne jamais
+// bloquer une nouvelle demande simplement parce que d'autres sont déjà en
+// attente.
+export const OCCUPYING_STATUSES = ["CONFIRMEE", "EN_COURS"] as const;
+
+// Recalculé à la lecture, jamais un verrou applicatif complexe.
 export async function isRentalUnitAvailable(
   tx: Prisma.TransactionClient,
   rentalUnitId: string,
 ): Promise<boolean> {
   const activeContract = await tx.rentalContract.findFirst({
-    where: { rentalUnitId, statut: { in: ["DEMANDE", "CONFIRMEE", "EN_COURS"] } },
+    where: { rentalUnitId, statut: { in: [...OCCUPYING_STATUSES] } },
   });
   return activeContract === null;
 }
@@ -58,6 +63,23 @@ export async function createRentalContractWithNumero(
     }
   }
   throw new Error("NUMERO_INDISPONIBLE");
+}
+
+// Appelée dès qu'un logement devient occupé (confirmation d'une demande ou
+// création directe par le personnel, déjà CONFIRMEE) : les autres demandes
+// DEMANDE encore en attente sur CE logement n'ont plus d'objet, elles sont
+// annulées — jamais laissées trainer comme "en attente" alors que le
+// logement est déjà pris. Jamais de suppression, même règle que partout
+// ailleurs.
+export async function cancelOtherPendingRequests(
+  tx: Prisma.TransactionClient,
+  rentalUnitId: string,
+  exceptContractId: string,
+): Promise<void> {
+  await tx.rentalContract.updateMany({
+    where: { rentalUnitId, statut: "DEMANDE", id: { not: exceptContractId } },
+    data: { statut: "ANNULEE", cancelledAt: new Date() },
+  });
 }
 
 // Appelée au passage DEMANDE/direct -> CONFIRMEE : une ligne par mois dû,

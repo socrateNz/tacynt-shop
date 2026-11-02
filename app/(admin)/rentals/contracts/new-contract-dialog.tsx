@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatMoney } from "@/lib/money";
 
 import { createContractByStaff } from "./actions";
 
@@ -14,16 +15,32 @@ export type AvailableUnit = {
   id: string;
   designation: string;
   dureeMinMois: number;
+  montantMensuel: number;
+  commissionMontant: number;
   montantMensuelLabel: string;
 };
 
-export function NewContractDialog({ availableUnits }: { availableUnits: AvailableUnit[] }) {
+export function NewContractDialog({
+  availableUnits,
+  devise,
+}: {
+  availableUnits: AvailableUnit[];
+  devise: string;
+}) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [selectedUnitId, setSelectedUnitId] = useState(availableUnits[0]?.id ?? "");
+  const [dureeMois, setDureeMois] = useState(availableUnits[0]?.dureeMinMois ?? 1);
 
   const selectedUnit = availableUnits.find((u) => u.id === selectedUnitId);
+  const total = selectedUnit ? selectedUnit.montantMensuel * dureeMois + selectedUnit.commissionMontant : 0;
+
+  function selectUnit(unitId: string) {
+    setSelectedUnitId(unitId);
+    const unit = availableUnits.find((u) => u.id === unitId);
+    if (unit) setDureeMois(unit.dureeMinMois);
+  }
 
   async function handleSubmit(formData: FormData) {
     setError(null);
@@ -73,7 +90,7 @@ export function NewContractDialog({ availableUnits }: { availableUnits: Availabl
                 name="rentalUnitId"
                 required
                 value={selectedUnitId}
-                onChange={(e) => setSelectedUnitId(e.target.value)}
+                onChange={(e) => selectUnit(e.target.value)}
                 className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
               >
                 {availableUnits.map((u) => (
@@ -110,11 +127,24 @@ export function NewContractDialog({ availableUnits }: { availableUnits: Availabl
                   type="number"
                   step="1"
                   min={selectedUnit?.dureeMinMois ?? 1}
-                  defaultValue={selectedUnit?.dureeMinMois ?? 1}
+                  value={dureeMois}
+                  onChange={(e) => setDureeMois(Number(e.target.value))}
                   required
                 />
               </div>
             </div>
+
+            {selectedUnit && (
+              <div className="flex items-center justify-between rounded-md border border-border bg-muted px-3 py-2.5">
+                <span className="text-sm font-medium text-foreground">
+                  Total à payer ({dureeMois} mois
+                  {selectedUnit.commissionMontant > 0 ? " + commission" : ""})
+                </span>
+                <span className="num text-lg font-semibold text-foreground">
+                  {formatMoney(total, devise)}
+                </span>
+              </div>
+            )}
 
             <Button type="submit" className="self-start" disabled={isPending}>
               {isPending ? "Création..." : "Créer la location"}

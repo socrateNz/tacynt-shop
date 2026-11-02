@@ -45,13 +45,13 @@ export type RootPageContext =
   | {
       kind: "storefront";
       organization: NonNullable<Awaited<ReturnType<typeof resolveOrganizationBySlug>>>;
-      // Lequel des deux modules affiche la racine "/" : catalogue produit si
-      // "ecommerce" est actif (priorité, comportement historique inchangé si
-      // les deux modules sont actifs), sinon liste des logements si seul
-      // "location" l'est. /locations reste par ailleurs toujours joignable
-      // directement (groupe de routes (location)), même quand ce n'est pas
-      // ce qu'affiche la racine.
-      activeModule: "ecommerce" | "location";
+      // app/page.tsx décide lui-même quoi afficher à la racine "/" à partir
+      // de ces deux drapeaux : catalogue produit seul, logements seuls, ou
+      // les deux sous forme d'onglets quand les deux modules sont actifs
+      // (voir CatalogueTabs) — au moins un des deux est toujours vrai ici
+      // (sinon "not-found" juste en dessous).
+      ecommerceEnabled: boolean;
+      locationEnabled: boolean;
     };
 
 // Racine "/" (M32 ; généralisé M38 au module Location) : contrairement à
@@ -82,14 +82,14 @@ export async function resolveRootPageContext(host: string): Promise<RootPageCont
   if (!organization) {
     return { kind: "not-found" };
   }
-  if (organizationHasModule(organization.enabledModules, "ecommerce")) {
-    return { kind: "storefront", organization, activeModule: "ecommerce" };
-  }
-  if (organizationHasModule(organization.enabledModules, "location")) {
-    return { kind: "storefront", organization, activeModule: "location" };
+
+  const ecommerceEnabled = organizationHasModule(organization.enabledModules, "ecommerce");
+  const locationEnabled = organizationHasModule(organization.enabledModules, "location");
+  if (!ecommerceEnabled && !locationEnabled) {
+    return { kind: "not-found" };
   }
 
-  return { kind: "not-found" };
+  return { kind: "storefront", organization, ecommerceEnabled, locationEnabled };
 }
 
 export async function getRootPageContext(): Promise<RootPageContext> {

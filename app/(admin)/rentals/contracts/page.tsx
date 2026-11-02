@@ -4,6 +4,7 @@ import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
 import { hasCapability } from "@/lib/permissions";
+import { OCCUPYING_STATUSES } from "@/lib/rentals/contracts";
 import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
@@ -40,7 +41,7 @@ export default async function RentalContractsPage() {
         where: { shopId: { in: myShopIds }, actif: true },
         orderBy: { designation: "asc" },
         include: {
-          contracts: { where: { statut: { in: ["DEMANDE", "CONFIRMEE", "EN_COURS"] } }, take: 1 },
+          contracts: { where: { statut: { in: [...OCCUPYING_STATUSES] } }, take: 1 },
         },
       });
       const availableUnits = units.filter((u) => u.contracts.length === 0);
@@ -67,6 +68,8 @@ export default async function RentalContractsPage() {
     id: u.id,
     designation: u.designation,
     dureeMinMois: u.dureeMinMois,
+    montantMensuel: Number(u.montantMensuel),
+    commissionMontant: Number(u.commissionMontant),
     montantMensuelLabel: formatMoney(u.montantMensuel, organization.devise),
   }));
 
@@ -79,7 +82,7 @@ export default async function RentalContractsPage() {
             Contrats de location — demandes, échéanciers et paiements.
           </p>
         </div>
-        <NewContractDialog availableUnits={availableUnitOptions} />
+        <NewContractDialog availableUnits={availableUnitOptions} devise={organization.devise} />
       </header>
 
       {pendingCount > 0 && (

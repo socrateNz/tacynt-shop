@@ -8,6 +8,7 @@ import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { assertCapability } from "@/lib/permissions-server";
 import {
+  cancelOtherPendingRequests,
   createRentalContractWithNumero,
   generateInstallments,
   isRentalUnitAvailable,
@@ -109,6 +110,10 @@ export async function createContractByStaff(formData: FormData) {
       montantMensuel: unit.montantMensuel,
     });
 
+    // Ce logement est désormais occupé — les éventuelles autres demandes en
+    // attente dessus n'ont plus d'objet.
+    await cancelOtherPendingRequests(tx, rentalUnitId, contract.id);
+
     await recordAuditLog(tx, {
       organizationId: ctx.organizationId,
       userId: ctx.userId,
@@ -139,6 +144,10 @@ export async function confirmContract(formData: FormData) {
     if (!myShopIds.includes(contract.shopId)) return;
     if (contract.statut !== "DEMANDE") return;
 
+    if (!(await isRentalUnitAvailable(tx, contract.rentalUnitId))) {
+      throw new Error("Ce logement est déjà confirmé pour un autre client.");
+    }
+
     await tx.rentalContract.update({
       where: { id: contractId },
       data: { statut: "CONFIRMEE", confirmedAt: new Date() },
@@ -152,6 +161,11 @@ export async function confirmContract(formData: FormData) {
       dureeMois: contract.dureeMois,
       montantMensuel: contract.montantMensuel,
     });
+
+    // Plusieurs demandes pouvaient coexister sur ce logement (décision
+    // explicite) — une fois celle-ci confirmée, les autres n'ont plus
+    // d'objet.
+    await cancelOtherPendingRequests(tx, contract.rentalUnitId, contract.id);
 
     await recordAuditLog(tx, {
       organizationId: ctx.organizationId,
