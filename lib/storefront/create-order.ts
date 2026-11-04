@@ -36,7 +36,13 @@ function isUniqueViolation(error: unknown): boolean {
 // app/api/storefront/orders) et l'app mobile Sodu (organisation résolue par
 // id, app/api/marketplace/organizations/[organizationId]/orders) — l'appelant
 // a déjà résolu ET vérifié l'organisation (modules actifs).
-export async function createStorefrontOrder(request: Request, organization: Organization) {
+// options.marketplaceCustomerId : compte client Sodu à rattacher (route
+// marketplace authentifiée uniquement — la vitrine web n'en passe jamais).
+export async function createStorefrontOrder(
+  request: Request,
+  organization: Organization,
+  options: { marketplaceCustomerId?: string } = {},
+) {
   const body = (await request.json().catch(() => null)) as {
     shopId?: string;
     nomClient?: string;
@@ -195,6 +201,7 @@ export async function createStorefrontOrder(request: Request, organization: Orga
               totalTtc: totalHt + totalTaxe + emballageMontant,
               emballageQuantite,
               emballagePrixUnitaire: emballageMontant > 0 ? emballagePrixUnitaire : null,
+              marketplaceCustomerId: options.marketplaceCustomerId ?? null,
               lines: {
                 create: preparedLines.map((l) => ({
                   organizationId: organization.id,

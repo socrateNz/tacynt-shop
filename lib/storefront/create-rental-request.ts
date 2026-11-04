@@ -13,7 +13,13 @@ import { resolveStorefrontShopId } from "@/lib/storefront/context";
 //
 // Partagé entre la vitrine web (host) et l'app mobile Sodu (id) — même
 // découpage que lib/storefront/create-order.ts.
-export async function createStorefrontRentalRequest(request: Request, organization: Organization) {
+// options.marketplaceCustomerId : compte client Sodu à rattacher (route
+// marketplace authentifiée uniquement — la vitrine web n'en passe jamais).
+export async function createStorefrontRentalRequest(
+  request: Request,
+  organization: Organization,
+  options: { marketplaceCustomerId?: string } = {},
+) {
   const body = (await request.json().catch(() => null)) as {
     shopId?: string;
     rentalUnitId?: string;
@@ -86,6 +92,7 @@ export async function createStorefrontRentalRequest(request: Request, organizati
         dureeMois,
         montantMensuel: unit.montantMensuel,
         commissionMontant: unit.commissionMontant,
+        marketplaceCustomerId: options.marketplaceCustomerId ?? null,
       });
 
       await recordAuditLog(tx, {

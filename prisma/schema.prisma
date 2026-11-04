@@ -785,6 +785,10 @@ model OnlineOrder {
   // l'encaissement en boutique (lib/sales/apply-sale.ts, extrait de
   // processOneSale, M31). Une commande ne génère jamais plus d'une vente.
   saleId           String?                    @unique @map("sale_id") @db.Uuid
+  // Compte client de l'app mobile Sodu qui a passé la commande (null pour
+  // une commande vitrine web ou comptoir). Permet au client de suivre le
+  // statut réel depuis l'app — jamais utilisé pour l'isolation tenant.
+  marketplaceCustomerId String?             @map("marketplace_customer_id") @db.Uuid
   createdAt        DateTime                   @default(now()) @map("created_at")
   confirmedAt      DateTime?                  @map("confirmed_at")
   cancelledAt      DateTime?                  @map("cancelled_at")
@@ -795,10 +799,12 @@ model OnlineOrder {
   sale         Sale?             @relation(fields: [saleId], references: [id])
   lines        OnlineOrderLine[]
   payments     OnlineOrderPayment[]
+  marketplaceCustomer MarketplaceCustomer? @relation(fields: [marketplaceCustomerId], references: [id])
 
   @@unique([shopId, numero])
   @@index([organizationId])
   @@index([shopId])
+  @@index([marketplaceCustomerId])
   @@map("online_orders")
 }
 
@@ -1567,6 +1573,9 @@ model RentalContract {
   commissionMontant Decimal @map("commission_montant") @db.Decimal(12, 2)
   commissionPayee   Boolean @default(false) @map("commission_payee")
   notes          String?
+  // Compte client Sodu à l'origine de la demande (null hors app mobile) —
+  // même rôle que OnlineOrder.marketplaceCustomerId.
+  marketplaceCustomerId String? @map("marketplace_customer_id") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at")
   confirmedAt    DateTime? @map("confirmed_at")
   cancelledAt    DateTime? @map("cancelled_at")
@@ -1574,6 +1583,7 @@ model RentalContract {
   organization Organization         @relation(fields: [organizationId], references: [id])
   shop         Shop                 @relation(fields: [shopId], references: [id])
   rentalUnit   RentalUnit           @relation(fields: [rentalUnitId], references: [id])
+  marketplaceCustomer MarketplaceCustomer? @relation(fields: [marketplaceCustomerId], references: [id])
   customer     Customer?            @relation(fields: [customerId], references: [id])
   installments RentalInstallment[]
   payments     RentalPayment[]
@@ -1582,6 +1592,7 @@ model RentalContract {
   @@index([organizationId])
   @@index([shopId])
   @@index([rentalUnitId])
+  @@index([marketplaceCustomerId])
   @@map("rental_contracts")
 }
 
@@ -1648,4 +1659,59 @@ model RentalPayment {
   @@index([shopId])
   @@index([rentalContractId])
   @@map("rental_payments")
+}
+
+// ---------------------------------------------------------------------------
+// Comptes clients de l'app mobile Sodu (marketplace multi-organisations).
+// PAS des tables tenant : un client Sodu commande auprès de N organisations
+// avec un seul compte. Aucune policy RLS (rien à isoler) et aucun accès pour
+// tacynt_app (REVOKE dans la migration + prisma/rls-manifest.sql) — seul
+// lib/db/marketplace-client.ts y touche, même modèle que platform_admins.
+// ---------------------------------------------------------------------------
+
+model MarketplaceCustomer {
+  id        String   @id @default(uuid()) @db.Uuid
+  nom       String
+  // Identifiant de connexion (normalisé en minuscules), validé par code
+  // envoyé par email avant toute connexion.
+  email     String   @unique
+  // Pas un identifiant : numéro de contact transmis aux boutiques pour
+  // confirmer une commande (plusieurs comptes peuvent partager un numéro).
+  telephone String
+  hash      String
+  actif     Boolean  @default(true)
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  // Code de validation à 6 chiffres, haché (jamais en clair), à usage
+  // unique, durée de vie courte, tentatives limitées — remis à null une
+  // fois l'email validé.
+  verificationCodeHash      String?   @map("verification_code_hash")
+  verificationCodeExpiresAt DateTime? @map("verification_code_expires_at")
+  verificationCodeSentAt    DateTime? @map("verification_code_sent_at")
+  verificationAttempts      Int       @default(0) @map("verification_attempts")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  sessions       MarketplaceSession[]
+  onlineOrders   OnlineOrder[]
+  rentalRequests RentalContract[]
+
+  @@map("marketplace_customers")
+}
+
+// Jeton opaque (Bearer) stocké haché, jamais en clair — même principe que
+// sessions/platform_admin_sessions. Déconnexion = revokedAt renseigné,
+// jamais de suppression.
+model MarketplaceSession {
+  id                    String    @id @default(uuid()) @db.Uuid
+  marketplaceCustomerId String    @map("marketplace_customer_id") @db.Uuid
+  tokenHash             String    @unique @map("token_hash")
+  expiresAt             DateTime  @map("expires_at")
+  revokedAt             DateTime? @map("revoked_at")
+  ip                    String?
+  userAgent             String?   @map("user_agent")
+  createdAt             DateTime  @default(now()) @map("created_at")
+
+  customer MarketplaceCustomer @relation(fields: [marketplaceCustomerId], references: [id])
+
+  @@index([marketplaceCustomerId])
+  @@map("marketplace_sessions")
 }

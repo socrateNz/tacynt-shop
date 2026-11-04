@@ -50,3 +50,43 @@ export function orderConfirmationEmail(order: OrderConfirmationInput): {
 
   return { subject, html, text };
 }
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export type MarketplaceVerificationInput = {
+  nom: string;
+  code: string;
+  validiteMinutes: number;
+};
+
+// Code de validation d'inscription de l'app mobile Sodu — le nom vient du
+// formulaire d'inscription (saisie libre), donc échappé dans le HTML.
+export function marketplaceVerificationEmail(input: MarketplaceVerificationInput): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const subject = `${input.code} — votre code de validation Sodu`;
+  const text = [
+    `Bonjour ${input.nom},`,
+    `Votre code de validation Sodu : ${input.code}`,
+    `Il est valable ${input.validiteMinutes} minutes.`,
+    `Si vous n'avez pas créé de compte Sodu, ignorez cet email.`,
+  ].join("\n");
+  const html = `
+    <p>Bonjour ${escapeHtml(input.nom)},</p>
+    <p>Votre code de validation Sodu :</p>
+    <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:16px 0;">${input.code}</p>
+    <p>Il est valable ${input.validiteMinutes} minutes.</p>
+    <p style="color:#6B7280;">Si vous n'avez pas créé de compte Sodu, ignorez cet email.</p>
+  `.trim();
+
+  return { subject, html, text };
+}
