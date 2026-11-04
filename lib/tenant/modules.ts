@@ -21,6 +21,11 @@ export const MODULE_CATALOG = [
     label: "Location",
     desc: "Location de logements (chambres, studios, appartements, villas) : échéancier et suivi des paiements.",
   },
+  {
+    key: "marketplace",
+    label: "Marketplace mobile",
+    desc: "Produits et logements visibles dans l'application mobile multi-boutiques.",
+  },
 ] as const;
 
 export type ModuleKey = (typeof MODULE_CATALOG)[number]["key"];
