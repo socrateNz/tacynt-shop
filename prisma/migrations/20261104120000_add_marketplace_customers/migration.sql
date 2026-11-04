@@ -17,12 +17,6 @@ CREATE TABLE "marketplace_customers" (
     "verification_code_expires_at" TIMESTAMP(3),
     "verification_code_sent_at" TIMESTAMP(3),
     "verification_attempts" INTEGER NOT NULL DEFAULT 0,
-    "reset_code_hash" TEXT,
-    "reset_code_expires_at" TIMESTAMP(3),
-    "reset_code_sent_at" TIMESTAMP(3),
-    "reset_attempts" INTEGER NOT NULL DEFAULT 0,
-    "failed_login_attempts" INTEGER NOT NULL DEFAULT 0,
-    "locked_until" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "marketplace_customers_pkey" PRIMARY KEY ("id")
