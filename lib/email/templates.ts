@@ -90,3 +90,27 @@ export function marketplaceVerificationEmail(input: MarketplaceVerificationInput
 
   return { subject, html, text };
 }
+
+// Code de réinitialisation du mot de passe de l'app mobile Sodu.
+export function marketplacePasswordResetEmail(input: MarketplaceVerificationInput): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const subject = `${input.code} — réinitialisation de votre mot de passe Sodu`;
+  const text = [
+    `Bonjour ${input.nom},`,
+    `Votre code pour choisir un nouveau mot de passe Sodu : ${input.code}`,
+    `Il est valable ${input.validiteMinutes} minutes.`,
+    `Si vous n'avez rien demandé, ignorez cet email : votre mot de passe actuel reste valable.`,
+  ].join("\n");
+  const html = `
+    <p>Bonjour ${escapeHtml(input.nom)},</p>
+    <p>Votre code pour choisir un nouveau mot de passe Sodu :</p>
+    <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:16px 0;">${input.code}</p>
+    <p>Il est valable ${input.validiteMinutes} minutes.</p>
+    <p style="color:#6B7280;">Si vous n'avez rien demandé, ignorez cet email : votre mot de passe actuel reste valable.</p>
+  `.trim();
+
+  return { subject, html, text };
+}

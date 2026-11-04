@@ -1,11 +1,11 @@
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 
-import type { MarketplaceCustomer } from "@prisma/client";
+import type { MarketplaceCustomer, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { marketplacePrisma } from "@/lib/db/marketplace-client";
 import { sendMail } from "@/lib/email/send";
-import { marketplaceVerificationEmail } from "@/lib/email/templates";
+import { marketplacePasswordResetEmail, marketplaceVerificationEmail } from "@/lib/email/templates";
 
 // Authentification des clients de l'app mobile Sodu. Connexion par email +
 // mot de passe uniquement, email obligatoirement validé (code à 6 chiffres
@@ -46,70 +46,168 @@ export function toPublicCustomer(c: MarketplaceCustomer): PublicCustomer {
 }
 
 // ---------------------------------------------------------------------------
-// Code de validation d'email
+// Codes à usage unique envoyés par email : validation de l'adresse à
+// l'inscription, et réinitialisation du mot de passe. Deux jeux de champs
+// distincts : un code d'un type ne vaut jamais pour l'autre.
 // ---------------------------------------------------------------------------
 
-// Lié au compte (id en sel) : un code volé ne vaut que pour ce compte.
-function hashCode(customerId: string, code: string): string {
-  return sha256(`${customerId}:${code}`);
+export type CodePurpose = "verification" | "reset";
+
+const CODE_FIELDS = {
+  verification: {
+    hash: "verificationCodeHash",
+    expiresAt: "verificationCodeExpiresAt",
+    sentAt: "verificationCodeSentAt",
+    attempts: "verificationAttempts",
+  },
+  reset: {
+    hash: "resetCodeHash",
+    expiresAt: "resetCodeExpiresAt",
+    sentAt: "resetCodeSentAt",
+    attempts: "resetAttempts",
+  },
+} as const;
+
+// Lié au compte ET à l'usage : un code volé ne vaut que pour ce compte et
+// pour cette action.
+function hashCode(customerId: string, purpose: CodePurpose, code: string): string {
+  return sha256(`${customerId}:${purpose}:${code}`);
 }
 
-export function secondsBeforeResend(customer: MarketplaceCustomer): number {
-  if (!customer.verificationCodeSentAt) return 0;
-  const elapsed = (Date.now() - customer.verificationCodeSentAt.getTime()) / 1000;
+export function secondsBeforeResend(customer: MarketplaceCustomer, purpose: CodePurpose = "verification"): number {
+  const sentAt = customer[CODE_FIELDS[purpose].sentAt];
+  if (!sentAt) return 0;
+  const elapsed = (Date.now() - sentAt.getTime()) / 1000;
   return Math.max(0, Math.ceil(VERIFICATION_RESEND_COOLDOWN_SECONDS - elapsed));
 }
 
-// Génère un nouveau code (l'ancien devient invalide), l'enregistre haché et
-// l'envoie par email. Lève si l'envoi échoue : l'appelant répond une erreur
-// claire, le client pourra redemander un code.
-export async function sendVerificationCode(customer: MarketplaceCustomer): Promise<void> {
+// Génère un nouveau code (l'ancien du même type devient invalide),
+// l'enregistre haché et l'envoie par email. Lève si l'envoi échoue :
+// l'appelant répond une erreur claire, le client pourra redemander un code.
+export async function sendCode(customer: MarketplaceCustomer, purpose: CodePurpose): Promise<void> {
+  const f = CODE_FIELDS[purpose];
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
   const now = new Date();
   await marketplacePrisma.marketplaceCustomer.update({
     where: { id: customer.id },
     data: {
-      verificationCodeHash: hashCode(customer.id, code),
-      verificationCodeExpiresAt: new Date(now.getTime() + VERIFICATION_CODE_TTL_MINUTES * 60 * 1000),
-      verificationCodeSentAt: now,
-      verificationAttempts: 0,
+      [f.hash]: hashCode(customer.id, purpose, code),
+      [f.expiresAt]: new Date(now.getTime() + VERIFICATION_CODE_TTL_MINUTES * 60 * 1000),
+      [f.sentAt]: now,
+      [f.attempts]: 0,
     },
   });
-  const { subject, html, text } = marketplaceVerificationEmail({
-    nom: customer.nom,
-    code,
-    validiteMinutes: VERIFICATION_CODE_TTL_MINUTES,
-  });
-  await sendMail({ to: customer.email, subject, html, text });
+  const input = { nom: customer.nom, code, validiteMinutes: VERIFICATION_CODE_TTL_MINUTES };
+  const mail = purpose === "verification" ? marketplaceVerificationEmail(input) : marketplacePasswordResetEmail(input);
+  await sendMail({ to: customer.email, ...mail });
+}
+
+export function sendVerificationCode(customer: MarketplaceCustomer): Promise<void> {
+  return sendCode(customer, "verification");
 }
 
 export type VerifyResult = "OK" | "INVALIDE" | "EXPIRE" | "TROP_DE_TENTATIVES";
 
-export async function checkVerificationCode(customer: MarketplaceCustomer, code: string): Promise<VerifyResult> {
-  if (!customer.verificationCodeHash || !customer.verificationCodeExpiresAt) return "EXPIRE";
-  if (customer.verificationAttempts >= VERIFICATION_MAX_ATTEMPTS) return "TROP_DE_TENTATIVES";
-  if (customer.verificationCodeExpiresAt < new Date()) return "EXPIRE";
+// Vérifie le code ; en cas de succès il est consommé (remis à null) et les
+// effets métier passés dans `onSuccess` (email validé, nouveau mot de
+// passe) sont appliqués dans la même mise à jour.
+export async function consumeCode(
+  customer: MarketplaceCustomer,
+  purpose: CodePurpose,
+  code: string,
+  onSuccess: Prisma.MarketplaceCustomerUpdateInput = {},
+): Promise<VerifyResult> {
+  const f = CODE_FIELDS[purpose];
+  const storedHash = customer[f.hash];
+  const expiresAt = customer[f.expiresAt];
+  if (!storedHash || !expiresAt) return "EXPIRE";
+  if (customer[f.attempts] >= VERIFICATION_MAX_ATTEMPTS) return "TROP_DE_TENTATIVES";
+  if (expiresAt < new Date()) return "EXPIRE";
 
-  const expected = Buffer.from(customer.verificationCodeHash, "hex");
-  const actual = Buffer.from(hashCode(customer.id, code.trim()), "hex");
+  const expected = Buffer.from(storedHash, "hex");
+  const actual = Buffer.from(hashCode(customer.id, purpose, code.trim()), "hex");
   if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
     await marketplacePrisma.marketplaceCustomer.update({
       where: { id: customer.id },
-      data: { verificationAttempts: { increment: 1 } },
+      data: { [f.attempts]: { increment: 1 } },
     });
     return "INVALIDE";
   }
 
   await marketplacePrisma.marketplaceCustomer.update({
     where: { id: customer.id },
-    data: {
-      emailVerifiedAt: new Date(),
-      verificationCodeHash: null,
-      verificationCodeExpiresAt: null,
-      verificationAttempts: 0,
-    },
+    data: { ...onSuccess, [f.hash]: null, [f.expiresAt]: null, [f.attempts]: 0 },
   });
   return "OK";
+}
+
+export function checkVerificationCode(customer: MarketplaceCustomer, code: string): Promise<VerifyResult> {
+  return consumeCode(customer, "verification", code, { emailVerifiedAt: new Date() });
+}
+
+// Réponse d'erreur commune aux écrans de saisie de code.
+export function codeErrorResponse(result: Exclude<VerifyResult, "OK">, attemptsBefore: number) {
+  if (result === "INVALIDE") {
+    const remaining = VERIFICATION_MAX_ATTEMPTS - attemptsBefore - 1;
+    const plural = remaining > 1 ? "s" : "";
+    return NextResponse.json(
+      {
+        error:
+          remaining > 0
+            ? `Code incorrect. ${remaining} essai${plural} restant${plural}.`
+            : "Code incorrect. Demandez un nouveau code.",
+      },
+      { status: 400 },
+    );
+  }
+  if (result === "EXPIRE") {
+    return NextResponse.json({ error: "Ce code a expiré. Demandez un nouveau code." }, { status: 400 });
+  }
+  return NextResponse.json({ error: "Trop d'essais. Demandez un nouveau code." }, { status: 429 });
+}
+
+// ---------------------------------------------------------------------------
+// Verrouillage anti force brute, par compte et en base (vaut quel que soit
+// le nombre d'instances serveur). Complété par une limite par IP en mémoire
+// (lib/marketplace/rate-limit.ts) contre les essais sur de nombreux comptes.
+// ---------------------------------------------------------------------------
+
+export const LOGIN_MAX_FAILURES = 5;
+export const LOGIN_LOCK_MINUTES = 15;
+
+export function minutesLocked(customer: MarketplaceCustomer): number {
+  if (!customer.lockedUntil) return 0;
+  const ms = customer.lockedUntil.getTime() - Date.now();
+  return ms > 0 ? Math.ceil(ms / 60000) : 0;
+}
+
+export async function recordFailedLogin(customer: MarketplaceCustomer): Promise<void> {
+  const failures = customer.failedLoginAttempts + 1;
+  await marketplacePrisma.marketplaceCustomer.update({
+    where: { id: customer.id },
+    data:
+      failures >= LOGIN_MAX_FAILURES
+        ? { failedLoginAttempts: 0, lockedUntil: new Date(Date.now() + LOGIN_LOCK_MINUTES * 60000) }
+        : { failedLoginAttempts: failures },
+  });
+}
+
+export async function clearFailedLogins(customer: MarketplaceCustomer): Promise<void> {
+  if (customer.failedLoginAttempts === 0 && !customer.lockedUntil) return;
+  await marketplacePrisma.marketplaceCustomer.update({
+    where: { id: customer.id },
+    data: { failedLoginAttempts: 0, lockedUntil: null },
+  });
+}
+
+export function lockedResponse(minutes: number) {
+  const plural = minutes > 1 ? "s" : "";
+  return NextResponse.json(
+    {
+      error: `Trop de tentatives de connexion. Réessayez dans ${minutes} minute${plural} ou réinitialisez votre mot de passe.`,
+    },
+    { status: 429 },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -171,12 +269,34 @@ export async function revokeMarketplaceSession(request: Request): Promise<void> 
   });
 }
 
+// Après un changement de mot de passe : toutes les sessions ouvertes
+// (autres appareils, éventuel intrus) sont révoquées.
+export async function revokeAllSessions(customerId: string): Promise<void> {
+  await marketplacePrisma.marketplaceSession.updateMany({
+    where: { marketplaceCustomerId: customerId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+}
+
 export function unauthorized() {
   return NextResponse.json({ error: "Connectez-vous pour continuer." }, { status: 401 });
 }
 
+// IP du client. X-Real-IP d'abord : nginx (deploy/nginx) le fixe à
+// $remote_addr, non falsifiable. X-Forwarded-For seulement en repli, et sa
+// DERNIÈRE entrée (celle ajoutée par notre proxy) — la première peut être
+// envoyée telle quelle par le client.
+export function clientIp(request: Request): string | null {
+  const real = request.headers.get("x-real-ip")?.trim();
+  if (real) return real;
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (!forwarded) return null;
+  const parts = forwarded.split(",").map((p) => p.trim()).filter(Boolean);
+  return parts[parts.length - 1] ?? null;
+}
+
 export function requestIp(request: Request): string | null {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  return clientIp(request);
 }
 
 export async function sessionResponse(request: Request, customer: MarketplaceCustomer, status = 200) {

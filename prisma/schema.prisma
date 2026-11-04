@@ -1688,6 +1688,17 @@ model MarketplaceCustomer {
   verificationCodeExpiresAt DateTime? @map("verification_code_expires_at")
   verificationCodeSentAt    DateTime? @map("verification_code_sent_at")
   verificationAttempts      Int       @default(0) @map("verification_attempts")
+  // Réinitialisation du mot de passe : même mécanisme (code à 6 chiffres
+  // haché, durée courte, tentatives limitées), champs distincts pour qu'un
+  // code de validation ne puisse jamais servir à changer le mot de passe.
+  resetCodeHash      String?   @map("reset_code_hash")
+  resetCodeExpiresAt DateTime? @map("reset_code_expires_at")
+  resetCodeSentAt    DateTime? @map("reset_code_sent_at")
+  resetAttempts      Int       @default(0) @map("reset_attempts")
+  // Anti force brute : compte verrouillé temporairement après trop
+  // d'échecs de mot de passe consécutifs (remis à zéro au succès).
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
   createdAt DateTime @default(now()) @map("created_at")
 
   sessions       MarketplaceSession[]

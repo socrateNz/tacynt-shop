@@ -10,6 +10,7 @@ import {
   secondsBeforeResend,
   sendVerificationCode,
 } from "@/lib/marketplace/auth";
+import { AUTH_RULES, rateLimit } from "@/lib/marketplace/rate-limit";
 
 // Inscription client Sodu. Aucune session ici : le compte n'est utilisable
 // qu'après validation de l'email (code envoyé, puis
@@ -17,6 +18,9 @@ import {
 // validé est simplement mis à jour (faute de frappe, mot de passe oublié
 // avant validation) plutôt que de bloquer l'adresse indéfiniment.
 export async function POST(request: Request) {
+  const limited = rateLimit(request, AUTH_RULES.register);
+  if (limited) return limited;
+
   const body = (await request.json().catch(() => null)) as {
     nom?: string;
     email?: string;
