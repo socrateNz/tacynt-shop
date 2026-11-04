@@ -16,6 +16,7 @@ import {
 import { getActiveShopId, getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
+import { notifyRentalRequestStatus } from "@/lib/marketplace/notifications";
 
 const PAYMENT_MODES: RentalPaymentMode[] = ["ESPECES", "MOBILE_MONEY", "CARTE", "VIREMENT"];
 
@@ -139,10 +140,10 @@ export async function confirmContract(formData: FormData) {
 
   const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
 
-  await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
+  const outcome = await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
     const contract = await tx.rentalContract.findUniqueOrThrow({ where: { id: contractId } });
-    if (!myShopIds.includes(contract.shopId)) return;
-    if (contract.statut !== "DEMANDE") return;
+    if (!myShopIds.includes(contract.shopId)) return null;
+    if (contract.statut !== "DEMANDE") return null;
 
     if (!(await isRentalUnitAvailable(tx, contract.rentalUnitId))) {
       throw new Error("Ce logement est déjà confirmé pour un autre client.");
@@ -165,7 +166,7 @@ export async function confirmContract(formData: FormData) {
     // Plusieurs demandes pouvaient coexister sur ce logement (décision
     // explicite) — une fois celle-ci confirmée, les autres n'ont plus
     // d'objet.
-    await cancelOtherPendingRequests(tx, contract.rentalUnitId, contract.id);
+    const cancelledIds = await cancelOtherPendingRequests(tx, contract.rentalUnitId, contract.id);
 
     await recordAuditLog(tx, {
       organizationId: ctx.organizationId,
@@ -174,7 +175,15 @@ export async function confirmContract(formData: FormData) {
       entite: "rental_contract",
       entiteId: contractId,
     });
+    return { cancelledIds };
   });
+
+  // Après le commit : le demandeur accepté, et ceux dont la demande sur le
+  // même logement vient d'être annulée (clients Sodu uniquement).
+  if (outcome) {
+    void notifyRentalRequestStatus(contractId);
+    for (const id of outcome.cancelledIds) void notifyRentalRequestStatus(id);
+  }
 
   revalidatePath("/rentals/contracts");
   revalidatePath(`/rentals/contracts/${contractId}`);
@@ -192,11 +201,11 @@ export async function cancelContract(formData: FormData) {
 
   const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
 
-  await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
+  const changed = await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
     const contract = await tx.rentalContract.findUniqueOrThrow({ where: { id: contractId } });
-    if (!myShopIds.includes(contract.shopId)) return;
+    if (!myShopIds.includes(contract.shopId)) return false;
     if (contract.statut === "EN_COURS" || contract.statut === "TERMINEE" || contract.statut === "ANNULEE") {
-      return;
+      return false;
     }
 
     await tx.rentalContract.update({
@@ -211,7 +220,10 @@ export async function cancelContract(formData: FormData) {
       entite: "rental_contract",
       entiteId: contractId,
     });
+    return true;
   });
+
+  if (changed) void notifyRentalRequestStatus(contractId);
 
   revalidatePath("/rentals/contracts");
   revalidatePath(`/rentals/contracts/${contractId}`);

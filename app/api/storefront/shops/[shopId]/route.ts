@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { systemPrisma } from "@/lib/db/system-client";
+import { paymentOptions } from "@/lib/payments/methods";
 import { resolveStorefrontOrganization } from "@/lib/storefront/context";
 
 // Public (aucune session) : le shopId du panier vit uniquement côté client
@@ -17,11 +18,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ shop
   const { shopId } = await params;
   const shop = await systemPrisma.shop.findFirst({
     where: { id: shopId, organizationId: organization.id, actif: true },
-    select: { paiementEnLigneActif: true },
+    select: { paiementEnLigneActif: true, paiementReceptionActif: true },
   });
   if (!shop) {
     return NextResponse.json({ error: "Boutique introuvable." }, { status: 404 });
   }
 
-  return NextResponse.json({ paiementEnLigneActif: shop.paiementEnLigneActif });
+  // paiementEnLigneActif conservé pour compatibilité ; paymentOptions est
+  // la règle complète (pays, prestataires, paiement à la réception).
+  return NextResponse.json({
+    paiementEnLigneActif: shop.paiementEnLigneActif,
+    paymentOptions: paymentOptions(organization, shop),
+  });
 }

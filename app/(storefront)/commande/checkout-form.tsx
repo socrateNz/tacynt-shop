@@ -11,14 +11,26 @@ import { formatMoney } from "@/lib/money";
 
 import { useCart } from "../../cart-context";
 
+type Provider = "CODEES" | "STRIPE";
+type PaymentChoice = "RECEPTION" | Provider;
+type PaymentOptions = { online: Provider[]; reception: boolean };
+
+const CHOICE_LABEL: Record<PaymentChoice, string> = {
+  RECEPTION: "Payer à la réception",
+  CODEES: "Mobile Money (Orange Money / MTN MoMo)",
+  STRIPE: "Carte bancaire",
+};
+
 export function CheckoutForm({ devise }: { devise: string }) {
   const router = useRouter();
   const { cart, loaded, total, clear, emballageUnitPrice, emballageTotal } = useCart();
   const [modeRetrait, setModeRetrait] = useState<"RETRAIT_BOUTIQUE" | "LIVRAISON">("RETRAIT_BOUTIQUE");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [paiementEnLigneActif, setPaiementEnLigneActif] = useState<boolean | null>(null);
+  const [paymentOptions, setPaymentOptions] = useState<PaymentOptions | null>(null);
+  const [choice, setChoice] = useState<PaymentChoice>("RECEPTION");
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const isOnline = choice !== "RECEPTION";
 
   // Le paiement en ligne est décidé boutique par boutique (Shop côté
   // serveur) — le shopId du panier ne vit que côté client (localStorage),
@@ -28,24 +40,28 @@ export function CheckoutForm({ devise }: { devise: string }) {
     let cancelled = false;
     fetch(`/api/storefront/shops/${cart.shopId}`)
       .then((res) => res.json())
-      .then((data: { paiementEnLigneActif?: boolean }) => {
-        if (!cancelled) setPaiementEnLigneActif(Boolean(data.paiementEnLigneActif));
+      .then((data: { paymentOptions?: PaymentOptions }) => {
+        if (cancelled) return;
+        const options = data.paymentOptions ?? { online: [], reception: true };
+        setPaymentOptions(options);
+        // Par défaut : le premier moyen en ligne proposé, sinon la réception.
+        setChoice(options.online[0] ?? "RECEPTION");
       })
       .catch(() => {
-        if (!cancelled) setPaiementEnLigneActif(false);
+        if (!cancelled) setPaymentOptions({ online: [], reception: true });
       });
     return () => {
       cancelled = true;
     };
   }, [cart?.shopId]);
 
-  async function startPayment(orderId: string) {
+  async function startPayment(orderId: string, provider: Provider) {
     setPending(true);
     try {
       const res = await fetch("/api/storefront/payments/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({ orderId, provider }),
       });
       const body = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !body.url) {
@@ -80,6 +96,7 @@ export function CheckoutForm({ devise }: { devise: string }) {
           notes: formData.get("notes"),
           lines: cart.items.map((i) => ({ variantId: i.variantId, quantite: i.quantite })),
           emballageQuantite: cart.emballageQuantite,
+          modePaiement: isOnline ? "EN_LIGNE" : "RECEPTION",
         }),
       });
       const body = (await res.json()) as { id?: string; error?: string };
@@ -89,9 +106,9 @@ export function CheckoutForm({ devise }: { devise: string }) {
       }
       clear();
 
-      if (paiementEnLigneActif) {
+      if (choice !== "RECEPTION") {
         setPendingOrderId(body.id);
-        await startPayment(body.id);
+        await startPayment(body.id, choice);
         return;
       }
 
@@ -117,8 +134,8 @@ export function CheckoutForm({ devise }: { devise: string }) {
         <p className="text-sm text-muted-foreground">
           Votre commande est enregistrée, mais le paiement en ligne n&apos;a pas pu démarrer.
         </p>
-        <Button onClick={() => startPayment(pendingOrderId)} disabled={pending}>
-          {pending ? "Connexion à Codees..." : "Réessayer le paiement"}
+        <Button onClick={() => startPayment(pendingOrderId, choice === "RECEPTION" ? "STRIPE" : choice)} disabled={pending}>
+          {pending ? "Connexion au service de paiement..." : "Réessayer le paiement"}
         </Button>
       </div>
     );
@@ -191,10 +208,12 @@ export function CheckoutForm({ devise }: { devise: string }) {
           <Input id="telephoneClient" name="telephoneClient" required />
         </div>
 
-        {paiementEnLigneActif && (
+        {isOnline && (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="emailClient">Email (requis pour le paiement en ligne)</Label>
-            <Input id="emailClient" name="emailClient" type="email" required />
+            <Label htmlFor="emailClient">
+              {choice === "CODEES" ? "Email (requis pour le paiement Mobile Money)" : "Email (reçu de paiement)"}
+            </Label>
+            <Input id="emailClient" name="emailClient" type="email" required={choice === "CODEES"} />
           </div>
         )}
       </div>
@@ -228,14 +247,33 @@ export function CheckoutForm({ devise }: { devise: string }) {
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        {paiementEnLigneActif
-          ? "Paiement en ligne requis (Orange Money / MTN MoMo) — vous serez redirigé(e) vers la page de paiement."
-          : "Paiement à la réception (espèces, Mobile Money, carte) — aucun paiement en ligne requis."}
-      </p>
+      {paymentOptions && (
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+          <p className="text-sm font-medium text-foreground">Paiement</p>
+          {([...paymentOptions.online, ...(paymentOptions.reception ? ["RECEPTION" as const] : [])] as PaymentChoice[]).map(
+            (c) => (
+              <label key={c} className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="radio"
+                  name="paymentChoice"
+                  value={c}
+                  checked={choice === c}
+                  onChange={() => setChoice(c)}
+                />
+                {CHOICE_LABEL[c]}
+              </label>
+            ),
+          )}
+          <p className="text-xs text-muted-foreground">
+            {isOnline
+              ? "Vous serez redirigé(e) vers la page de paiement sécurisée."
+              : "Vous payez directement à la boutique, au retrait ou à la livraison."}
+          </p>
+        </div>
+      )}
 
-      <Button type="submit" disabled={pending}>
-        {pending ? "Envoi..." : paiementEnLigneActif ? "Payer maintenant" : "Confirmer la commande"}
+      <Button type="submit" disabled={pending || !paymentOptions}>
+        {pending ? "Envoi..." : isOnline ? "Payer maintenant" : "Confirmer la commande"}
       </Button>
     </form>
   );

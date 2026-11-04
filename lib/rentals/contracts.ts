@@ -75,11 +75,16 @@ export async function cancelOtherPendingRequests(
   tx: Prisma.TransactionClient,
   rentalUnitId: string,
   exceptContractId: string,
-): Promise<void> {
+): Promise<string[]> {
+  const where = { rentalUnitId, statut: "DEMANDE" as const, id: { not: exceptContractId } };
+  // Ids relus avant la mise à jour : l'appelant prévient (notification
+  // push) les demandeurs dont la demande vient d'être annulée.
+  const pending = await tx.rentalContract.findMany({ where, select: { id: true } });
   await tx.rentalContract.updateMany({
-    where: { rentalUnitId, statut: "DEMANDE", id: { not: exceptContractId } },
+    where,
     data: { statut: "ANNULEE", cancelledAt: new Date() },
   });
+  return pending.map((c) => c.id);
 }
 
 // Appelée au passage DEMANDE/direct -> CONFIRMEE : une ligne par mois dû,

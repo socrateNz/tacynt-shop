@@ -9,6 +9,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { platformPrisma } from "@/lib/db/platform-client";
 import { withSystemContext } from "@/lib/db/tenant-context";
 import { getPlatformAdminContext } from "@/lib/platform/context";
+import { isValidCountry } from "@/lib/tenant/country";
 import { isValidCurrency } from "@/lib/tenant/currency";
 import { requestCertRefresh } from "@/lib/tenant/request-cert-refresh";
 import { slugify } from "@/lib/tenant/slugify";
@@ -33,13 +34,23 @@ export async function createOrganization(
     .toLowerCase();
   const password = String(formData.get("password") ?? "");
   const deviseInput = String(formData.get("devise") ?? "XOF");
+  const paysInput = String(formData.get("pays") ?? "");
 
-  if (!nom || !ownerNom || !email || password.length < 8 || !isValidCurrency(deviseInput)) {
+  if (
+    !nom ||
+    !ownerNom ||
+    !email ||
+    password.length < 8 ||
+    !isValidCurrency(deviseInput) ||
+    !isValidCountry(paysInput)
+  ) {
     return {
-      error: "Nom de boutique, nom et email du propriétaire, mot de passe (8 caractères minimum) et devise sont requis.",
+      error:
+        "Nom de boutique, nom et email du propriétaire, mot de passe (8 caractères minimum), pays et devise sont requis.",
     };
   }
   const devise = deviseInput;
+  const pays = paysInput;
 
   const admin = await platformPrisma.platformAdmin.findUniqueOrThrow({
     where: { id: ctx.platformAdminId },
@@ -53,7 +64,7 @@ export async function createOrganization(
       const existing = await tx.organization.findUnique({ where: { slug: baseSlug } });
       const slug = existing ? `${baseSlug}-${randomBytes(2).toString("hex")}` : baseSlug;
 
-      const organization = await tx.organization.create({ data: { nom, slug, devise } });
+      const organization = await tx.organization.create({ data: { nom, slug, devise, pays } });
 
       // Nécessaire pour que les inserts suivants passent le WITH CHECK des
       // policies RLS (voir prisma/rls-manifest.sql).
@@ -83,7 +94,7 @@ export async function createOrganization(
         action: "PLATFORM_ORG_CREATED",
         entite: "organization",
         entiteId: organization.id,
-        apres: { nom, slug, devise, ownerNom, ownerEmail: email, platformAdminEmail: admin.email },
+        apres: { nom, slug, devise, pays, ownerNom, ownerEmail: email, platformAdminEmail: admin.email },
       });
     });
   } catch {

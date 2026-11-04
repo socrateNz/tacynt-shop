@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { countryLabel } from "@/lib/tenant/country";
 
 import {
   DeleteOrganizationForm,
@@ -44,6 +45,7 @@ export function OrganizationDetailDialog({
   statut,
   enabledModules,
   devise,
+  pays,
   payments,
   ownerEmail,
 }: {
@@ -55,6 +57,7 @@ export function OrganizationDetailDialog({
   statut: string;
   enabledModules: string[];
   devise: string;
+  pays: string;
   payments: PlatformPaymentRow[];
   ownerEmail: string | null;
 }) {
@@ -69,7 +72,7 @@ export function OrganizationDetailDialog({
           <DialogTitle>{nom}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          {slug} — créée le {createdAtLabel}
+          {slug} — {countryLabel(pays)} — créée le {createdAtLabel}
         </p>
 
         <PlanStatusForm organizationId={organizationId} plan={plan} statut={statut} />

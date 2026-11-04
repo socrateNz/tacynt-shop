@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import type { OnlineOrderFulfillmentMode, Organization } from "@prisma/client";
+import type { OnlineOrderFulfillmentMode, OnlineOrderPaymentMode, Organization } from "@prisma/client";
 
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { newOnlineOrderEmail } from "@/lib/email/templates";
 import { sendMail } from "@/lib/email/send";
 import { formatMoney } from "@/lib/money";
+import { paymentOptions } from "@/lib/payments/methods";
 import { notifyNewOnlineOrder } from "@/lib/push/notify-new-order";
 import { computeLineAmounts } from "@/lib/sales/tax";
 import { resolveStorefrontShopId } from "@/lib/storefront/context";
@@ -53,6 +54,7 @@ export async function createStorefrontOrder(
     notes?: string;
     lines?: OrderLineInput[];
     emballageQuantite?: number;
+    modePaiement?: string;
   } | null;
 
   if (!body) {
@@ -93,7 +95,22 @@ export async function createStorefrontOrder(
     const order = await withTenantContext({ organizationId: organization.id, shopId }, async (tx) => {
       const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId } });
 
-      if (shop.paiementEnLigneActif && !emailClient) {
+      // Mode de paiement : choisi par le client (app Sodu) ou, sans choix
+      // explicite (vitrine web historique), en ligne dès que la boutique le
+      // propose. Toujours revalidé contre les options réelles de la
+      // boutique (lib/payments/methods.ts) — jamais accepté tel quel.
+      const payOptions = paymentOptions(organization, shop);
+      const modePaiement: OnlineOrderPaymentMode =
+        body.modePaiement === "EN_LIGNE" || body.modePaiement === "RECEPTION"
+          ? body.modePaiement
+          : payOptions.online.length > 0
+            ? "EN_LIGNE"
+            : "RECEPTION";
+      if (modePaiement === "EN_LIGNE" && payOptions.online.length === 0) throw new Error("MODE_PAIEMENT_INDISPONIBLE");
+      if (modePaiement === "RECEPTION" && !payOptions.reception) throw new Error("MODE_PAIEMENT_INDISPONIBLE");
+
+      // Codees exige un email ; inutile si la carte (Stripe) est proposée.
+      if (modePaiement === "EN_LIGNE" && !emailClient && !payOptions.online.includes("STRIPE")) {
         throw new Error("EMAIL_REQUIS");
       }
 
@@ -194,6 +211,7 @@ export async function createStorefrontOrder(
               telephoneClient,
               emailClient,
               modeRetrait,
+              modePaiement,
               adresseLivraison,
               notes,
               totalHt,
@@ -269,6 +287,12 @@ export async function createStorefrontOrder(
           ? `Il ne reste que ${stockDisponible} ${designation} en stock.`
           : "Un article de la commande est en rupture de stock.";
       return NextResponse.json({ error: message }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "MODE_PAIEMENT_INDISPONIBLE") {
+      return NextResponse.json(
+        { error: "Ce mode de paiement n'est pas proposé par cette boutique." },
+        { status: 400 },
+      );
     }
     if (error instanceof Error && error.message === "EMAIL_REQUIS") {
       return NextResponse.json(

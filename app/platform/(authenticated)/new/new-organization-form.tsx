@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import { COUNTRIES } from "@/lib/tenant/country";
 import { CURRENCIES } from "@/lib/tenant/currency";
 
 import { createOrganization, type CreateOrganizationState } from "./actions";
@@ -33,6 +34,24 @@ export function NewOrganizationForm() {
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="ownerNom">Nom du propriétaire</Label>
         <Input id="ownerNom" name="ownerNom" required placeholder="Awa Ndiaye" />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="pays">Pays</Label>
+        <select
+          id="pays"
+          name="pays"
+          defaultValue="CM"
+          className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
+        >
+          {COUNTRIES.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          Cameroun : paiement Mobile Money et carte. Autres pays : carte uniquement.
+        </p>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="devise">Devise</Label>

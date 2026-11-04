@@ -22,9 +22,10 @@ import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { hasCapability } from "@/lib/permissions";
 import { getTenantContext } from "@/lib/tenant/context";
+import { availableOnlineProviders, PROVIDER_LABEL } from "@/lib/payments/methods";
 import { organizationHasModule } from "@/lib/tenant/modules";
 
-import { toggleShopActive, toggleShopOnlinePayment, toggleShopTaxMode } from "./actions";
+import { toggleShopActive, toggleShopOnlinePayment, toggleShopReceptionPayment, toggleShopTaxMode } from "./actions";
 import { DeleteShopDialog } from "./delete-shop-dialog";
 import { ShopForm } from "./shop-form";
 import { ShopUsersDialog } from "./shop-users-dialog";
@@ -40,7 +41,8 @@ export default async function ShopsPage() {
     where: { id: ctx.organizationId },
   });
   const ecommerceActif = organizationHasModule(organization.enabledModules, "ecommerce");
-  const deviseCompatibleCodees = organization.devise === "XAF";
+  // Cameroun (XAF) : Mobile Money + carte ; ailleurs : carte uniquement.
+  const moyensEnLigne = availableOnlineProviders(organization);
 
   const { shops, users, assignedByShop } = await withTenantContext(
     { organizationId: ctx.organizationId },
@@ -120,18 +122,37 @@ export default async function ShopsPage() {
                 </TableCell>
                 {ecommerceActif && (
                   <TableCell>
-                    {!s.paiementEnLigneActif && !deviseCompatibleCodees ? (
-                      <Badge variant="secondary">Devise non compatible (XAF requis)</Badge>
+                    {!s.paiementEnLigneActif && moyensEnLigne.length === 0 ? (
+                      <Badge variant="secondary">Aucun moyen de paiement en ligne disponible</Badge>
                     ) : (
-                      <form action={toggleShopOnlinePayment} className="flex items-center gap-2">
-                        <input type="hidden" name="shopId" value={s.id} />
-                        <Badge variant={s.paiementEnLigneActif ? "success" : "secondary"}>
-                          {s.paiementEnLigneActif ? "Actif" : "Inactif"}
-                        </Badge>
-                        <Button type="submit" variant="ghost" size="sm">
-                          Changer
-                        </Button>
-                      </form>
+                      <div className="flex flex-col gap-1.5">
+                        <form action={toggleShopOnlinePayment} className="flex items-center gap-2">
+                          <input type="hidden" name="shopId" value={s.id} />
+                          <Badge variant={s.paiementEnLigneActif ? "success" : "secondary"}>
+                            {s.paiementEnLigneActif ? "Actif" : "Inactif"}
+                          </Badge>
+                          <Button type="submit" variant="ghost" size="sm">
+                            Changer
+                          </Button>
+                        </form>
+                        {s.paiementEnLigneActif && (
+                          <>
+                            <p className="text-xs text-muted-foreground">
+                              {moyensEnLigne.map((m) => PROVIDER_LABEL[m]).join(" · ")}
+                            </p>
+                            <form action={toggleShopReceptionPayment} className="flex items-center gap-2">
+                              <input type="hidden" name="shopId" value={s.id} />
+                              <span className="text-xs text-muted-foreground">Paiement à la réception :</span>
+                              <Badge variant={s.paiementReceptionActif ? "success" : "secondary"}>
+                                {s.paiementReceptionActif ? "Autorisé" : "Refusé"}
+                              </Badge>
+                              <Button type="submit" variant="ghost" size="sm">
+                                Changer
+                              </Button>
+                            </form>
+                          </>
+                        )}
+                      </div>
                     )}
                   </TableCell>
                 )}

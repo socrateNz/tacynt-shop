@@ -10,6 +10,7 @@ import { assertCapability } from "@/lib/permissions-server";
 import { assertWithinQuota, QuotaExceededError } from "@/lib/quotas";
 import { ACTIVE_SHOP_COOKIE_NAME } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
+import { availableOnlineProviders } from "@/lib/payments/methods";
 import { organizationHasModule } from "@/lib/tenant/modules";
 
 export type ShopFormState = { error: string | null };
@@ -122,9 +123,9 @@ export async function toggleShopTaxMode(formData: FormData) {
 
 // Codees facture toujours en XAF (franc CFA d'Afrique Centrale) — distinct
 // de Organization.devise, dont le défaut est XOF (Afrique de l'Ouest).
-// Activer le paiement en ligne pour une organisation en devise différente
-// facturerait réellement en XAF tout en affichant/enregistrant les totaux
-// dans une autre devise : no-op silencieux, même convention que
+// Activer le paiement en ligne sans aucun prestataire utilisable pour cette
+// organisation (ni Codees — Cameroun + XAF —, ni Stripe configuré) n'aurait
+// aucun sens : no-op silencieux, même convention que
 // toggleShopActive/toggleShopTaxMode ci-dessus pour un état invalide
 // (shops/page.tsx empêche déjà ce cas côté UI, ceci est une défense
 // supplémentaire contre un appel direct de l'action).
@@ -143,7 +144,7 @@ export async function toggleShopOnlinePayment(formData: FormData) {
   await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
     const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId } });
     const next = !shop.paiementEnLigneActif;
-    if (next && organization.devise !== "XAF") return;
+    if (next && availableOnlineProviders(organization).length === 0) return;
 
     await tx.shop.update({
       where: { id: shopId },
@@ -158,6 +159,40 @@ export async function toggleShopOnlinePayment(formData: FormData) {
       entiteId: shopId,
       avant: { paiementEnLigneActif: shop.paiementEnLigneActif },
       apres: { paiementEnLigneActif: next },
+    });
+  });
+
+  revalidatePath("/shops");
+}
+
+// Paiement à la réception autorisé ou non quand le paiement en ligne est
+// actif — décision de l'organisation. Sans effet réel si aucun moyen en
+// ligne n'est disponible (lib/payments/methods.ts garde alors toujours la
+// réception, pour qu'une boutique ne soit jamais sans moyen de payer).
+export async function toggleShopReceptionPayment(formData: FormData) {
+  const ctx = await getTenantContext();
+  await assertCapability(ctx.role, "shops:manage");
+
+  const shopId = String(formData.get("shopId") ?? "");
+  if (!shopId) return;
+
+  await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
+    const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId } });
+    const next = !shop.paiementReceptionActif;
+
+    await tx.shop.update({
+      where: { id: shopId },
+      data: { paiementReceptionActif: next },
+    });
+
+    await recordAuditLog(tx, {
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+      action: "SHOP_RECEPTION_PAYMENT_CHANGED",
+      entite: "shop",
+      entiteId: shopId,
+      avant: { paiementReceptionActif: shop.paiementReceptionActif },
+      apres: { paiementReceptionActif: next },
     });
   });
 

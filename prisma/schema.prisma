@@ -170,6 +170,11 @@ model Organization {
   plan         OrganizationPlan   @default(STARTER)
   statut       OrganizationStatus @default(ACTIVE)
   devise       String             @default("XOF")
+  // Pays de l'organisation (ISO 3166-1 alpha-2), choisi à la création par
+  // l'admin plateforme. Décide des moyens de paiement en ligne proposés :
+  // Cameroun ("CM") = Mobile Money (Codees) + carte (Stripe), ailleurs =
+  // carte uniquement (lib/payments/methods.ts).
+  pays         String             @default("CM")
   fuseau       String             @default("Africa/Douala")
   profilMetier String             @default("generique") @map("profil_metier")
   settings     Json               @default("{}")
@@ -321,6 +326,10 @@ model Shop {
   // verrouillée) : ce booléen ne change QUE si la vitrine de cette boutique
   // exige un paiement en ligne avant confirmation, jamais où va l'argent.
   paiementEnLigneActif Boolean @default(false) @map("paiement_en_ligne_actif")
+  // Décidé par l'organisation : le client peut-il encore choisir de payer à
+  // la réception quand le paiement en ligne est actif ? Toujours vrai de fait
+  // si le paiement en ligne est inactif (il faut bien un moyen de payer).
+  paiementReceptionActif Boolean @default(true) @map("paiement_reception_actif")
 
   organization   Organization    @relation(fields: [organizationId], references: [id])
   userShops      UserShop[]
@@ -789,6 +798,7 @@ model OnlineOrder {
   // une commande vitrine web ou comptoir). Permet au client de suivre le
   // statut réel depuis l'app — jamais utilisé pour l'isolation tenant.
   marketplaceCustomerId String?             @map("marketplace_customer_id") @db.Uuid
+  modePaiement     OnlineOrderPaymentMode     @default(RECEPTION) @map("mode_paiement")
   createdAt        DateTime                   @default(now()) @map("created_at")
   confirmedAt      DateTime?                  @map("confirmed_at")
   cancelledAt      DateTime?                  @map("cancelled_at")
@@ -852,11 +862,30 @@ enum OnlineOrderPaymentEventSource {
 // Une commande peut avoir plusieurs tentatives (retry après échec/expiration,
 // décision #3 de l'intégration) : chaque appel à /initiate crée une nouvelle
 // ligne, jamais de réutilisation d'un checkout_url déjà visité.
+// Prestataire d'une tentative de paiement en ligne : Codees (Mobile Money,
+// Cameroun, XAF) ou Stripe (carte, toutes devises). Un seul compte marchand
+// plateforme pour chacun (décision verrouillée).
+enum PaymentProvider {
+  CODEES
+  STRIPE
+
+  @@map("payment_provider")
+}
+
+// Mode de paiement choisi par le client à la commande.
+enum OnlineOrderPaymentMode {
+  RECEPTION
+  EN_LIGNE
+
+  @@map("online_order_payment_mode")
+}
+
 model OnlineOrderPayment {
   id               String                   @id @default(uuid()) @db.Uuid
   organizationId   String                   @map("organization_id") @db.Uuid
   shopId           String                   @map("shop_id") @db.Uuid
   onlineOrderId    String                   @map("online_order_id") @db.Uuid
+  fournisseur      PaymentProvider          @default(CODEES)
   statut           OnlineOrderPaymentStatus @default(INITIE)
   montant          Decimal                  @db.Decimal(14, 2)
   devise           String                   @default("XAF")
@@ -1702,6 +1731,7 @@ model MarketplaceCustomer {
   createdAt DateTime @default(now()) @map("created_at")
 
   sessions       MarketplaceSession[]
+  pushTokens     MarketplacePushToken[]
   onlineOrders   OnlineOrder[]
   rentalRequests RentalContract[]
 
@@ -1725,4 +1755,23 @@ model MarketplaceSession {
 
   @@index([marketplaceCustomerId])
   @@map("marketplace_sessions")
+}
+
+// Appareils d'un client Sodu qui reçoivent les notifications push (jeton
+// Expo). Désactivé (disabledAt) à la déconnexion ou quand Expo signale le
+// jeton invalide — jamais supprimé. Même isolation que
+// marketplace_customers (aucun accès tacynt_app).
+model MarketplacePushToken {
+  id                    String    @id @default(uuid()) @db.Uuid
+  marketplaceCustomerId String    @map("marketplace_customer_id") @db.Uuid
+  token                 String    @unique
+  platform              String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  lastSeenAt            DateTime  @default(now()) @map("last_seen_at")
+  disabledAt            DateTime? @map("disabled_at")
+
+  customer MarketplaceCustomer @relation(fields: [marketplaceCustomerId], references: [id])
+
+  @@index([marketplaceCustomerId])
+  @@map("marketplace_push_tokens")
 }

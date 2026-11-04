@@ -185,7 +185,7 @@ DO $$
 DECLARE
   t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['platform_admins', 'platform_admin_sessions', 'platform_payments', 'contact_requests', 'marketplace_customers', 'marketplace_sessions']
+  FOREACH t IN ARRAY ARRAY['platform_admins', 'platform_admin_sessions', 'platform_payments', 'contact_requests', 'marketplace_customers', 'marketplace_sessions', 'marketplace_push_tokens']
   LOOP
     EXECUTE format('REVOKE ALL ON %I FROM tacynt_app', t);
   END LOOP;

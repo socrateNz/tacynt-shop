@@ -117,6 +117,7 @@ export default async function PlatformOrganizationsPage() {
                         : []
                     }
                     devise={org.devise}
+                    pays={org.pays}
                     payments={(paymentsByOrg.get(org.id) ?? []).map((p) => ({
                       id: p.id,
                       createdAtLabel: p.createdAt.toLocaleDateString("fr-FR"),

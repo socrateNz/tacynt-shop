@@ -9,6 +9,7 @@ import { assertCapability } from "@/lib/permissions-server";
 import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
+import { notifyOrderStatus } from "@/lib/marketplace/notifications";
 
 async function assertEcommerceAllowed(organizationId: string, role: Parameters<typeof assertCapability>[0]) {
   await assertCapability(role, "ecommerce:manage");
@@ -30,10 +31,10 @@ export async function confirmOrder(formData: FormData) {
 
   const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
 
-  await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
+  const changed = await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
     const order = await tx.onlineOrder.findUniqueOrThrow({ where: { id: orderId } });
-    if (!myShopIds.includes(order.shopId)) return;
-    if (order.statut !== "EN_ATTENTE") return;
+    if (!myShopIds.includes(order.shopId)) return false;
+    if (order.statut !== "EN_ATTENTE") return false;
 
     await tx.onlineOrder.update({
       where: { id: orderId },
@@ -47,7 +48,11 @@ export async function confirmOrder(formData: FormData) {
       entite: "online_order",
       entiteId: orderId,
     });
+    return true;
   });
+
+  // Après le commit, jamais bloquant (client Sodu uniquement).
+  if (changed) void notifyOrderStatus(orderId);
 
   revalidatePath("/online-orders");
 }
@@ -63,10 +68,10 @@ export async function cancelOrder(formData: FormData) {
 
   const myShopIds = await getAssignedShopIds(ctx.organizationId, ctx.userId);
 
-  await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
+  const changed = await withTenantContext({ organizationId: ctx.organizationId }, async (tx) => {
     const order = await tx.onlineOrder.findUniqueOrThrow({ where: { id: orderId } });
-    if (!myShopIds.includes(order.shopId)) return;
-    if (order.statut === "RECUPEREE" || order.statut === "ANNULEE") return;
+    if (!myShopIds.includes(order.shopId)) return false;
+    if (order.statut === "RECUPEREE" || order.statut === "ANNULEE") return false;
 
     await tx.onlineOrder.update({
       where: { id: orderId },
@@ -80,7 +85,10 @@ export async function cancelOrder(formData: FormData) {
       entite: "online_order",
       entiteId: orderId,
     });
+    return true;
   });
+
+  if (changed) void notifyOrderStatus(orderId);
 
   revalidatePath("/online-orders");
 }

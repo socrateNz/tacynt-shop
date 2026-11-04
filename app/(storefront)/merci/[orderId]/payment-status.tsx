@@ -91,7 +91,7 @@ export function PaymentStatus({
           disabled={retrying}
           className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-60"
         >
-          {retrying ? "Connexion à Codees..." : "Réessayer le paiement"}
+          {retrying ? "Connexion au service de paiement..." : "Réessayer le paiement"}
         </button>
       </div>
     );

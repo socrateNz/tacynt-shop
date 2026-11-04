@@ -1,5 +1,6 @@
 import type { Organization } from "@prisma/client";
 
+import { paymentOptions, type PaymentOptions } from "@/lib/payments/methods";
 import { formatUnite } from "@/lib/tenant/units";
 import { systemPrisma } from "@/lib/db/system-client";
 import { OCCUPYING_STATUSES } from "@/lib/rentals/contracts";
@@ -51,6 +52,10 @@ export type MarketplaceOrganization = {
   // catalogue est exposé) — null si non renseignées, jamais inventées.
   adresse: string | null;
   telephone: string | null;
+  pays: string;
+  // Moyens de paiement de la boutique vitrine (lib/payments/methods.ts) —
+  // l'app n'affiche que ceux-là au moment de commander.
+  paymentOptions: PaymentOptions;
 };
 
 // API publique cross-organisation (app mobile marketplace, projet séparé) —
@@ -112,6 +117,8 @@ export async function getMarketplaceOrganizations(): Promise<MarketplaceOrganiza
       storefrontUrl: storefrontUrl(o.slug, "/"),
       adresse: shop?.adresse ?? null,
       telephone: shop?.telephone ?? null,
+      pays: o.pays,
+      paymentOptions: shop?.paymentOptions ?? { online: [], reception: true },
     };
   });
 }
@@ -126,6 +133,7 @@ type ShopResolution = {
   locationEnabled: boolean;
   adresse: string | null;
   telephone: string | null;
+  paymentOptions: PaymentOptions;
 };
 
 // Une seule boutique "vitrine" par organisation marketplace — même défaut
@@ -158,6 +166,7 @@ async function resolveMarketplaceShops(): Promise<ShopResolution[]> {
       locationEnabled: organizationHasModule(org.enabledModules, "location"),
       adresse: shop.adresse,
       telephone: shop.telephone,
+      paymentOptions: paymentOptions(org, shop),
     });
   }
   return [...resolved.values()];

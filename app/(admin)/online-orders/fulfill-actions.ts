@@ -14,6 +14,7 @@ import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
 import { parseOrgSettings } from "@/lib/tenant/settings";
+import { notifyOrderStatus } from "@/lib/marketplace/notifications";
 
 export type FulfillOrderState = { error: string | null };
 
@@ -133,6 +134,9 @@ export async function fulfillOrder(
     }
     throw error;
   }
+
+  // Atteint uniquement si la commande vient d'être encaissée (RECUPEREE).
+  void notifyOrderStatus(orderId);
 
   revalidatePath("/online-orders");
   return { error: null };

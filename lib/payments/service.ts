@@ -5,7 +5,12 @@ import { sendMail } from "@/lib/email/send";
 import { orderConfirmationEmail } from "@/lib/email/templates";
 import { formatMoney } from "@/lib/money";
 
+import type { OnlineOrderPayment } from "@prisma/client";
+
+import { notifyOrderPaid } from "@/lib/marketplace/notifications";
+
 import { CodeesError, getCheckoutStatus, type CodeesCheckoutStatus } from "./codees";
+import { getStripeCheckoutState, type StripeSessionState } from "./stripe";
 
 function mapCodeesStatus(status: CodeesCheckoutStatus): OnlineOrderPaymentStatus | null {
   switch (status) {
@@ -21,6 +26,35 @@ function mapCodeesStatus(status: CodeesCheckoutStatus): OnlineOrderPaymentStatus
     default:
       return null;
   }
+}
+
+function mapStripeState(state: StripeSessionState): OnlineOrderPaymentStatus | null {
+  switch (state) {
+    case "paid":
+      return "REUSSI";
+    case "expired":
+      return "EXPIRE";
+    case "unpaid_complete":
+      return "ECHEC";
+    case "open":
+    default:
+      return null;
+  }
+}
+
+// Interroge le prestataire de CE paiement (jamais l'autre) et renvoie le
+// statut local correspondant (null = toujours en attente) + la réponse brute
+// pour le journal.
+async function fetchProviderStatus(
+  payment: OnlineOrderPayment,
+): Promise<{ next: OnlineOrderPaymentStatus | null; brut: string; raw: unknown }> {
+  const ref = payment.referenceExterne!;
+  if (payment.fournisseur === "STRIPE") {
+    const { state, raw } = await getStripeCheckoutState(ref);
+    return { next: mapStripeState(state), brut: state, raw };
+  }
+  const result = await getCheckoutStatus(ref);
+  return { next: mapCodeesStatus(result.status), brut: result.status, raw: result };
 }
 
 type TenantRef = { organizationId: string; shopId: string };
@@ -62,9 +96,10 @@ export async function verifyAndApplyPayment(ctx: TenantRef, paymentId: string) {
 
     let statusResult;
     try {
-      statusResult = await getCheckoutStatus(payment.referenceExterne);
+      statusResult = await fetchProviderStatus(payment);
     } catch (error) {
-      const detail = error instanceof CodeesError ? error.message : "Erreur réseau inconnue.";
+      const detail =
+        error instanceof CodeesError || error instanceof Error ? error.message : "Erreur réseau inconnue.";
       await tx.onlineOrderPaymentEvent.create({
         data: {
           organizationId: ctx.organizationId,
@@ -84,12 +119,12 @@ export async function verifyAndApplyPayment(ctx: TenantRef, paymentId: string) {
         shopId: ctx.shopId,
         onlineOrderPaymentId: paymentId,
         source: "STATUT_POLL",
-        statutBrut: statusResult.status,
-        payloadBrut: statusResult as unknown as Prisma.InputJsonValue,
+        statutBrut: statusResult.brut,
+        payloadBrut: statusResult.raw as Prisma.InputJsonValue,
       },
     });
 
-    const nextStatut = mapCodeesStatus(statusResult.status);
+    const nextStatut = statusResult.next;
     if (!nextStatut) {
       // open|processing : on reste en attente, rien à mettre à jour.
       return { payment, order: payment.onlineOrder, shopNom, justConfirmed: false };
@@ -113,6 +148,12 @@ export async function verifyAndApplyPayment(ctx: TenantRef, paymentId: string) {
 
     return { payment: updatedPayment, order, shopNom, justConfirmed };
   });
+
+  // Notification push au client Sodu (si la commande vient de l'app) —
+  // après le commit, jamais bloquante.
+  if (result.justConfirmed) {
+    void notifyOrderPaid(result.order.id);
+  }
 
   // Toujours APRÈS le commit, jamais dans la transaction : un échec d'envoi
   // d'email ne doit jamais invalider un paiement déjà réussi.
