@@ -109,7 +109,8 @@ export async function createStorefrontOrder(
       if (modePaiement === "EN_LIGNE" && payOptions.online.length === 0) throw new Error("MODE_PAIEMENT_INDISPONIBLE");
       if (modePaiement === "RECEPTION" && !payOptions.reception) throw new Error("MODE_PAIEMENT_INDISPONIBLE");
 
-      // Codees exige un email ; inutile si la carte (Stripe) est proposée.
+      // Codees exige un email ; inutile si la carte (Stripe) est proposée
+      // (désactivée pour l'instant, voir CARTE_ACTIVE).
       if (modePaiement === "EN_LIGNE" && !emailClient && !payOptions.online.includes("STRIPE")) {
         throw new Error("EMAIL_REQUIS");
       }

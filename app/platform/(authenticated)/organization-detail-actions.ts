@@ -9,6 +9,7 @@ import { withSystemTenantContext } from "@/lib/db/tenant-context";
 import { platformPrisma } from "@/lib/db/platform-client";
 import { systemPrisma } from "@/lib/db/system-client";
 import { getPlatformAdminContext } from "@/lib/platform/context";
+import { isValidCountry } from "@/lib/tenant/country";
 import { MODULE_CATALOG, type ModuleKey } from "@/lib/tenant/modules";
 
 function isUniqueViolation(error: unknown): boolean {
@@ -69,6 +70,51 @@ export async function updateOrganizationPlanStatus(
 
   revalidatePath("/platform");
   return { error: null };
+}
+
+export type UpdateCountryState = { error: string | null; saved?: boolean };
+
+// Correction du pays (organisations créées avant l'ajout du champ, qui ont
+// reçu "CM" par défaut, ou erreur de saisie). Effet immédiat sur les moyens
+// de paiement proposés (lib/payments/methods.ts lit le pays à chaque
+// requête) : hors Cameroun, plus de Mobile Money, paiement hors ligne
+// uniquement — sans toucher aux réglages des boutiques, qui reprennent effet
+// si le pays redevient le Cameroun.
+export async function updateOrganizationCountry(
+  _prevState: UpdateCountryState,
+  formData: FormData,
+): Promise<UpdateCountryState> {
+  const ctx = await getPlatformAdminContext();
+
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const pays = String(formData.get("pays") ?? "");
+  if (!organizationId || !isValidCountry(pays)) {
+    return { error: "Organisation et pays valides sont requis." };
+  }
+
+  const admin = await platformPrisma.platformAdmin.findUniqueOrThrow({
+    where: { id: ctx.platformAdminId },
+  });
+
+  await withSystemTenantContext(organizationId, async (tx) => {
+    const before = await tx.organization.findUniqueOrThrow({ where: { id: organizationId } });
+    if (before.pays === pays) return;
+
+    await tx.organization.update({ where: { id: organizationId }, data: { pays } });
+
+    await recordAuditLog(tx, {
+      organizationId,
+      userId: null,
+      action: "PLATFORM_COUNTRY_CHANGED",
+      entite: "organization",
+      entiteId: organizationId,
+      avant: { pays: before.pays },
+      apres: { pays, platformAdminEmail: admin.email },
+    });
+  });
+
+  revalidatePath("/platform");
+  return { error: null, saved: true };
 }
 
 export type RecordPaymentState = { error: string | null };

@@ -1,7 +1,7 @@
 // Pays d'une organisation (ISO 3166-1 alpha-2), choisi à la création par
 // l'admin plateforme. Liste curatée, même patron que CURRENCIES
 // (lib/tenant/currency.ts). Le pays décide des moyens de paiement en ligne :
-// Cameroun = Mobile Money (Codees) + carte (Stripe), ailleurs = carte
+// Cameroun = Mobile Money (Codees), ailleurs = paiement hors ligne
 // uniquement (lib/payments/methods.ts).
 export const COUNTRIES = [
   { value: "CM", label: "Cameroun" },

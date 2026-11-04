@@ -172,8 +172,8 @@ model Organization {
   devise       String             @default("XOF")
   // Pays de l'organisation (ISO 3166-1 alpha-2), choisi à la création par
   // l'admin plateforme. Décide des moyens de paiement en ligne proposés :
-  // Cameroun ("CM") = Mobile Money (Codees) + carte (Stripe), ailleurs =
-  // carte uniquement (lib/payments/methods.ts).
+  // Cameroun ("CM") = Mobile Money (Codees), ailleurs = paiement hors
+  // ligne uniquement (lib/payments/methods.ts).
   pays         String             @default("CM")
   fuseau       String             @default("Africa/Douala")
   profilMetier String             @default("generique") @map("profil_metier")

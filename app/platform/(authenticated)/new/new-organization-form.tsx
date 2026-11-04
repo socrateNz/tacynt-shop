@@ -50,7 +50,8 @@ export function NewOrganizationForm() {
           ))}
         </select>
         <p className="text-xs text-muted-foreground">
-          Cameroun : paiement Mobile Money et carte. Autres pays : carte uniquement.
+          Cameroun : paiement en ligne par Mobile Money possible. Autres pays : paiement hors ligne
+          uniquement (à la réception).
         </p>
       </div>
       <div className="flex flex-col gap-1.5">

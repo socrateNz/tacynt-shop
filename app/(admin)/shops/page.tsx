@@ -41,7 +41,7 @@ export default async function ShopsPage() {
     where: { id: ctx.organizationId },
   });
   const ecommerceActif = organizationHasModule(organization.enabledModules, "ecommerce");
-  // Cameroun (XAF) : Mobile Money + carte ; ailleurs : carte uniquement.
+  // Cameroun (XAF) : Mobile Money ; ailleurs : paiement hors ligne uniquement.
   const moyensEnLigne = availableOnlineProviders(organization);
 
   const { shops, users, assignedByShop } = await withTenantContext(
@@ -123,7 +123,11 @@ export default async function ShopsPage() {
                 {ecommerceActif && (
                   <TableCell>
                     {!s.paiementEnLigneActif && moyensEnLigne.length === 0 ? (
-                      <Badge variant="secondary">Aucun moyen de paiement en ligne disponible</Badge>
+                      <Badge variant="secondary">
+                        {organization.pays === "CM"
+                          ? "Mobile Money indisponible (devise XAF requise)"
+                          : "Paiement hors ligne uniquement (hors Cameroun)"}
+                      </Badge>
                     ) : (
                       <div className="flex flex-col gap-1.5">
                         <form action={toggleShopOnlinePayment} className="flex items-center gap-2">

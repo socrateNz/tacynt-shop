@@ -6,8 +6,9 @@ import { stripeConfigured } from "./stripe";
 // partagée par la vitrine web, l'app mobile Sodu et l'admin :
 // - paiement en ligne inactif → paiement à la réception uniquement ;
 // - organisation au Cameroun (et en XAF, seule devise Codees) → Mobile
-//   Money (Codees) + carte (Stripe) ;
-// - ailleurs → carte (Stripe) uniquement ;
+//   Money (Codees) ;
+// - ailleurs → aucun paiement en ligne : paiement à la réception
+//   (hors ligne) uniquement ;
 // - paiement à la réception : au choix de l'organisation
 //   (Shop.paiementReceptionActif), mais toujours disponible s'il ne reste
 //   aucun moyen en ligne utilisable — une boutique ne doit jamais se
@@ -20,6 +21,14 @@ export type PaymentOptions = {
 type OrgLike = { pays: string; devise: string };
 type ShopLike = { paiementEnLigneActif: boolean; paiementReceptionActif: boolean };
 
+// Paiement par carte (Stripe) : DÉSACTIVÉ par décision (2026-11-05) — un
+// compte Stripe n'est pas ouvrable pour une entreprise camerounaise. Tout le
+// code Stripe reste en place (lib/payments/stripe.ts, webhook) : passer ce
+// drapeau à true (et renseigner STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET)
+// suffira à proposer la carte, au Cameroun comme ailleurs. Une clé Stripe
+// renseignée par erreur ne l'active jamais tant que ce drapeau est faux.
+export const CARTE_ACTIVE = false;
+
 export function codeesEligible(org: OrgLike): boolean {
   return org.pays === "CM" && org.devise === "XAF";
 }
@@ -29,7 +38,7 @@ export function codeesEligible(org: OrgLike): boolean {
 export function availableOnlineProviders(org: OrgLike): PaymentProvider[] {
   const providers: PaymentProvider[] = [];
   if (codeesEligible(org)) providers.push("CODEES");
-  if (stripeConfigured()) providers.push("STRIPE");
+  if (CARTE_ACTIVE && stripeConfigured()) providers.push("STRIPE");
   return providers;
 }
 

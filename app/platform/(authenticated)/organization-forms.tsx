@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 
+import { COUNTRIES } from "@/lib/tenant/country";
 import { MODULE_CATALOG } from "@/lib/tenant/modules";
 
 import {
@@ -14,8 +15,10 @@ import {
   recordPlatformPayment,
   updateOrganizationModules,
   updateOrganizationOwnerCredentials,
+  updateOrganizationCountry,
   updateOrganizationPlanStatus,
   type DeleteOrganizationState,
+  type UpdateCountryState,
   type RecordPaymentState,
   type UpdateModulesState,
   type UpdateOwnerCredentialsState,
@@ -30,6 +33,49 @@ const STATUS_OPTIONS = [
 ] as const;
 
 const initialPlanState: UpdatePlanStatusState = { error: null };
+
+const initialCountryState: UpdateCountryState = { error: null };
+
+export function CountryForm({ organizationId, pays }: { organizationId: string; pays: string }) {
+  const [state, formAction, isPending] = useActionState(updateOrganizationCountry, initialCountryState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6">
+      <h2 className="text-sm font-medium text-foreground">Pays</h2>
+      <p className="text-sm text-muted-foreground">
+        Cameroun : paiement en ligne par Mobile Money possible. Autres pays : paiement hors ligne uniquement (à la
+        réception).
+      </p>
+      {state.error && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {state.error}
+        </p>
+      )}
+      {state.saved && !state.error && <p className="text-sm text-muted-foreground">Pays enregistré.</p>}
+      <input type="hidden" name="organizationId" value={organizationId} />
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex min-w-40 flex-1 flex-col gap-1.5">
+          <Label htmlFor={`pays-${organizationId}`}>Pays de l&apos;organisation</Label>
+          <select
+            id={`pays-${organizationId}`}
+            name="pays"
+            defaultValue={pays}
+            className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
+          >
+            {COUNTRIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Button type="submit" disabled={isPending}>
+          {isPending ? "Enregistrement..." : "Enregistrer"}
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 export function PlanStatusForm({
   organizationId,
