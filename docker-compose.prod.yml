@@ -53,8 +53,8 @@ services:
       # plateforme (lib/payments/codees.ts).
       CODEES_API_KEY: ${CODEES_API_KEY}
       CODEES_SECRET_KEY: ${CODEES_SECRET_KEY}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
       # Envoi de l'email de confirmation de paiement (lib/email/).
       SMTP_HOST: ${SMTP_HOST}
