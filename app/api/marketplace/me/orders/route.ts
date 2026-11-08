@@ -37,6 +37,7 @@ export async function GET(request: Request) {
       paiement: o.payments[0] ? { statut: o.payments[0].statut, fournisseur: o.payments[0].fournisseur } : null,
       adresseLivraison: o.adresseLivraison,
       totalTtc: Number(o.totalTtc),
+      fraisLivraison: Number(o.fraisLivraison),
       devise: o.organization.devise,
       organizationId: o.organization.id,
       organizationNom: o.organization.nom,

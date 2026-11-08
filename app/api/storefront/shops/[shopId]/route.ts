@@ -22,7 +22,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ shop
       paiementEnLigneActif: true,
       paiementReceptionActif: true,
       montantMinimumLivraison: true,
-      deliveryZones: { where: { actif: true }, select: { id: true, nom: true }, orderBy: { nom: "asc" } },
+      livraisonActive: true,
+      livraisonGratuiteActive: true,
+      montantLivraisonGratuite: true,
+      deliveryZones: { where: { actif: true }, select: { id: true, nom: true, frais: true }, orderBy: { nom: "asc" } },
     },
   });
   if (!shop) {
@@ -36,7 +39,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ shop
     paymentOptions: paymentOptions(organization, shop),
     // Zones de livraison actives : quand il y en a, la livraison se fait
     // uniquement dans l'une d'elles (+ lieu-dit).
-    deliveryZones: shop.deliveryZones,
+    deliveryZones: shop.deliveryZones.map((z) => ({ id: z.id, nom: z.nom, frais: Number(z.frais) })),
     montantMinimumLivraison: shop.montantMinimumLivraison === null ? null : Number(shop.montantMinimumLivraison),
+    // Livraison désactivée par la boutique : retrait uniquement.
+    livraisonActive: shop.livraisonActive,
+    montantLivraisonGratuite:
+      shop.livraisonGratuiteActive && shop.montantLivraisonGratuite !== null
+        ? Number(shop.montantLivraisonGratuite)
+        : null,
   });
 }

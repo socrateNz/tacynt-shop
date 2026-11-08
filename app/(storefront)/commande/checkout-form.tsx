@@ -14,10 +14,13 @@ import { useCart } from "../../cart-context";
 type Provider = "CODEES" | "STRIPE";
 type PaymentChoice = "RECEPTION" | Provider;
 type PaymentOptions = { online: Provider[]; reception: boolean };
+type DeliveryZone = { id: string; nom: string; frais?: number };
 type ShopSettings = {
   paymentOptions?: PaymentOptions;
-  deliveryZones?: { id: string; nom: string }[];
+  deliveryZones?: DeliveryZone[];
   montantMinimumLivraison?: number | null;
+  livraisonActive?: boolean;
+  montantLivraisonGratuite?: number | null;
 };
 
 const CHOICE_LABEL: Record<PaymentChoice, string> = {
@@ -33,7 +36,10 @@ export function CheckoutForm({ devise }: { devise: string }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [paymentOptions, setPaymentOptions] = useState<PaymentOptions | null>(null);
-  const [deliveryZones, setDeliveryZones] = useState<{ id: string; nom: string }[]>([]);
+  const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
+  const [livraisonActive, setLivraisonActive] = useState(true);
+  const [seuilGratuite, setSeuilGratuite] = useState<number | null>(null);
+  const [zoneId, setZoneId] = useState("");
   const [minimumLivraison, setMinimumLivraison] = useState<number | null>(null);
   const [choice, setChoice] = useState<PaymentChoice>("RECEPTION");
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
@@ -51,6 +57,9 @@ export function CheckoutForm({ devise }: { devise: string }) {
         if (cancelled) return;
         setDeliveryZones(data.deliveryZones ?? []);
         setMinimumLivraison(data.montantMinimumLivraison ?? null);
+        setLivraisonActive(data.livraisonActive ?? true);
+        setSeuilGratuite(data.montantLivraisonGratuite ?? null);
+        if (data.livraisonActive === false) setModeRetrait("RETRAIT_BOUTIQUE");
         const options = data.paymentOptions ?? { online: [], reception: true };
         setPaymentOptions(options);
         // Par défaut : le premier moyen en ligne proposé, sinon la réception.
@@ -241,7 +250,7 @@ export function CheckoutForm({ devise }: { devise: string }) {
             className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
           >
             <option value="RETRAIT_BOUTIQUE">Retrait en boutique</option>
-            <option value="LIVRAISON">Livraison</option>
+            {livraisonActive && <option value="LIVRAISON">Livraison</option>}
           </select>
         </div>
 
@@ -268,7 +277,8 @@ export function CheckoutForm({ devise }: { devise: string }) {
                 id="deliveryZoneId"
                 name="deliveryZoneId"
                 required
-                defaultValue=""
+                value={zoneId}
+                onChange={(e) => setZoneId(e.target.value)}
                 className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
               >
                 <option value="" disabled>
@@ -277,10 +287,31 @@ export function CheckoutForm({ devise }: { devise: string }) {
                 {deliveryZones.map((z) => (
                   <option key={z.id} value={z.id}>
                     {z.nom}
+                    {z.frais ? ` — ${formatMoney(z.frais, devise)}` : " — gratuite"}
                   </option>
                 ))}
               </select>
             </div>
+            {(() => {
+              const zone = deliveryZones.find((z) => z.id === zoneId);
+              if (!zone) return null;
+              const articles = total - emballageTotal;
+              const offerte = seuilGratuite !== null && articles >= seuilGratuite;
+              const frais = offerte ? 0 : (zone.frais ?? 0);
+              return (
+                <p className="text-sm text-foreground">
+                  Frais de livraison :{" "}
+                  <span className="font-semibold text-primary">
+                    {frais > 0 ? formatMoney(frais, devise) : "offerts"}
+                  </span>
+                  {seuilGratuite !== null && !offerte && (zone.frais ?? 0) > 0 && (
+                    <span className="block text-xs text-muted-foreground">
+                      Livraison gratuite dès {formatMoney(seuilGratuite, devise)} d&apos;articles.
+                    </span>
+                  )}
+                </p>
+              );
+            })()}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="lieuDit">Lieu-dit</Label>
               <Input

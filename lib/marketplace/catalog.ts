@@ -58,9 +58,13 @@ export type MarketplaceOrganization = {
   paymentOptions: PaymentOptions;
   // Zones de livraison actives de la boutique vitrine : seuls lieux de
   // livraison possibles. Vide = pas de livraison via l'app (retrait seul).
-  deliveryZones: { id: string; nom: string }[];
+  // Avec leur prix (frais facturés pour la zone). Vide aussi quand la
+  // boutique a désactivé la livraison.
+  deliveryZones: { id: string; nom: string; frais: number }[];
   // Panier minimum (articles TTC) pour être livré ; null = aucun.
   montantMinimumLivraison: number | null;
+  // Livraison offerte au-delà de ce montant d'articles ; null = jamais.
+  montantLivraisonGratuite: number | null;
 };
 
 // API publique cross-organisation (app mobile marketplace, projet séparé) —
@@ -126,6 +130,7 @@ export async function getMarketplaceOrganizations(): Promise<MarketplaceOrganiza
       paymentOptions: shop?.paymentOptions ?? { online: [], reception: true },
       deliveryZones: shop?.deliveryZones ?? [],
       montantMinimumLivraison: shop?.montantMinimumLivraison ?? null,
+      montantLivraisonGratuite: shop?.montantLivraisonGratuite ?? null,
     };
   });
 }
@@ -141,8 +146,9 @@ type ShopResolution = {
   adresse: string | null;
   telephone: string | null;
   paymentOptions: PaymentOptions;
-  deliveryZones: { id: string; nom: string }[];
+  deliveryZones: { id: string; nom: string; frais: number }[];
   montantMinimumLivraison: number | null;
+  montantLivraisonGratuite: number | null;
 };
 
 // Une seule boutique "vitrine" par organisation marketplace — même défaut
@@ -162,7 +168,7 @@ async function resolveMarketplaceShops(): Promise<ShopResolution[]> {
   const orgById = new Map(organizations.map((o) => [o.id, o]));
   const zones = await systemPrisma.deliveryZone.findMany({
     where: { shopId: { in: shops.map((s) => s.id) }, actif: true },
-    select: { id: true, nom: true, shopId: true },
+    select: { id: true, nom: true, shopId: true, frais: true },
     orderBy: { nom: "asc" },
   });
   const resolved = new Map<string, ShopResolution>();
@@ -181,8 +187,15 @@ async function resolveMarketplaceShops(): Promise<ShopResolution[]> {
       adresse: shop.adresse,
       telephone: shop.telephone,
       paymentOptions: paymentOptions(org, shop),
-      deliveryZones: zones.filter((z) => z.shopId === shop.id).map((z) => ({ id: z.id, nom: z.nom })),
+      // Livraison désactivée par la boutique = aucune zone proposée.
+      deliveryZones: shop.livraisonActive
+        ? zones.filter((z) => z.shopId === shop.id).map((z) => ({ id: z.id, nom: z.nom, frais: Number(z.frais) }))
+        : [],
       montantMinimumLivraison: shop.montantMinimumLivraison === null ? null : Number(shop.montantMinimumLivraison),
+      montantLivraisonGratuite:
+        shop.livraisonGratuiteActive && shop.montantLivraisonGratuite !== null
+          ? Number(shop.montantLivraisonGratuite)
+          : null,
     });
   }
   return [...resolved.values()];

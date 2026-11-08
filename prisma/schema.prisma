@@ -335,6 +335,13 @@ model Shop {
   // livré — en dessous, retrait en boutique uniquement. null = pas de
   // minimum. Revérifié côté serveur à chaque commande (create-order.ts).
   montantMinimumLivraison Decimal? @map("montant_minimum_livraison") @db.Decimal(14, 2)
+  // Livraison proposée ou non par la boutique (interrupteur global, en plus
+  // des zones) — désactivée = retrait en boutique uniquement.
+  livraisonActive         Boolean  @default(true) @map("livraison_active")
+  // Livraison offerte au-delà d'un montant d'articles (TTC, hors emballage) :
+  // les frais de la zone ne sont alors pas facturés. Case à cocher + montant.
+  livraisonGratuiteActive Boolean  @default(false) @map("livraison_gratuite_active")
+  montantLivraisonGratuite Decimal? @map("montant_livraison_gratuite") @db.Decimal(14, 2)
 
   organization   Organization    @relation(fields: [organizationId], references: [id])
   userShops      UserShop[]
@@ -812,6 +819,9 @@ model OnlineOrder {
   deliveryZoneId   String?                    @map("delivery_zone_id") @db.Uuid
   zoneLivraisonNom String?                    @map("zone_livraison_nom")
   lieuDit          String?                    @map("lieu_dit")
+  // Frais de livraison facturés, figés à la commande (0 si retrait ou
+  // livraison offerte) — inclus dans totalTtc, comme l'emballage.
+  fraisLivraison   Decimal                    @default(0) @map("frais_livraison") @db.Decimal(12, 2)
   createdAt        DateTime                   @default(now()) @map("created_at")
   confirmedAt      DateTime?                  @map("confirmed_at")
   cancelledAt      DateTime?                  @map("cancelled_at")
@@ -1800,6 +1810,8 @@ model DeliveryZone {
   organizationId String   @map("organization_id") @db.Uuid
   shopId         String   @map("shop_id") @db.Uuid
   nom            String
+  // Frais de livraison facturés pour cette zone (0 = gratuit).
+  frais          Decimal  @default(0) @db.Decimal(12, 2)
   actif          Boolean  @default(true)
   createdAt      DateTime @default(now()) @map("created_at")
 

@@ -57,6 +57,7 @@ export function OnlineOrderDialog({
   lines,
   emballageQuantite,
   emballagePrixUnitaireLabel,
+  fraisLivraisonLabel,
   totalTtc,
   totalTtcLabel,
   saleId,
@@ -73,6 +74,8 @@ export function OnlineOrderDialog({
   lines: OnlineOrderLine[];
   emballageQuantite: number;
   emballagePrixUnitaireLabel: string | null;
+  // Frais de livraison facturés (null si aucun).
+  fraisLivraisonLabel?: string | null;
   totalTtc: number;
   totalTtcLabel: string;
   saleId: string | null;
@@ -134,6 +137,13 @@ export function OnlineOrderDialog({
                   <TableCell className="text-foreground">Emballage</TableCell>
                   <TableCell className="num text-right">{emballageQuantite}</TableCell>
                   <TableCell className="num text-right">{emballagePrixUnitaireLabel}</TableCell>
+                </TableRow>
+              )}
+              {fraisLivraisonLabel && (
+                <TableRow>
+                  <TableCell className="text-foreground">Livraison</TableCell>
+                  <TableCell className="num text-right">1</TableCell>
+                  <TableCell className="num text-right">{fraisLivraisonLabel}</TableCell>
                 </TableRow>
               )}
             </TableBody>

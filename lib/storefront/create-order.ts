@@ -118,8 +118,11 @@ export async function createStorefrontOrder(
       // Sans zone définie, adresse libre comme avant (vitrine web existante).
       let deliveryZoneId: string | null = null;
       let zoneLivraisonNom: string | null = null;
+      let zoneFrais = 0;
       let lieuDit: string | null = null;
       if (modeRetrait === "LIVRAISON") {
+        // Interrupteur global de la boutique (Paramètres de livraison).
+        if (!shop.livraisonActive) throw new Error("LIVRAISON_DESACTIVEE");
         const zones = await tx.deliveryZone.findMany({ where: { shopId, actif: true } });
         if (zones.length > 0) {
           const zone = zones.find((z) => z.id === body.deliveryZoneId);
@@ -128,6 +131,7 @@ export async function createStorefrontOrder(
           if (!lieuDit) throw new Error("LIEU_DIT_REQUIS");
           deliveryZoneId = zone.id;
           zoneLivraisonNom = zone.nom;
+          zoneFrais = Number(zone.frais);
           adresseLivraison = `${zone.nom} — ${lieuDit}`;
         } else if (!adresseLivraison) {
           throw new Error("ADRESSE_REQUISE");
@@ -225,6 +229,19 @@ export async function createStorefrontOrder(
         throw new Error(`MINIMUM_LIVRAISON:${minimumLivraison}`);
       }
 
+      // Frais de livraison = prix de la zone, offerts au-delà du seuil de
+      // gratuité de la boutique (articles TTC hors emballage, prix relus en
+      // base). Figés sur la commande et inclus dans totalTtc — donc dans le
+      // montant payé en ligne.
+      const seuilGratuite =
+        shop.livraisonGratuiteActive && shop.montantLivraisonGratuite !== null
+          ? Number(shop.montantLivraisonGratuite)
+          : null;
+      const fraisLivraison =
+        modeRetrait === "LIVRAISON" && !(seuilGratuite !== null && totalHt + totalTaxe >= seuilGratuite)
+          ? zoneFrais
+          : 0;
+
       // Numéro séquentiel par boutique, retry sur collision rarissime
       // (décision #14/M30) plutôt qu'un compteur dédié comme le ticket-range
       // POS — un volume de commandes en ligne bien plus faible ne justifie
@@ -248,11 +265,12 @@ export async function createStorefrontOrder(
               adresseLivraison,
               deliveryZoneId,
               zoneLivraisonNom,
+              fraisLivraison,
               lieuDit,
               notes,
               totalHt,
               totalTaxe,
-              totalTtc: totalHt + totalTaxe + emballageMontant,
+              totalTtc: totalHt + totalTaxe + emballageMontant + fraisLivraison,
               emballageQuantite,
               emballagePrixUnitaire: emballageMontant > 0 ? emballagePrixUnitaire : null,
               marketplaceCustomerId: options.marketplaceCustomerId ?? null,
@@ -279,7 +297,12 @@ export async function createStorefrontOrder(
         action: "ONLINE_ORDER_CREATED",
         entite: "online_order",
         entiteId: created.id,
-        apres: { numero: created.numero, totalTtc: totalHt + totalTaxe + emballageMontant, emballageQuantite },
+        apres: {
+          numero: created.numero,
+          totalTtc: totalHt + totalTaxe + emballageMontant + fraisLivraison,
+          emballageQuantite,
+          fraisLivraison,
+        },
       });
 
       return { ...created, shopNom: shop.nom };
@@ -330,6 +353,12 @@ export async function createStorefrontOrder(
         {
           error: `La livraison est possible à partir de ${formatMoney(minimum, organization.devise)} d'achats. Ajoutez des articles ou choisissez le retrait en boutique.`,
         },
+        { status: 400 },
+      );
+    }
+    if (error instanceof Error && error.message === "LIVRAISON_DESACTIVEE") {
+      return NextResponse.json(
+        { error: "Cette boutique ne propose pas la livraison pour le moment. Choisissez le retrait en boutique." },
         { status: 400 },
       );
     }

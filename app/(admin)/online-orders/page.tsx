@@ -143,6 +143,9 @@ export default async function OnlineOrdersPage() {
                         ? formatMoney(o.emballagePrixUnitaire, organization.devise)
                         : null
                     }
+                    fraisLivraisonLabel={
+                      Number(o.fraisLivraison) > 0 ? formatMoney(o.fraisLivraison, organization.devise) : null
+                    }
                     totalTtc={Number(o.totalTtc)}
                     totalTtcLabel={formatMoney(o.totalTtc, organization.devise)}
                     saleId={o.saleId}
