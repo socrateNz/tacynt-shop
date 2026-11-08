@@ -4,6 +4,7 @@ import { Eye } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { PhoneLink } from "@/components/phone-link";
 import {
   Dialog,
   DialogContent,
@@ -96,7 +97,7 @@ export function OnlineOrderDialog({
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase">Client</p>
             <p className="text-sm text-foreground">{nomClient}</p>
-            <p className="text-sm text-muted-foreground">{telephoneClient}</p>
+            <PhoneLink telephone={telephoneClient} className="text-sm" />
           </div>
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase">Retrait</p>

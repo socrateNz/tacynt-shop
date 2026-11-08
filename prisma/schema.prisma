@@ -215,6 +215,7 @@ model Organization {
   rentalContracts     RentalContract[]
   rentalLocalities    RentalLocality[]
 
+  deliveryZones DeliveryZone[]
   @@map("organizations")
 }
 
@@ -330,6 +331,10 @@ model Shop {
   // la réception quand le paiement en ligne est actif ? Toujours vrai de fait
   // si le paiement en ligne est inactif (il faut bien un moyen de payer).
   paiementReceptionActif Boolean @default(true) @map("paiement_reception_actif")
+  // Montant minimum des articles (TTC, hors emballage) pour pouvoir être
+  // livré — en dessous, retrait en boutique uniquement. null = pas de
+  // minimum. Revérifié côté serveur à chaque commande (create-order.ts).
+  montantMinimumLivraison Decimal? @map("montant_minimum_livraison") @db.Decimal(14, 2)
 
   organization   Organization    @relation(fields: [organizationId], references: [id])
   userShops      UserShop[]
@@ -356,6 +361,7 @@ model Shop {
   rentalContracts   RentalContract[]
 
   @@index([organizationId])
+  deliveryZones DeliveryZone[]
   @@map("shops")
 }
 
@@ -799,6 +805,13 @@ model OnlineOrder {
   // statut réel depuis l'app — jamais utilisé pour l'isolation tenant.
   marketplaceCustomerId String?             @map("marketplace_customer_id") @db.Uuid
   modePaiement     OnlineOrderPaymentMode     @default(RECEPTION) @map("mode_paiement")
+  // Livraison : zone choisie dans la liste de la boutique + lieu-dit libre
+  // (repère précis). Nom de zone dénormalisé, figé à la commande même si la
+  // zone est renommée/désactivée ensuite. adresseLivraison reste renseignée
+  // ("Zone — lieu-dit") pour tous les affichages existants.
+  deliveryZoneId   String?                    @map("delivery_zone_id") @db.Uuid
+  zoneLivraisonNom String?                    @map("zone_livraison_nom")
+  lieuDit          String?                    @map("lieu_dit")
   createdAt        DateTime                   @default(now()) @map("created_at")
   confirmedAt      DateTime?                  @map("confirmed_at")
   cancelledAt      DateTime?                  @map("cancelled_at")
@@ -810,6 +823,7 @@ model OnlineOrder {
   lines        OnlineOrderLine[]
   payments     OnlineOrderPayment[]
   marketplaceCustomer MarketplaceCustomer? @relation(fields: [marketplaceCustomerId], references: [id])
+  deliveryZone        DeliveryZone?        @relation(fields: [deliveryZoneId], references: [id])
 
   @@unique([shopId, numero])
   @@index([organizationId])
@@ -1774,4 +1788,26 @@ model MarketplacePushToken {
 
   @@index([marketplaceCustomerId])
   @@map("marketplace_push_tokens")
+}
+
+// Zones de livraison d'une boutique (quartiers/secteurs desservis), saisies
+// par le personnel. Quand une boutique en a, le client choisit OBLIGATOIREMENT
+// l'une d'elles pour être livré (+ un lieu-dit libre) — jamais une adresse
+// hors zone. Jamais supprimée : désactivée (actif = false), les commandes
+// passées gardent leur nom de zone figé (OnlineOrder.zoneLivraisonNom).
+model DeliveryZone {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  shopId         String   @map("shop_id") @db.Uuid
+  nom            String
+  actif          Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  shop         Shop          @relation(fields: [shopId], references: [id])
+  onlineOrders OnlineOrder[]
+
+  @@index([organizationId])
+  @@index([shopId])
+  @@map("delivery_zones")
 }

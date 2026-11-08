@@ -14,6 +14,11 @@ import { useCart } from "../../cart-context";
 type Provider = "CODEES" | "STRIPE";
 type PaymentChoice = "RECEPTION" | Provider;
 type PaymentOptions = { online: Provider[]; reception: boolean };
+type ShopSettings = {
+  paymentOptions?: PaymentOptions;
+  deliveryZones?: { id: string; nom: string }[];
+  montantMinimumLivraison?: number | null;
+};
 
 const CHOICE_LABEL: Record<PaymentChoice, string> = {
   RECEPTION: "Payer à la réception",
@@ -28,6 +33,8 @@ export function CheckoutForm({ devise }: { devise: string }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [paymentOptions, setPaymentOptions] = useState<PaymentOptions | null>(null);
+  const [deliveryZones, setDeliveryZones] = useState<{ id: string; nom: string }[]>([]);
+  const [minimumLivraison, setMinimumLivraison] = useState<number | null>(null);
   const [choice, setChoice] = useState<PaymentChoice>("RECEPTION");
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const isOnline = choice !== "RECEPTION";
@@ -40,8 +47,10 @@ export function CheckoutForm({ devise }: { devise: string }) {
     let cancelled = false;
     fetch(`/api/storefront/shops/${cart.shopId}`)
       .then((res) => res.json())
-      .then((data: { paymentOptions?: PaymentOptions }) => {
+      .then((data: ShopSettings) => {
         if (cancelled) return;
+        setDeliveryZones(data.deliveryZones ?? []);
+        setMinimumLivraison(data.montantMinimumLivraison ?? null);
         const options = data.paymentOptions ?? { online: [], reception: true };
         setPaymentOptions(options);
         // Par défaut : le premier moyen en ligne proposé, sinon la réception.
@@ -93,6 +102,8 @@ export function CheckoutForm({ devise }: { devise: string }) {
           emailClient: formData.get("emailClient"),
           modeRetrait,
           adresseLivraison: formData.get("adresseLivraison"),
+          deliveryZoneId: formData.get("deliveryZoneId"),
+          lieuDit: formData.get("lieuDit"),
           notes: formData.get("notes"),
           lines: cart.items.map((i) => ({ variantId: i.variantId, quantite: i.quantite })),
           emballageQuantite: cart.emballageQuantite,
@@ -234,7 +245,56 @@ export function CheckoutForm({ devise }: { devise: string }) {
           </select>
         </div>
 
-        {modeRetrait === "LIVRAISON" && (
+        {minimumLivraison !== null && (
+          <p
+            className={
+              modeRetrait === "LIVRAISON" && total - emballageTotal < minimumLivraison
+                ? "text-sm font-medium text-destructive"
+                : "text-xs text-muted-foreground"
+            }
+          >
+            Livraison possible à partir de {formatMoney(minimumLivraison, devise)} d&apos;articles
+            {total - emballageTotal < minimumLivraison
+              ? ` — il manque ${formatMoney(minimumLivraison - (total - emballageTotal), devise)}.`
+              : "."}
+          </p>
+        )}
+
+        {modeRetrait === "LIVRAISON" && deliveryZones.length > 0 && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="deliveryZoneId">Zone de livraison</Label>
+              <select
+                id="deliveryZoneId"
+                name="deliveryZoneId"
+                required
+                defaultValue=""
+                className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
+              >
+                <option value="" disabled>
+                  Choisir une zone desservie…
+                </option>
+                {deliveryZones.map((z) => (
+                  <option key={z.id} value={z.id}>
+                    {z.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="lieuDit">Lieu-dit</Label>
+              <Input
+                id="lieuDit"
+                name="lieuDit"
+                required
+                maxLength={300}
+                placeholder="Repère, rue, immeuble, couleur du portail…"
+              />
+            </div>
+          </>
+        )}
+
+        {modeRetrait === "LIVRAISON" && deliveryZones.length === 0 && (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="adresseLivraison">Adresse de livraison</Label>
             <Input id="adresseLivraison" name="adresseLivraison" required />

@@ -79,6 +79,12 @@ function buildGroups({
           // Deux axes distincts : la capacité du rôle ET le module payé.
           show: can("ecommerce:manage") && ecommerceEnabled,
         },
+        {
+          href: "/delivery-zones",
+          label: "Zones de livraison",
+          icon: "MapPin",
+          show: can("ecommerce:manage") && ecommerceEnabled,
+        },
       ],
     },
     {

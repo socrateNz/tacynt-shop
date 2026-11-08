@@ -58,6 +58,7 @@ export default async function RentalContractsPage() {
     unitDesignation: c.rentalUnit.designation,
     shopNom: c.shop.nom,
     nomClient: c.nomClient,
+    telephoneClient: c.telephoneClient,
     statut: c.statut,
     dureeMois: c.dureeMois,
     montantMensuelLabel: formatMoney(c.montantMensuel, organization.devise),

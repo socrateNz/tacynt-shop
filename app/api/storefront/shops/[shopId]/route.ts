@@ -18,7 +18,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ shop
   const { shopId } = await params;
   const shop = await systemPrisma.shop.findFirst({
     where: { id: shopId, organizationId: organization.id, actif: true },
-    select: { paiementEnLigneActif: true, paiementReceptionActif: true },
+    select: {
+      paiementEnLigneActif: true,
+      paiementReceptionActif: true,
+      montantMinimumLivraison: true,
+      deliveryZones: { where: { actif: true }, select: { id: true, nom: true }, orderBy: { nom: "asc" } },
+    },
   });
   if (!shop) {
     return NextResponse.json({ error: "Boutique introuvable." }, { status: 404 });
@@ -29,5 +34,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ shop
   return NextResponse.json({
     paiementEnLigneActif: shop.paiementEnLigneActif,
     paymentOptions: paymentOptions(organization, shop),
+    // Zones de livraison actives : quand il y en a, la livraison se fait
+    // uniquement dans l'une d'elles (+ lieu-dit).
+    deliveryZones: shop.deliveryZones,
+    montantMinimumLivraison: shop.montantMinimumLivraison === null ? null : Number(shop.montantMinimumLivraison),
   });
 }

@@ -543,7 +543,10 @@ export default async function Home({
   ).sort((a, b) => a.localeCompare(b));
 
   const itemLabel = `${items.length} article${items.length > 1 ? "s" : ""} disponible${items.length > 1 ? "s" : ""}`;
-  const unitLabel = `${units.length} logement${units.length > 1 ? "s" : ""} disponible${units.length > 1 ? "s" : ""}`;
+  // Compte réel des logements libres — les occupés restent listés mais ne
+  // sont jamais comptés comme disponibles.
+  const freeUnits = units.filter((u) => !u.occupe).length;
+  const unitLabel = `${freeUnits} logement${freeUnits > 1 ? "s" : ""} disponible${freeUnits > 1 ? "s" : ""}`;
 
   // Les deux modules actifs : un seul catalogue sous forme de deux onglets,
   // jamais deux pages séparées (décision explicite de l'utilisateur).

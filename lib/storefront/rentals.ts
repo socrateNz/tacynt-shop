@@ -16,6 +16,9 @@ export type StorefrontRentalUnit = {
   surfaceM2: number | null;
   nombrePieces: number | null;
   equipements: string[];
+  // Contrat confirmé ou en cours sur ce logement : toujours affiché (décision
+  // utilisateur), marqué "Occupée", jamais réservable.
+  occupe: boolean;
 };
 
 export type StorefrontRentalUnitDetail = StorefrontRentalUnit & {
@@ -54,8 +57,9 @@ export async function getStorefrontRentalUnits(
     orderBy: { designation: "asc" },
   });
 
+  // Les logements occupés restent visibles (marqués "Occupée"), mais
+  // toujours après les disponibles.
   return units
-    .filter((u) => u.contracts.length === 0)
     .map((u) => ({
       id: u.id,
       type: u.type,
@@ -68,7 +72,9 @@ export async function getStorefrontRentalUnits(
       surfaceM2: u.surfaceM2,
       nombrePieces: u.nombrePieces,
       equipements: u.equipements,
-    }));
+      occupe: u.contracts.length > 0,
+    }))
+    .sort((a, b) => Number(a.occupe) - Number(b.occupe));
 }
 
 export async function getStorefrontRentalUnitDetail(
@@ -97,6 +103,7 @@ export async function getStorefrontRentalUnitDetail(
     surfaceM2: unit.surfaceM2,
     nombrePieces: unit.nombrePieces,
     equipements: unit.equipements,
+    occupe: !available,
     available,
   };
 }

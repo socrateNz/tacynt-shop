@@ -7,6 +7,7 @@ import { Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PhoneLink } from "@/components/phone-link";
 import {
   Table,
   TableBody,
@@ -38,6 +39,7 @@ export type ContractRow = {
   unitDesignation: string;
   shopNom: string;
   nomClient: string;
+  telephoneClient: string;
   statut: string;
   dureeMois: number;
   montantMensuelLabel: string;
@@ -55,6 +57,7 @@ export function ContractsTable({ contracts }: { contracts: ContractRow[] }) {
         term &&
         !c.numero.toLowerCase().includes(term) &&
         !c.nomClient.toLowerCase().includes(term) &&
+        !c.telephoneClient.replace(/\s/g, "").includes(term.replace(/\s/g, "")) &&
         !c.unitDesignation.toLowerCase().includes(term)
       ) {
         return false;
@@ -118,7 +121,12 @@ export function ContractsTable({ contracts }: { contracts: ContractRow[] }) {
                 </TableCell>
                 <TableCell className="text-foreground">{c.unitDesignation}</TableCell>
                 <TableCell className="text-muted-foreground">{c.shopNom}</TableCell>
-                <TableCell className="text-muted-foreground">{c.nomClient}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground">{c.nomClient}</span>
+                    <PhoneLink telephone={c.telephoneClient} className="text-xs" />
+                  </div>
+                </TableCell>
                 <TableCell>
                   <Badge variant={STATUS_BADGE_VARIANT[c.statut] ?? "secondary"}>
                     {STATUS_LABELS[c.statut] ?? c.statut}

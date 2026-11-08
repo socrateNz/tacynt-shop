@@ -6,6 +6,7 @@ import { formatMoney } from "@/lib/money";
 import { RENTAL_UNIT_AMENITY_LABELS, RENTAL_UNIT_TYPE_LABELS } from "@/lib/rentals/types";
 import { getStorefrontOrganization, resolveStorefrontShopId } from "@/lib/storefront/context";
 import { getStorefrontRentalUnitDetail } from "@/lib/storefront/rentals";
+import { cn } from "@/lib/utils";
 
 import { MediaGallery } from "../../../media-gallery";
 import { StorefrontBreadcrumb } from "../../../storefront-breadcrumb";
@@ -51,13 +52,23 @@ export default async function RentalUnitDetailPage({
 
         <div className="flex flex-col gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">
-              {RENTAL_UNIT_TYPE_LABELS[unit.type] ?? unit.type}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm text-muted-foreground">
+                {RENTAL_UNIT_TYPE_LABELS[unit.type] ?? unit.type}
+              </p>
+              <span
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-xs font-semibold text-white",
+                  unit.available ? "bg-success" : "bg-destructive",
+                )}
+              >
+                {unit.available ? "Disponible" : "Occupée"}
+              </span>
+            </div>
             <h1 className="text-2xl font-semibold text-foreground">{unit.designation}</h1>
             {unit.locality && (
               <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-                <MapPin className="size-4 shrink-0" />
+                <MapPin className="size-4 shrink-0 text-primary" />
                 {unit.locality.villeNom
                   ? `${unit.locality.nom}, ${unit.locality.villeNom}`
                   : unit.locality.nom}
@@ -66,11 +77,13 @@ export default async function RentalUnitDetailPage({
           </div>
 
           <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
-            <p className="num text-3xl font-semibold text-foreground">
+            <p className={cn("num text-3xl font-bold", unit.available ? "text-primary" : "text-muted-foreground")}>
               {formatMoney(unit.montantMensuel, organization.devise)}
               <span className="text-sm font-normal text-muted-foreground"> / mois</span>
             </p>
-            <p className="text-sm text-muted-foreground">Durée minimale : {unit.dureeMinMois} mois</p>
+            <p className="text-sm text-muted-foreground">
+              Durée minimale : <span className="font-semibold text-foreground">{unit.dureeMinMois} mois</span>
+            </p>
             {unit.surfaceM2 !== null && (
               <p className="text-sm text-muted-foreground">Surface : {unit.surfaceM2} m²</p>
             )}
@@ -108,8 +121,8 @@ export default async function RentalUnitDetailPage({
               devise={organization.devise}
             />
           ) : (
-            <p className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
-              Ce logement n&apos;est plus disponible pour l&apos;instant.
+            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+              Ce logement est actuellement occupé — les réservations ne sont pas possibles pour le moment.
             </p>
           )}
         </div>

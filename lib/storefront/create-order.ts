@@ -55,6 +55,8 @@ export async function createStorefrontOrder(
     lines?: OrderLineInput[];
     emballageQuantite?: number;
     modePaiement?: string;
+    deliveryZoneId?: string;
+    lieuDit?: string;
   } | null;
 
   if (!body) {
@@ -66,7 +68,9 @@ export async function createStorefrontOrder(
   const telephoneClient = String(body.telephoneClient ?? "").trim();
   const emailClient = String(body.emailClient ?? "").trim() || null;
   const modeRetrait = body.modeRetrait as OnlineOrderFulfillmentMode;
-  const adresseLivraison = String(body.adresseLivraison ?? "").trim() || null;
+  // Peut être recalculée plus bas ("Zone — lieu-dit") quand la boutique a
+  // des zones de livraison.
+  let adresseLivraison = String(body.adresseLivraison ?? "").trim() || null;
   const notes = String(body.notes ?? "").trim() || null;
   const lines = (body.lines ?? []).filter(
     (l): l is Required<OrderLineInput> =>
@@ -82,7 +86,7 @@ export async function createStorefrontOrder(
     !nomClient ||
     !telephoneClient ||
     !FULFILLMENT_MODES.includes(modeRetrait) ||
-    (modeRetrait === "LIVRAISON" && !adresseLivraison) ||
+    (modeRetrait === "LIVRAISON" && !adresseLivraison && !body.deliveryZoneId) ||
     lines.length === 0
   ) {
     return NextResponse.json(
@@ -108,6 +112,27 @@ export async function createStorefrontOrder(
             : "RECEPTION";
       if (modePaiement === "EN_LIGNE" && payOptions.online.length === 0) throw new Error("MODE_PAIEMENT_INDISPONIBLE");
       if (modePaiement === "RECEPTION" && !payOptions.reception) throw new Error("MODE_PAIEMENT_INDISPONIBLE");
+
+      // Livraison : si la boutique a défini des zones, le client DOIT en
+      // choisir une (jamais une adresse hors zone) et préciser un lieu-dit.
+      // Sans zone définie, adresse libre comme avant (vitrine web existante).
+      let deliveryZoneId: string | null = null;
+      let zoneLivraisonNom: string | null = null;
+      let lieuDit: string | null = null;
+      if (modeRetrait === "LIVRAISON") {
+        const zones = await tx.deliveryZone.findMany({ where: { shopId, actif: true } });
+        if (zones.length > 0) {
+          const zone = zones.find((z) => z.id === body.deliveryZoneId);
+          if (!zone) throw new Error("ZONE_INVALIDE");
+          lieuDit = String(body.lieuDit ?? "").trim().slice(0, 300) || null;
+          if (!lieuDit) throw new Error("LIEU_DIT_REQUIS");
+          deliveryZoneId = zone.id;
+          zoneLivraisonNom = zone.nom;
+          adresseLivraison = `${zone.nom} — ${lieuDit}`;
+        } else if (!adresseLivraison) {
+          throw new Error("ADRESSE_REQUISE");
+        }
+      }
 
       // Codees exige un email ; inutile si la carte (Stripe) est proposée
       // (désactivée pour l'instant, voir CARTE_ACTIVE).
@@ -193,6 +218,13 @@ export async function createStorefrontOrder(
       // n'en propose un, pas de montant — jamais inventé côté serveur.
       const emballageMontant = emballageQuantite > 0 ? emballageQuantite * emballagePrixUnitaire : 0;
 
+      // Panier minimum de livraison de la boutique : calculé sur les prix
+      // RELUS en base (jamais ceux du client), articles TTC hors emballage.
+      const minimumLivraison = shop.montantMinimumLivraison === null ? 0 : Number(shop.montantMinimumLivraison);
+      if (modeRetrait === "LIVRAISON" && minimumLivraison > 0 && totalHt + totalTaxe < minimumLivraison) {
+        throw new Error(`MINIMUM_LIVRAISON:${minimumLivraison}`);
+      }
+
       // Numéro séquentiel par boutique, retry sur collision rarissime
       // (décision #14/M30) plutôt qu'un compteur dédié comme le ticket-range
       // POS — un volume de commandes en ligne bien plus faible ne justifie
@@ -214,6 +246,9 @@ export async function createStorefrontOrder(
               modeRetrait,
               modePaiement,
               adresseLivraison,
+              deliveryZoneId,
+              zoneLivraisonNom,
+              lieuDit,
               notes,
               totalHt,
               totalTaxe,
@@ -288,6 +323,30 @@ export async function createStorefrontOrder(
           ? `Il ne reste que ${stockDisponible} ${designation} en stock.`
           : "Un article de la commande est en rupture de stock.";
       return NextResponse.json({ error: message }, { status: 400 });
+    }
+    if (error instanceof Error && error.message.startsWith("MINIMUM_LIVRAISON:")) {
+      const minimum = Number(error.message.split(":")[1]);
+      return NextResponse.json(
+        {
+          error: `La livraison est possible à partir de ${formatMoney(minimum, organization.devise)} d'achats. Ajoutez des articles ou choisissez le retrait en boutique.`,
+        },
+        { status: 400 },
+      );
+    }
+    if (error instanceof Error && error.message === "ZONE_INVALIDE") {
+      return NextResponse.json(
+        { error: "Choisissez une zone de livraison proposée par la boutique." },
+        { status: 400 },
+      );
+    }
+    if (error instanceof Error && error.message === "LIEU_DIT_REQUIS") {
+      return NextResponse.json(
+        { error: "Précisez le lieu-dit (repère, rue, immeuble…) pour la livraison." },
+        { status: 400 },
+      );
+    }
+    if (error instanceof Error && error.message === "ADRESSE_REQUISE") {
+      return NextResponse.json({ error: "L'adresse de livraison est requise." }, { status: 400 });
     }
     if (error instanceof Error && error.message === "MODE_PAIEMENT_INDISPONIBLE") {
       return NextResponse.json(

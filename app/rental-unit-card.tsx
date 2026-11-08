@@ -14,9 +14,9 @@ const AMENITY_PREVIEW_COUNT = 3;
 // Carte inspirée des annonces de location type plateforme immobilière
 // (référence fournie par l'utilisateur) : mini-carrousel à points, badge de
 // type, localisation, surface/pièces, aperçu équipements, prix mis en
-// avant, statut de disponibilité. "Disponible immédiatement" est toujours
-// vrai ici : la liste qui alimente cette carte exclut déjà les logements
-// occupés (voir getStorefrontRentalUnits).
+// avant, statut de disponibilité. Les logements occupés restent affichés
+// (décision utilisateur), en retrait et marqués "Occupée" ; les éléments
+// importants (statut, prix) sont en couleur pour attirer l'œil.
 export function RentalUnitCard({
   unit,
   devise,
@@ -33,7 +33,12 @@ export function RentalUnitCard({
   const extraAmenitiesCount = unit.equipements.length - visibleAmenities.length;
 
   return (
-    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-border bg-card p-3 transition-colors hover:border-primary/40 sm:p-4">
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-2 rounded-xl border border-border bg-card p-3 transition-colors hover:border-primary/40 sm:p-4",
+        unit.occupe && "bg-muted/40",
+      )}
+    >
       <div className="relative">
         <Link href={href} className="block">
           {unit.imageIds.length > 0 ? (
@@ -41,7 +46,10 @@ export function RentalUnitCard({
             <img
               src={`/api/rentals/units/${unit.id}/images/${unit.imageIds[activeImage]}`}
               alt={unit.designation}
-              className="aspect-4/3 w-full rounded-lg border border-border object-cover"
+              className={cn(
+                "aspect-4/3 w-full rounded-lg border border-border object-cover",
+                unit.occupe && "opacity-60 grayscale",
+              )}
             />
           ) : (
             <div className="aspect-4/3 w-full rounded-lg border border-dashed border-border" />
@@ -50,6 +58,15 @@ export function RentalUnitCard({
 
         <span className="absolute top-2 left-2 rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium text-foreground shadow-sm backdrop-blur-sm">
           {typeLabel}
+        </span>
+
+        <span
+          className={cn(
+            "absolute top-2 right-2 rounded-full px-2 py-0.5 text-xs font-semibold text-white shadow-sm",
+            unit.occupe ? "bg-destructive" : "bg-success",
+          )}
+        >
+          {unit.occupe ? "Occupée" : "Disponible"}
         </span>
 
         {unit.imageIds.length > 1 && (
@@ -82,7 +99,7 @@ export function RentalUnitCard({
           {unit.designation}
         </Link>
         <div className="shrink-0 text-right">
-          <p className="num text-sm font-semibold text-foreground">
+          <p className={cn("num text-sm font-bold", unit.occupe ? "text-muted-foreground" : "text-primary")}>
             {formatMoney(unit.montantMensuel, devise)}
           </p>
           <p className="text-xs text-muted-foreground">/ mois</p>
@@ -91,7 +108,7 @@ export function RentalUnitCard({
 
       {unit.locality && (
         <p className="flex items-center gap-1 text-xs text-muted-foreground">
-          <MapPin className="size-3 shrink-0" />
+          <MapPin className="size-3 shrink-0 text-primary" />
           {unit.locality.villeNom ? `${unit.locality.nom}, ${unit.locality.villeNom}` : unit.locality.nom}
         </p>
       )}
@@ -132,8 +149,10 @@ export function RentalUnitCard({
       )}
 
       <div className="mt-auto flex items-center gap-1.5 pt-1">
-        <span className="size-1.5 shrink-0 rounded-full bg-success" />
-        <span className="text-xs text-muted-foreground">Disponible immédiatement</span>
+        <span className={cn("size-2 shrink-0 rounded-full", unit.occupe ? "bg-destructive" : "bg-success")} />
+        <span className={cn("text-xs font-semibold", unit.occupe ? "text-destructive" : "text-success")}>
+          {unit.occupe ? "Occupée — non réservable pour le moment" : "Disponible immédiatement"}
+        </span>
       </div>
     </div>
   );

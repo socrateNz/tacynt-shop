@@ -111,7 +111,8 @@ BEGIN
     'lots', 'serial_numbers',
     'online_orders', 'online_order_lines',
     'rental_units', 'rental_unit_images', 'rental_contracts',
-    'rental_installments', 'rental_payments'
+    'rental_installments', 'rental_payments',
+    'delivery_zones'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);

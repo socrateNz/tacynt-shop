@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PhoneLink } from "@/components/phone-link";
 import {
   Table,
   TableBody,
@@ -152,7 +153,7 @@ export default async function RentalContractDetailPage({
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Client</p>
           <p className="text-foreground">{contract.nomClient}</p>
-          <p className="text-sm text-muted-foreground">{contract.telephoneClient}</p>
+          <PhoneLink telephone={contract.telephoneClient} className="text-sm" />
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Durée</p>
