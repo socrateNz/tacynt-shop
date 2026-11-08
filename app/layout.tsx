@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import Script from "next/script";
+import { ThemeSync } from "@/components/theme-sync";
 import { RegisterServiceWorker } from "./register-sw";
 import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         {children}
         <RegisterServiceWorker />
+        <ThemeSync />
       </body>
     </html>
   );

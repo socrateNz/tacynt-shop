@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MobileNav, SidebarNav, type NavGroup, type NavLink } from "@/components/ui/sidebar-nav";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { hasCapability, type Capability, type Role } from "@/lib/permissions";
@@ -260,32 +261,35 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               canSwitch={hasCapability(ctx.role, "shops:manage")}
             />
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" className="shrink-0 gap-2 px-1.5" />}>
-              <Avatar size="sm">
-                <AvatarFallback>{(user?.nom ?? user?.email ?? "?").slice(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <span className="hidden text-sm text-foreground sm:inline">{user?.nom ?? user?.email}</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-auto min-w-48 max-w-[calc(100vw-2rem)]">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>
-                  <span className="block text-foreground">{user?.nom ?? user?.email}</span>
-                  <span className="block text-xs font-normal text-muted-foreground">{user?.email}</span>
-                </DropdownMenuLabel>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <form action="/api/auth/logout" method="POST">
-                <Button
-                  type="submit"
-                  variant="ghost"
-                  className="w-full justify-start px-1.5 font-normal"
-                >
-                  Se déconnecter
-                </Button>
-              </form>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex shrink-0 items-center gap-1">
+            <ThemeToggle />
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" className="shrink-0 gap-2 px-1.5" />}>
+                <Avatar size="sm">
+                  <AvatarFallback>{(user?.nom ?? user?.email ?? "?").slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="hidden text-sm text-foreground sm:inline">{user?.nom ?? user?.email}</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-auto min-w-48 max-w-[calc(100vw-2rem)]">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>
+                    <span className="block text-foreground">{user?.nom ?? user?.email}</span>
+                    <span className="block text-xs font-normal text-muted-foreground">{user?.email}</span>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <form action="/api/auth/logout" method="POST">
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    className="w-full justify-start px-1.5 font-normal"
+                  >
+                    Se déconnecter
+                  </Button>
+                </form>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </header>
         {ctx.organizationStatus === "GRACE_PERIOD" && (
           <div className="no-print shrink-0 border-b border-warning/30 bg-warning/10 px-4 py-2 lg:px-6 text-sm text-foreground">

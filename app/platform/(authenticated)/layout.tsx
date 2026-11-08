@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MobileNav, SidebarNav, type NavLink } from "@/components/ui/sidebar-nav";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { platformPrisma } from "@/lib/db/platform-client";
 import { getPlatformAdminContext } from "@/lib/platform/context";
 
@@ -43,29 +44,32 @@ export default async function PlatformLayout({ children }: { children: ReactNode
             <MobileNav brand="Tacynt Shop" topLinks={topLinks} logoutAction="/api/platform/auth/logout" />
             <span className="truncate text-sm font-semibold text-foreground">Espace admin plateforme</span>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" className="shrink-0 gap-2 px-1.5" />}>
-              <Avatar size="sm">
-                <AvatarFallback>{(admin?.email ?? "?").slice(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <span className="hidden text-sm text-foreground sm:inline">{admin?.email}</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-auto min-w-48 max-w-[calc(100vw-2rem)]">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>{admin?.email}</DropdownMenuLabel>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <form action="/api/platform/auth/logout" method="POST">
-                <Button
-                  type="submit"
-                  variant="ghost"
-                  className="w-full justify-start px-1.5 font-normal"
-                >
-                  Se déconnecter
-                </Button>
-              </form>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex shrink-0 items-center gap-1">
+            <ThemeToggle />
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" className="shrink-0 gap-2 px-1.5" />}>
+                <Avatar size="sm">
+                  <AvatarFallback>{(admin?.email ?? "?").slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="hidden text-sm text-foreground sm:inline">{admin?.email}</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-auto min-w-48 max-w-[calc(100vw-2rem)]">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>{admin?.email}</DropdownMenuLabel>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <form action="/api/platform/auth/logout" method="POST">
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    className="w-full justify-start px-1.5 font-normal"
+                  >
+                    Se déconnecter
+                  </Button>
+                </form>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </header>
         <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-6 md:px-6 lg:py-10">
           <div className="w-full">{children}</div>
