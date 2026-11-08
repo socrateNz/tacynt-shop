@@ -22,6 +22,11 @@ export const MODULE_CATALOG = [
     desc: "Location de logements (chambres, studios, appartements, villas) : échéancier et suivi des paiements.",
   },
   {
+    key: "blanchisserie",
+    label: "Blanchisserie",
+    desc: "Catalogue de pièces à laver (prix par pièce), commandes avec collecte/dépôt et recomptage.",
+  },
+  {
     key: "marketplace",
     label: "Marketplace mobile",
     desc: "Produits et logements visibles dans l'application mobile multi-boutiques.",

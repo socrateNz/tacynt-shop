@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
+import { verifyLaundryPayment } from "@/lib/laundry/payments";
 import { verifyAndApplyPayment } from "@/lib/payments/service";
 
 // Hors de app/api/storefront/ : Codees n'a aucune notion des sous-domaines
@@ -40,6 +41,19 @@ export async function POST(request: Request) {
     });
 
     if (!match) {
+      // Paiement de blanchisserie (table distincte, même compte Codees).
+      const laundry = await systemPrisma.laundryPayment.findFirst({
+        where: { referenceExterne: candidateId },
+        select: { id: true, organizationId: true, shopId: true },
+      });
+      if (laundry) {
+        try {
+          await verifyLaundryPayment({ organizationId: laundry.organizationId, shopId: laundry.shopId }, laundry.id);
+        } catch (error) {
+          console.error("Échec de la vérification d'un paiement blanchisserie (webhook Codees) :", error);
+        }
+        return NextResponse.json({ received: true });
+      }
       console.error("Webhook Codees : aucun paiement ne correspond à", candidateId);
       return NextResponse.json({ received: true });
     }

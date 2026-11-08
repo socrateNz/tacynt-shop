@@ -216,6 +216,9 @@ model Organization {
   rentalLocalities    RentalLocality[]
 
   deliveryZones DeliveryZone[]
+  laundryItems  LaundryItem[]
+  laundryOrders LaundryOrder[]
+  laundryPayments LaundryPayment[]
   @@map("organizations")
 }
 
@@ -367,6 +370,9 @@ model Shop {
   rentalUnits       RentalUnit[]
   rentalContracts   RentalContract[]
 
+  laundryItems  LaundryItem[]
+  laundryOrders LaundryOrder[]
+  laundryPayments LaundryPayment[]
   @@index([organizationId])
   deliveryZones DeliveryZone[]
   @@map("shops")
@@ -1013,6 +1019,7 @@ model Customer {
   onlineOrders   OnlineOrder[]
   rentalContracts RentalContract[]
 
+  laundryOrders  LaundryOrder[]
   @@index([organizationId])
   @@map("customers")
 }
@@ -1759,6 +1766,7 @@ model MarketplaceCustomer {
   onlineOrders   OnlineOrder[]
   rentalRequests RentalContract[]
 
+  laundryOrders  LaundryOrder[]
   @@map("marketplace_customers")
 }
 
@@ -1819,7 +1827,172 @@ model DeliveryZone {
   shop         Shop          @relation(fields: [shopId], references: [id])
   onlineOrders OnlineOrder[]
 
+  laundryOrders LaundryOrder[]
   @@index([organizationId])
   @@index([shopId])
   @@map("delivery_zones")
+}
+
+// ---------------------------------------------------------------------------
+// Module Blanchisserie : une boutique publie son catalogue (prix par pièce),
+// le client déclare ses pièces et commande ; la collecte/le retour
+// s'organisent hors ligne (pas de créneaux). Le personnel recompte à la
+// collecte : le client paie le montant DÉCLARÉ, la différence est
+// régularisée au retour (en plus ou en moins). Tables scopées boutique
+// (RLS), jamais de suppression (désactivation / annulation).
+// ---------------------------------------------------------------------------
+
+enum LaundryOrderStatus {
+  EN_ATTENTE
+  CONFIRMEE
+  COLLECTEE
+  EN_LAVAGE
+  PRETE
+  TERMINEE
+  ANNULEE
+
+  @@map("laundry_order_status")
+}
+
+// Aller : le linge est collecté chez le client ou déposé en boutique.
+enum LaundryPickupMode {
+  COLLECTE_DOMICILE
+  DEPOT_BOUTIQUE
+
+  @@map("laundry_pickup_mode")
+}
+
+// Retour : livré chez le client ou récupéré en boutique.
+enum LaundryReturnMode {
+  LIVRAISON
+  RETRAIT_BOUTIQUE
+
+  @@map("laundry_return_mode")
+}
+
+model LaundryItem {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  shopId         String   @map("shop_id") @db.Uuid
+  nom            String
+  // Regroupement facultatif dans le catalogue (Hauts, Bas, Linge de maison…).
+  categorie      String?
+  prixUnitaire   Decimal  @map("prix_unitaire") @db.Decimal(12, 2)
+  actif          Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  shop         Shop               @relation(fields: [shopId], references: [id])
+  lines        LaundryOrderLine[]
+
+  @@index([organizationId])
+  @@index([shopId])
+  @@map("laundry_items")
+}
+
+model LaundryOrder {
+  id                    String             @id @default(uuid()) @db.Uuid
+  organizationId        String             @map("organization_id") @db.Uuid
+  shopId                String             @map("shop_id") @db.Uuid
+  numero                String
+  customerId            String?            @map("customer_id") @db.Uuid
+  marketplaceCustomerId String?            @map("marketplace_customer_id") @db.Uuid
+  // Identité de contact figée à la commande (même règle que OnlineOrder).
+  nomClient             String             @map("nom_client")
+  telephoneClient       String             @map("telephone_client")
+  emailClient           String?            @map("email_client")
+  modeAller             LaundryPickupMode  @map("mode_aller")
+  modeRetour            LaundryReturnMode  @map("mode_retour")
+  // Zone + lieu-dit, requis dès qu'un trajet se fait à domicile (zones de
+  // livraison de la boutique, partagées avec l'e-commerce).
+  deliveryZoneId        String?            @map("delivery_zone_id") @db.Uuid
+  zoneLivraisonNom      String?            @map("zone_livraison_nom")
+  lieuDit               String?            @map("lieu_dit")
+  notes                 String?
+  statut                LaundryOrderStatus @default(EN_ATTENTE)
+  // Paiement du montant déclaré : à la réception (au dépôt/à la collecte)
+  // ou en ligne (Mobile Money), selon les options de la boutique.
+  modePaiement          OnlineOrderPaymentMode @default(RECEPTION) @map("mode_paiement")
+  // Articles déclarés par le client (prix figés) — base du paiement.
+  montantDeclare        Decimal            @map("montant_declare") @db.Decimal(14, 2)
+  // Prix de la zone, une fois par trajet à domicile (0 sinon).
+  fraisCollecte         Decimal            @default(0) @map("frais_collecte") @db.Decimal(12, 2)
+  fraisLivraison        Decimal            @default(0) @map("frais_livraison") @db.Decimal(12, 2)
+  // Montant dû à la commande = montantDeclare + frais.
+  totalDeclare          Decimal            @map("total_declare") @db.Decimal(14, 2)
+  // Après recomptage : articles réellement reçus, et différence à régler
+  // au retour (positive = le client doit, négative = à lui rendre).
+  montantRecompte       Decimal?           @map("montant_recompte") @db.Decimal(14, 2)
+  regularisation        Decimal?           @db.Decimal(14, 2)
+  recompteAt            DateTime?          @map("recompte_at")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  confirmedAt           DateTime?          @map("confirmed_at")
+  collectedAt           DateTime?          @map("collected_at")
+  readyAt               DateTime?          @map("ready_at")
+  completedAt           DateTime?          @map("completed_at")
+  cancelledAt           DateTime?          @map("cancelled_at")
+
+  organization        Organization         @relation(fields: [organizationId], references: [id])
+  shop                Shop                 @relation(fields: [shopId], references: [id])
+  customer            Customer?            @relation(fields: [customerId], references: [id])
+  marketplaceCustomer MarketplaceCustomer? @relation(fields: [marketplaceCustomerId], references: [id])
+  deliveryZone        DeliveryZone?        @relation(fields: [deliveryZoneId], references: [id])
+  lines               LaundryOrderLine[]
+  payments            LaundryPayment[]
+
+  @@unique([shopId, numero])
+  @@index([organizationId])
+  @@index([shopId])
+  @@index([marketplaceCustomerId])
+  @@map("laundry_orders")
+}
+
+model LaundryOrderLine {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  shopId            String   @map("shop_id") @db.Uuid
+  laundryOrderId    String   @map("laundry_order_id") @db.Uuid
+  laundryItemId     String   @map("laundry_item_id") @db.Uuid
+  // Figés à la commande : un changement de prix/nom au catalogue ne modifie
+  // jamais une commande passée.
+  designation       String
+  prixUnitaire      Decimal  @map("prix_unitaire") @db.Decimal(12, 2)
+  quantiteDeclaree  Int      @map("quantite_declaree")
+  // Renseignée au recomptage (null tant que non recompté).
+  quantiteRecomptee Int?     @map("quantite_recomptee")
+
+  laundryOrder LaundryOrder @relation(fields: [laundryOrderId], references: [id])
+  laundryItem  LaundryItem  @relation(fields: [laundryItemId], references: [id])
+
+  @@index([organizationId])
+  @@index([laundryOrderId])
+  @@map("laundry_order_lines")
+}
+
+// Tentative de paiement en ligne du montant déclaré d'une commande de
+// blanchisserie — même cycle que OnlineOrderPayment (Codees / Stripe, page
+// de paiement hébergée, statut toujours relu chez le prestataire), table
+// distincte pour ne rien changer au paiement e-commerce existant.
+model LaundryPayment {
+  id               String                   @id @default(uuid()) @db.Uuid
+  organizationId   String                   @map("organization_id") @db.Uuid
+  shopId           String                   @map("shop_id") @db.Uuid
+  laundryOrderId   String                   @map("laundry_order_id") @db.Uuid
+  fournisseur      PaymentProvider          @default(CODEES)
+  statut           OnlineOrderPaymentStatus @default(INITIE)
+  montant          Decimal                  @db.Decimal(14, 2)
+  devise           String                   @default("XAF")
+  referenceExterne String?                  @unique @map("reference_externe")
+  dernierStatutBrut String?                 @map("dernier_statut_brut")
+  erreurBrute      String?                  @map("erreur_brute")
+  expiresAt        DateTime                 @map("expires_at")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  shop         Shop         @relation(fields: [shopId], references: [id])
+  laundryOrder LaundryOrder @relation(fields: [laundryOrderId], references: [id])
+
+  @@index([organizationId])
+  @@index([laundryOrderId])
+  @@map("laundry_payments")
 }

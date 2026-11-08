@@ -52,12 +52,16 @@ function buildGroups({
   onlineOrders,
   locationEnabled,
   pendingRentalRequests,
+  laundryEnabled,
+  pendingLaundryOrders,
 }: {
   role: Role;
   ecommerceEnabled: boolean;
   onlineOrders: number;
   locationEnabled: boolean;
   pendingRentalRequests: number;
+  laundryEnabled: boolean;
+  pendingLaundryOrders: number;
 }): NavGroup[] {
   const can = (capability: Capability) => hasCapability(role, capability);
 
@@ -109,6 +113,24 @@ function buildGroups({
           label: "Villes & quartiers",
           icon: "MapPin",
           show: can("location:manage") && locationEnabled,
+        },
+      ],
+    },
+    {
+      label: "Blanchisserie",
+      links: [
+        {
+          href: "/laundry/orders",
+          label: "Commandes",
+          icon: "WashingMachine",
+          badge: pendingLaundryOrders,
+          show: can("laundry:manage") && laundryEnabled,
+        },
+        {
+          href: "/laundry/items",
+          label: "Catalogue",
+          icon: "Shirt",
+          show: can("laundry:manage") && laundryEnabled,
         },
       ],
     },
@@ -230,12 +252,23 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     } as CSSProperties)
     : undefined;
 
+  // Commandes de blanchisserie en attente de prise en charge (badge du menu).
+  const laundryEnabled = organizationHasModule(organization?.enabledModules, "blanchisserie");
+  const pendingLaundryOrders =
+    laundryEnabled && hasCapability(ctx.role, "laundry:manage")
+      ? await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
+          tx.laundryOrder.count({ where: { statut: "EN_ATTENTE" } }),
+        )
+      : 0;
+
   const navGroups = buildGroups({
     role: ctx.role,
     ecommerceEnabled: organizationHasModule(organization?.enabledModules, "ecommerce"),
     onlineOrders: pendingOnlineOrders,
     locationEnabled: organizationHasModule(organization?.enabledModules, "location"),
     pendingRentalRequests,
+    laundryEnabled,
+    pendingLaundryOrders,
   });
 
   return (

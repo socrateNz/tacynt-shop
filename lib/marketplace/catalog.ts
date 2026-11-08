@@ -46,6 +46,8 @@ export type MarketplaceOrganization = {
   devise: string;
   ecommerceEnabled: boolean;
   locationEnabled: boolean;
+  // Module Blanchisserie : catalogue de pièces à laver dans l'app.
+  laundryEnabled: boolean;
   logoUrl: string | null;
   storefrontUrl: string;
   // Coordonnées de la boutique vitrine (même boutique que celle dont le
@@ -90,7 +92,7 @@ async function findMarketplaceOrganizations() {
 // contrat que resolveStorefrontOrganization.
 export async function resolveMarketplaceOrganization(
   organizationId: string,
-  moduleKey: "ecommerce" | "location",
+  moduleKey: "ecommerce" | "location" | "blanchisserie",
 ): Promise<Organization | null> {
   if (!UUID_RE.test(organizationId)) return null;
   const organization = await systemPrisma.organization.findUnique({ where: { id: organizationId } });
@@ -122,6 +124,7 @@ export async function getMarketplaceOrganizations(): Promise<MarketplaceOrganiza
       devise: o.devise,
       ecommerceEnabled: organizationHasModule(o.enabledModules, "ecommerce"),
       locationEnabled: organizationHasModule(o.enabledModules, "location"),
+      laundryEnabled: organizationHasModule(o.enabledModules, "blanchisserie"),
       logoUrl: branding?.hasLogo ? `/api/marketplace/organizations/${o.id}/logo` : null,
       storefrontUrl: storefrontUrl(o.slug, "/"),
       adresse: shop?.adresse ?? null,

@@ -22,6 +22,7 @@ import {
   ReceiptText,
   Settings,
   Shield,
+  Shirt,
   ShoppingBag,
   ShoppingCart,
   Smartphone,
@@ -30,6 +31,7 @@ import {
   Truck,
   UserCog,
   Users,
+  WashingMachine,
   type LucideIcon,
 } from "lucide-react";
 
@@ -60,6 +62,7 @@ const ICONS = {
   ReceiptText,
   Settings,
   Shield,
+  Shirt,
   ShoppingBag,
   ShoppingCart,
   Smartphone,
@@ -68,6 +71,7 @@ const ICONS = {
   Truck,
   UserCog,
   Users,
+  WashingMachine,
 } satisfies Record<string, LucideIcon>;
 
 export type IconKey = keyof typeof ICONS;

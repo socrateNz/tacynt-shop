@@ -147,3 +147,92 @@ export function notifyRentalRequestStatus(contractId: string): Promise<void> {
     await sendToCustomer(contract.marketplaceCustomerId, { ...msg, data: { url: "/reservations" } });
   });
 }
+
+// ---------------------------------------------------------------------------
+// Blanchisserie — mêmes règles : client Sodu uniquement, jamais bloquant.
+// Les commandes de blanchisserie apparaissent dans "Mes commandes" de l'app.
+// ---------------------------------------------------------------------------
+
+async function loadLaundryOrder(orderId: string) {
+  return systemPrisma.laundryOrder.findUnique({
+    where: { id: orderId },
+    select: {
+      numero: true,
+      statut: true,
+      modeAller: true,
+      modeRetour: true,
+      regularisation: true,
+      marketplaceCustomerId: true,
+      organization: { select: { nom: true, devise: true } },
+    },
+  });
+}
+
+function formatAmount(amount: number, devise: string): string {
+  const grouped = String(Math.round(Math.abs(amount))).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return `${grouped} ${devise === "XAF" || devise === "XOF" ? "FCFA" : devise}`;
+}
+
+export function notifyLaundryStatus(orderId: string): Promise<void> {
+  return safely("statut blanchisserie", async () => {
+    const order = await loadLaundryOrder(orderId);
+    if (!order?.marketplaceCustomerId) return;
+    const shop = order.organization.nom;
+    const n = order.numero;
+    const messages: Partial<Record<typeof order.statut, { title: string; body: string }>> = {
+      CONFIRMEE: {
+        title: "Commande de blanchisserie confirmée",
+        body:
+          order.modeAller === "COLLECTE_DOMICILE"
+            ? `${shop} a confirmé votre commande ${n} et vous contactera pour la collecte.`
+            : `${shop} a confirmé votre commande ${n}. Vous pouvez déposer votre linge.`,
+      },
+      COLLECTEE: { title: "Linge reçu", body: `${shop} a bien reçu votre linge (commande ${n}).` },
+      EN_LAVAGE: { title: "Linge en lavage", body: `Votre linge (commande ${n}) est en cours de lavage.` },
+      PRETE: {
+        title: "Linge prêt",
+        body:
+          order.modeRetour === "LIVRAISON"
+            ? `Votre linge (commande ${n}) est prêt : ${shop} vous contacte pour la livraison.`
+            : `Votre linge (commande ${n}) est prêt à être récupéré chez ${shop}.`,
+      },
+      TERMINEE: { title: "Commande terminée", body: `Merci ! Votre commande de blanchisserie ${n} chez ${shop} est terminée.` },
+      ANNULEE: { title: "Commande annulée", body: `Votre commande de blanchisserie ${n} chez ${shop} a été annulée.` },
+    };
+    const msg = messages[order.statut];
+    if (!msg) return;
+    await sendToCustomer(order.marketplaceCustomerId, { ...msg, data: { url: "/commandes" } });
+  });
+}
+
+// Recomptage qui change le montant : le client est prévenu de la
+// régularisation à faire au retour.
+export function notifyLaundryRecount(orderId: string): Promise<void> {
+  return safely("recomptage blanchisserie", async () => {
+    const order = await loadLaundryOrder(orderId);
+    if (!order?.marketplaceCustomerId || order.regularisation === null) return;
+    const regul = Number(order.regularisation);
+    if (regul === 0) return;
+    const montant = formatAmount(regul, order.organization.devise);
+    await sendToCustomer(order.marketplaceCustomerId, {
+      title: "Recomptage de votre linge",
+      body:
+        regul > 0
+          ? `Le nombre de pièces reçues diffère de votre commande ${order.numero} : ${montant} restent à régler au retour.`
+          : `Le nombre de pièces reçues diffère de votre commande ${order.numero} : ${montant} vous seront rendus au retour.`,
+      data: { url: "/commandes" },
+    });
+  });
+}
+
+export function notifyLaundryPaid(orderId: string): Promise<void> {
+  return safely("paiement blanchisserie", async () => {
+    const order = await loadLaundryOrder(orderId);
+    if (!order?.marketplaceCustomerId) return;
+    await sendToCustomer(order.marketplaceCustomerId, {
+      title: "Paiement reçu",
+      body: `Votre paiement pour la commande de blanchisserie ${order.numero} chez ${order.organization.nom} est confirmé.`,
+      data: { url: "/commandes" },
+    });
+  });
+}

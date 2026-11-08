@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
+import { verifyLaundryPayment } from "@/lib/laundry/payments";
 import { verifyAndApplyPayment } from "@/lib/payments/service";
 import { constructStripeEvent } from "@/lib/payments/stripe";
 
@@ -44,6 +45,14 @@ export async function POST(request: Request) {
       select: { id: true, organizationId: true, shopId: true },
     });
     if (!match) {
+      const laundry = await systemPrisma.laundryPayment.findFirst({
+        where: { referenceExterne: session.id, fournisseur: "STRIPE" },
+        select: { id: true, organizationId: true, shopId: true },
+      });
+      if (laundry) {
+        await verifyLaundryPayment({ organizationId: laundry.organizationId, shopId: laundry.shopId }, laundry.id);
+        return NextResponse.json({ received: true });
+      }
       console.error("Webhook Stripe : aucun paiement ne correspond à la session", session.id);
       return NextResponse.json({ received: true });
     }
