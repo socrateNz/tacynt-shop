@@ -23,6 +23,7 @@ import { countryLabel } from "@/lib/tenant/country";
 import {
   CountryForm,
   DeleteOrganizationForm,
+  NameForm,
   ModulesForm,
   OwnerCredentialsForm,
   PlanStatusForm,
@@ -76,6 +77,7 @@ export function OrganizationDetailDialog({
           {slug} — {countryLabel(pays)} — créée le {createdAtLabel}
         </p>
 
+        <NameForm organizationId={organizationId} nom={nom} />
         <PlanStatusForm organizationId={organizationId} plan={plan} statut={statut} />
         <CountryForm organizationId={organizationId} pays={pays} />
         <OwnerCredentialsForm organizationId={organizationId} ownerEmail={ownerEmail} />

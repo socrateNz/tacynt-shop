@@ -72,6 +72,47 @@ export async function updateOrganizationPlanStatus(
   return { error: null };
 }
 
+export type UpdateNameState = { error: string | null; saved?: boolean };
+
+// Nom de la boutique affiché aux clients (hero, en-tête). Ne touche jamais
+// au domaine (sous-domaine) de l'organisation.
+export async function updateOrganizationName(
+  _prevState: UpdateNameState,
+  formData: FormData,
+): Promise<UpdateNameState> {
+  const ctx = await getPlatformAdminContext();
+
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const nom = String(formData.get("nom") ?? "").trim();
+  if (!organizationId || !nom) {
+    return { error: "Le nom de la boutique est requis." };
+  }
+
+  const admin = await platformPrisma.platformAdmin.findUniqueOrThrow({
+    where: { id: ctx.platformAdminId },
+  });
+
+  await withSystemTenantContext(organizationId, async (tx) => {
+    const before = await tx.organization.findUniqueOrThrow({ where: { id: organizationId } });
+    if (before.nom === nom) return;
+
+    await tx.organization.update({ where: { id: organizationId }, data: { nom } });
+
+    await recordAuditLog(tx, {
+      organizationId,
+      userId: null,
+      action: "PLATFORM_NAME_CHANGED",
+      entite: "organization",
+      entiteId: organizationId,
+      avant: { nom: before.nom },
+      apres: { nom, platformAdminEmail: admin.email },
+    });
+  });
+
+  revalidatePath("/platform");
+  return { error: null, saved: true };
+}
+
 export type UpdateCountryState = { error: string | null; saved?: boolean };
 
 // Correction du pays (organisations créées avant l'ajout du champ, qui ont
