@@ -12,7 +12,7 @@ export default function NewOrganizationPage() {
       </header>
 
       <div className="max-w-sm">
-        <NewOrganizationForm />
+        <NewOrganizationForm rootDomain={process.env.APP_ROOT_DOMAIN ?? "localhost:3000"} />
       </div>
     </div>
   );

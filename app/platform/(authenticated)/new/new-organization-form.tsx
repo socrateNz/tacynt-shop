@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,13 +8,15 @@ import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { COUNTRIES } from "@/lib/tenant/country";
 import { CURRENCIES } from "@/lib/tenant/currency";
+import { slugify } from "@/lib/tenant/slugify";
 
 import { createOrganization, type CreateOrganizationState } from "./actions";
 
 const initialState: CreateOrganizationState = { error: null };
 
-export function NewOrganizationForm() {
+export function NewOrganizationForm({ rootDomain }: { rootDomain: string }) {
   const [state, formAction, isPending] = useActionState(createOrganization, initialState);
+  const [domaine, setDomaine] = useState("");
 
   return (
     <form
@@ -30,6 +32,30 @@ export function NewOrganizationForm() {
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="nom">Nom de la boutique</Label>
         <Input id="nom" name="nom" required placeholder="Épicerie du Marché" />
+        <p className="text-xs text-muted-foreground">Le nom affiché aux clients sur la vitrine.</p>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="domaine">Domaine de la boutique</Label>
+        <Input
+          id="domaine"
+          name="domaine"
+          required
+          placeholder="epicerie-marche"
+          value={domaine}
+          onChange={(e) => setDomaine(e.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">
+          {/\p{L}|\p{N}/u.test(domaine) ? (
+            <>
+              Adresse de la boutique :{" "}
+              <span className="font-medium text-foreground">
+                {slugify(domaine)}.{rootDomain}
+              </span>
+            </>
+          ) : (
+            "Sert à construire l'adresse web de la boutique."
+          )}
+        </p>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="ownerNom">Nom du propriétaire</Label>

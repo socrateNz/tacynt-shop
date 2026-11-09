@@ -3,6 +3,10 @@ import { systemPrisma } from "@/lib/db/system-client";
 const ROOT_DOMAIN = process.env.APP_ROOT_DOMAIN ?? "localhost:3000";
 const RESERVED_SUBDOMAINS = new Set(["www", "api"]);
 
+export function isReservedSubdomain(slug: string): boolean {
+  return RESERVED_SUBDOMAINS.has(slug);
+}
+
 // {slug}.localhost:3000 fonctionne nativement sur Windows/Chrome/Edge/
 // Firefox en local, sans édition du fichier hosts (cahier des charges 4.3 :
 // résolution du tenant par sous-domaine).

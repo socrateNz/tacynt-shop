@@ -1,6 +1,5 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 
 import { redirect } from "next/navigation";
 
@@ -10,6 +9,7 @@ import { platformPrisma } from "@/lib/db/platform-client";
 import { withSystemContext } from "@/lib/db/tenant-context";
 import { getPlatformAdminContext } from "@/lib/platform/context";
 import { isValidCountry } from "@/lib/tenant/country";
+import { isReservedSubdomain } from "@/lib/tenant/resolve";
 import { isValidCurrency } from "@/lib/tenant/currency";
 import { requestCertRefresh } from "@/lib/tenant/request-cert-refresh";
 import { slugify } from "@/lib/tenant/slugify";
@@ -27,7 +27,10 @@ export async function createOrganization(
 ): Promise<CreateOrganizationState> {
   const ctx = await getPlatformAdminContext();
 
+  // Nom affiché aux clients (hero, en-tête) ; le domaine, lui, ne sert qu'à
+  // construire le sous-domaine de l'organisation.
   const nom = String(formData.get("nom") ?? "").trim();
+  const domaine = String(formData.get("domaine") ?? "").trim();
   const ownerNom = String(formData.get("ownerNom") ?? "").trim();
   const email = String(formData.get("email") ?? "")
     .trim()
@@ -38,6 +41,7 @@ export async function createOrganization(
 
   if (
     !nom ||
+    !/[\p{L}\p{N}]/u.test(domaine) ||
     !ownerNom ||
     !email ||
     password.length < 8 ||
@@ -46,7 +50,7 @@ export async function createOrganization(
   ) {
     return {
       error:
-        "Nom de boutique, nom et email du propriétaire, mot de passe (8 caractères minimum), pays et devise sont requis.",
+        "Nom et domaine de la boutique, nom et email du propriétaire, mot de passe (8 caractères minimum), pays et devise sont requis.",
     };
   }
   const devise = deviseInput;
@@ -56,13 +60,18 @@ export async function createOrganization(
     where: { id: ctx.platformAdminId },
   });
 
-  const baseSlug = slugify(nom);
+  const slug = slugify(domaine);
+  if (isReservedSubdomain(slug)) {
+    return { error: `Le domaine « ${slug} » est réservé, choisissez-en un autre.` };
+  }
   const hash = await hashPassword(password);
 
   try {
     await withSystemContext(async (tx) => {
-      const existing = await tx.organization.findUnique({ where: { slug: baseSlug } });
-      const slug = existing ? `${baseSlug}-${randomBytes(2).toString("hex")}` : baseSlug;
+      // Le domaine est choisi explicitement : jamais de suffixe ajouté en
+      // silence, l'adresse réelle doit être celle qui a été saisie.
+      const existing = await tx.organization.findUnique({ where: { slug } });
+      if (existing) throw new Error("DOMAINE_PRIS");
 
       const organization = await tx.organization.create({ data: { nom, slug, devise, pays } });
 
@@ -97,7 +106,10 @@ export async function createOrganization(
         apres: { nom, slug, devise, pays, ownerNom, ownerEmail: email, platformAdminEmail: admin.email },
       });
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "DOMAINE_PRIS") {
+      return { error: `Le domaine « ${slug} » est déjà utilisé par une autre organisation.` };
+    }
     return { error: "Impossible de créer l'organisation, réessayez." };
   }
 

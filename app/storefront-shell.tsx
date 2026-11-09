@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import type { Organization } from "@prisma/client";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import { systemPrisma } from "@/lib/db/system-client";
 import { resolveStorefrontShopId } from "@/lib/storefront/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
@@ -69,6 +70,7 @@ export async function StorefrontShell({
               <span className="hidden truncate text-sm text-muted-foreground sm:inline">{tagline}</span>
             </Link>
             <div className="ml-auto flex items-center gap-3">
+              <ThemeToggle />
               {/* Discret à dessein : utile au propriétaire/personnel de la
                   boutique pour rejoindre leur tableau de bord, pas une
                   invitation destinée aux clients qui naviguent la vitrine. */}

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/money";
 
 import { useCart } from "../../cart-context";
+import { CartQuantityInput } from "../../cart-quantity-input";
 
 export function CartView({ devise }: { devise: string }) {
   const { cart, loaded, total, updateQty, setEmballageQty, emballageUnitPrice } = useCart();
@@ -60,13 +61,14 @@ export function CartView({ devise }: { devise: string }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              min={0}
+            <CartQuantityInput
+              as={Input}
+              min={1}
               max={item.stockQuantite ?? undefined}
               value={item.quantite}
-              onChange={(e) => handleQuantityChange(item.variantId, Number(e.target.value))}
+              onCommit={(quantite) => handleQuantityChange(item.variantId, quantite)}
               className="w-20"
+              aria-label="Quantité"
             />
             <Button
               type="button"

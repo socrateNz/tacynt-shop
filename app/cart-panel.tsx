@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
 
 import { useCart } from "./cart-context";
+import { CartQuantityInput } from "./cart-quantity-input";
 
 function CartContents({ devise }: { devise: string }) {
   const { cart, loaded, total, updateQty, setEmballageQty, emballageUnitPrice } = useCart();
@@ -40,12 +41,11 @@ function CartContents({ devise }: { devise: string }) {
                   >
                     −
                   </button>
-                  <input
-                    type="number"
-                    min={0}
+                  <CartQuantityInput
+                    min={1}
                     max={item.stockQuantite ?? undefined}
                     value={item.quantite}
-                    onChange={(e) => updateQty(cart.shopId, item.variantId, Number(e.target.value))}
+                    onCommit={(quantite) => updateQty(cart.shopId, item.variantId, quantite)}
                     className="num w-12 rounded-md border border-border bg-background text-center text-foreground"
                     aria-label="Quantité"
                   />
