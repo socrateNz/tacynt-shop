@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { systemPrisma } from "@/lib/db/system-client";
 import { getMarketplaceCustomer, unauthorized } from "@/lib/marketplace/auth";
+import { paymentFailure } from "@/lib/payments/failure";
 
 // Commandes de blanchisserie du client Sodu connecté, toutes organisations
 // confondues (systemPrisma, toujours filtré sur le compte authentifié —
@@ -16,7 +17,11 @@ export async function GET(request: Request) {
       organization: { select: { id: true, nom: true, devise: true } },
       shop: { select: { telephone: true } },
       lines: { orderBy: { designation: "asc" } },
-      payments: { orderBy: { createdAt: "desc" }, take: 1, select: { statut: true, fournisseur: true } },
+      payments: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { statut: true, fournisseur: true, codeEchec: true },
+      },
     },
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -31,7 +36,14 @@ export async function GET(request: Request) {
       modeAller: o.modeAller,
       modeRetour: o.modeRetour,
       modePaiement: o.modePaiement,
-      paiement: o.payments[0] ? { statut: o.payments[0].statut, fournisseur: o.payments[0].fournisseur } : null,
+      paiement: o.payments[0]
+        ? {
+            statut: o.payments[0].statut,
+            fournisseur: o.payments[0].fournisseur,
+            // Raison d'un échec (solde insuffisant…), null sinon.
+            echec: paymentFailure(o.payments[0]),
+          }
+        : null,
       zoneLivraisonNom: o.zoneLivraisonNom,
       lieuDit: o.lieuDit,
       montantDeclare: Number(o.montantDeclare),

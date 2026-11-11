@@ -1,9 +1,12 @@
 // Client Codees (Mobile Money, Orange Money/MTN MoMo — Cameroun), Hosted
 // Checkout uniquement. Pas de bac à sable : ces clés sont celles de
 // production, chaque appel est un vrai appel. Contrat tiré du schéma OpenAPI
-// brut (https://pay.codees-cm.com/merchant/api-reference/?format=openapi) —
-// n'utilise QUE /checkout/create/ et /checkout/{id}/status/, jamais
-// /payment/process/ ni /payment/status/ (corps/réponses non documentés).
+// brut (https://pay.codees-cm.com/merchant/api-reference/?format=openapi)
+// et de la doc (https://pay.codees-cm.com/docs/) : /checkout/create/,
+// /checkout/{id}/status/, et /payment/status/ en lecture seule pour la
+// raison d'un échec. Jamais /payment/process/ (paiement hors page hébergée).
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 const CODEES_BASE_URL = "https://pay.codees-cm.com/api/v1";
 
 // Documenté : une session Codees expire au bout de 30 minutes.
@@ -105,4 +108,43 @@ export async function getCheckoutStatus(checkoutId: string): Promise<CheckoutSta
     throw new CodeesError(await readDetail(res), res.status);
   }
   return res.json() as Promise<CheckoutStatusResult>;
+}
+
+export type PaymentStatusResult = {
+  status: string;
+  failure_code?: string | null;
+  failure_message?: string | null;
+};
+
+// Détail d'une transaction Mobile Money (documenté dans /docs/, pas dans le
+// schéma OpenAPI) : seule source de la RAISON d'un échec (failure_code :
+// INSUFFICIENT_FUNDS, CUSTOMER_DECLINED…) — le statut de session checkout
+// ne la donne pas. Par référence, Codees renvoie la transaction la plus
+// récente portant cette référence. Réponse mise en cache 30 s chez Codees.
+export async function getPaymentStatus(
+  query: { transactionId: string } | { reference: string },
+): Promise<PaymentStatusResult> {
+  const qs =
+    "transactionId" in query
+      ? `transaction_id=${encodeURIComponent(query.transactionId)}`
+      : `reference=${encodeURIComponent(query.reference)}`;
+  const res = await codeesFetch(`/payment/status/?${qs}`, { method: "GET" });
+  if (!res.ok) {
+    throw new CodeesError(await readDetail(res), res.status);
+  }
+  return res.json() as Promise<PaymentStatusResult>;
+}
+
+// Signature du webhook : HMAC-SHA256 (hex) du corps BRUT avec le secret de
+// signature du tableau de bord Codees, dans l'en-tête X-Codees-Signature.
+// Sans CODEES_WEBHOOK_SECRET configuré, la vérification est sautée (le
+// statut est de toute façon toujours relu chez Codees avant d'être appliqué).
+export function verifyCodeesSignature(rawBody: string, signature: string | null): "ok" | "invalide" | "non_configure" {
+  const secret = process.env.CODEES_WEBHOOK_SECRET;
+  if (!secret) return "non_configure";
+  if (!signature) return "invalide";
+  const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
+  const a = Buffer.from(expected, "utf8");
+  const b = Buffer.from(signature.trim().toLowerCase(), "utf8");
+  return a.length === b.length && timingSafeEqual(a, b) ? "ok" : "invalide";
 }

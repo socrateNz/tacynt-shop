@@ -5,6 +5,7 @@ import { withTenantContext } from "@/lib/db/tenant-context";
 import { notifyLaundryPaid } from "@/lib/marketplace/notifications";
 import { CodeesError, PAIEMENT_EXPIRATION_MS, createCheckout, getCheckoutStatus } from "@/lib/payments/codees";
 import { paymentOptions } from "@/lib/payments/methods";
+import { resolveFailureCode } from "@/lib/payments/service";
 import {
   STRIPE_SESSION_TTL_MS,
   StripePaymentError,
@@ -59,9 +60,11 @@ export async function initiateLaundryPayment(params: {
     }
     if (provider === "CODEES" && !order.emailClient) throw new LaundryPaymentError("EMAIL_REQUIS");
 
+    const reference = `${organization.slug}-${order.numero}`;
     const payment = await tx.laundryPayment.create({
       data: {
         organizationId: organization.id,
+        referenceMarchand: reference,
         shopId: order.shopId,
         laundryOrderId: order.id,
         fournisseur: provider,
@@ -71,7 +74,6 @@ export async function initiateLaundryPayment(params: {
       },
     });
 
-    const reference = `${organization.slug}-${order.numero}`;
     let outcome: { ok: true; url: string } | { ok: false; detail: string };
     try {
       const checkout =
@@ -103,7 +105,7 @@ export async function initiateLaundryPayment(params: {
     } catch (error) {
       const detail =
         error instanceof CodeesError || error instanceof StripePaymentError ? error.message : "Erreur réseau inconnue.";
-      await tx.laundryPayment.update({ where: { id: payment.id }, data: { statut: "ECHEC", erreurBrute: detail } });
+      await tx.laundryPayment.update({ where: { id: payment.id }, data: { statut: "ECHEC", erreurBrute: detail, codeEchec: "PAYMENT_FAILED" } });
       outcome = { ok: false, detail };
     }
 
@@ -155,7 +157,10 @@ export async function verifyLaundryPayment(ctx: { organizationId: string; shopId
     if (payment.expiresAt.getTime() < Date.now() || !payment.referenceExterne) {
       const updated = await tx.laundryPayment.update({
         where: { id: paymentId },
-        data: { statut: payment.referenceExterne ? "EXPIRE" : "ECHEC" },
+        data: {
+          statut: payment.referenceExterne ? "EXPIRE" : "ECHEC",
+          codeEchec: payment.codeEchec ?? (payment.referenceExterne ? "EXPIRE" : null),
+        },
       });
       return { payment: updated, order: payment.laundryOrder, justPaid: false };
     }
@@ -171,9 +176,10 @@ export async function verifyLaundryPayment(ctx: { organizationId: string; shopId
       return { payment, order: payment.laundryOrder, justPaid: false };
     }
 
+    const codeEchec = await resolveFailureCode(payment, status.next, status.brut);
     const updated = await tx.laundryPayment.update({
       where: { id: paymentId },
-      data: { statut: status.next, dernierStatutBrut: status.brut },
+      data: { statut: status.next, dernierStatutBrut: status.brut, codeEchec },
     });
     let order = payment.laundryOrder;
     if (status.next === "REUSSI" && order.statut === "EN_ATTENTE") {

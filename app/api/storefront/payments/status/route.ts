@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { withTenantContext } from "@/lib/db/tenant-context";
+import { paymentFailure } from "@/lib/payments/failure";
 import { verifyAndApplyPayment } from "@/lib/payments/service";
 import { resolveStorefrontOrganization } from "@/lib/storefront/context";
 
@@ -49,6 +50,8 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     orderStatut,
-    paiement: latestPayment ? { statut: latestPayment.statut, expiresAt: latestPayment.expiresAt } : null,
+    paiement: latestPayment
+      ? { statut: latestPayment.statut, expiresAt: latestPayment.expiresAt, echec: paymentFailure(latestPayment) }
+      : null,
   });
 }

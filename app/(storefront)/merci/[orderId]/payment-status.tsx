@@ -11,13 +11,17 @@ export function PaymentStatus({
   orderId,
   orderConfirmee,
   statutInitial,
+  echecInitial,
 }: {
   orderId: string;
   orderConfirmee: boolean;
   statutInitial: PaymentStatut | null;
+  // Raison de l'échec (solde insuffisant…), déjà traduite côté serveur.
+  echecInitial: string | null;
 }) {
   const [confirmee, setConfirmee] = useState(orderConfirmee);
   const [statut, setStatut] = useState<PaymentStatut | null>(statutInitial);
+  const [echec, setEchec] = useState<string | null>(echecInitial);
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -30,13 +34,14 @@ export function PaymentStatus({
         const res = await fetch(`/api/storefront/payments/status?orderId=${orderId}`);
         const body = (await res.json()) as {
           orderStatut?: string;
-          paiement?: { statut: PaymentStatut } | null;
+          paiement?: { statut: PaymentStatut; echec?: { message: string } | null } | null;
         };
         if (body.orderStatut === "CONFIRMEE") {
           setConfirmee(true);
         }
         if (body.paiement) {
           setStatut(body.paiement.statut);
+          setEchec(body.paiement.echec?.message ?? null);
         }
       } catch {
         // Une panne réseau côté client ne doit pas arrêter le suivi, on
@@ -82,7 +87,7 @@ export function PaymentStatus({
     return (
       <div className="flex flex-col gap-2">
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {statut === "EXPIRE" ? "La session de paiement a expiré." : "Le paiement a échoué."}
+          {echec ?? (statut === "EXPIRE" ? "La session de paiement a expiré." : "Le paiement a échoué.")}
         </p>
         {retryError && <p className="text-sm text-destructive">{retryError}</p>}
         <button

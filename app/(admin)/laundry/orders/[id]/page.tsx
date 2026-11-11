@@ -14,6 +14,7 @@ import {
   RETURN_LABELS,
 } from "@/lib/laundry/types";
 import { formatMoney } from "@/lib/money";
+import { paymentFailure } from "@/lib/payments/failure";
 import { PROVIDER_LABEL } from "@/lib/payments/methods";
 import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { cn } from "@/lib/utils";
@@ -52,7 +53,10 @@ export default async function LaundryOrderPage({ params }: { params: Promise<{ i
       : lastPayment?.statut === "REUSSI"
         ? { label: `Payée en ligne — ${PROVIDER_LABEL[lastPayment.fournisseur]}`, className: "text-success" }
         : lastPayment?.statut === "ECHEC" || lastPayment?.statut === "EXPIRE"
-          ? { label: "Paiement en ligne non abouti", className: "text-destructive" }
+          ? {
+              label: `Paiement en ligne non abouti — ${paymentFailure(lastPayment)?.message ?? ""}`,
+              className: "text-destructive",
+            }
           : { label: "Paiement en ligne en attente", className: "text-warning" };
 
   return (

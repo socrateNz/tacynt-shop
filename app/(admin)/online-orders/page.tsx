@@ -16,6 +16,7 @@ import { hasCapability } from "@/lib/permissions";
 import { getAssignedShopIds } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
+import { paymentFailure } from "@/lib/payments/failure";
 
 import { LiveUpdates } from "./live-updates";
 import { OnlineOrderDialog } from "./online-order-dialog";
@@ -110,7 +111,12 @@ export default async function OnlineOrdersPage() {
                     ) : o.payments[0]?.statut === "REUSSI" ? (
                       <Badge variant="success">Payée en ligne</Badge>
                     ) : o.payments[0]?.statut === "ECHEC" || o.payments[0]?.statut === "EXPIRE" ? (
-                      <Badge variant="secondary">Paiement échoué</Badge>
+                      <span className="flex flex-col gap-0.5">
+                        <Badge variant="secondary">Paiement échoué</Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {paymentFailure(o.payments[0])?.message}
+                        </span>
+                      </span>
                     ) : null}
                   </div>
                 </TableCell>

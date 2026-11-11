@@ -26,6 +26,7 @@ const REQUIRED = [
 ];
 
 const OPTIONAL = [
+  ["CODEES_WEBHOOK_SECRET", "Mobile Money — vérification de la signature des webhooks Codees"],
   ["STRIPE_SECRET_KEY", "Carte bancaire — inutile tant que CARTE_ACTIVE = false"],
   ["STRIPE_WEBHOOK_SECRET", "Carte bancaire — inutile tant que CARTE_ACTIVE = false"],
   ["EXPO_ACCESS_TOKEN", "Push Sodu — requis seulement avec la sécurité push renforcée Expo"],

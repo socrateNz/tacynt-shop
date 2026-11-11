@@ -53,6 +53,9 @@ services:
       # plateforme (lib/payments/codees.ts).
       CODEES_API_KEY: ${CODEES_API_KEY}
       CODEES_SECRET_KEY: ${CODEES_SECRET_KEY}
+      # Secret de signature des webhooks Codees (X-Codees-Signature) —
+      # facultatif : sans lui, la signature n'est pas vérifiée.
+      CODEES_WEBHOOK_SECRET: ${CODEES_WEBHOOK_SECRET:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}

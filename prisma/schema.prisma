@@ -924,6 +924,13 @@ model OnlineOrderPayment {
   referenceExterne String?                  @unique @map("reference_externe")
   idempotencyKey   String                   @unique @default(uuid()) @map("idempotency_key") @db.Uuid
   erreurBrute      String?                  @map("erreur_brute")
+  // Référence envoyée au prestataire ("{slug}-{numero}"), renvoyée par le
+  // webhook Codees (data.external_reference) ; partagée par les tentatives
+  // successives d'une même commande.
+  referenceMarchand String?                 @map("reference_marchand")
+  // Raison d'un échec donnée par Codees (INSUFFICIENT_FUNDS…), ou ANNULE /
+  // EXPIRE côté local.
+  codeEchec        String?                  @map("code_echec")
   expiresAt        DateTime                 @map("expires_at")
   createdAt        DateTime                 @default(now()) @map("created_at")
 
@@ -934,6 +941,7 @@ model OnlineOrderPayment {
 
   @@index([organizationId])
   @@index([onlineOrderId])
+  @@index([referenceMarchand])
   @@map("online_order_payments")
 }
 
@@ -1985,6 +1993,8 @@ model LaundryPayment {
   referenceExterne String?                  @unique @map("reference_externe")
   dernierStatutBrut String?                 @map("dernier_statut_brut")
   erreurBrute      String?                  @map("erreur_brute")
+  referenceMarchand String?                 @map("reference_marchand")
+  codeEchec        String?                  @map("code_echec")
   expiresAt        DateTime                 @map("expires_at")
   createdAt        DateTime                 @default(now()) @map("created_at")
 
@@ -1994,5 +2004,6 @@ model LaundryPayment {
 
   @@index([organizationId])
   @@index([laundryOrderId])
+  @@index([referenceMarchand])
   @@map("laundry_payments")
 }

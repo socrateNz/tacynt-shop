@@ -55,9 +55,14 @@ export async function initiateOrderPayment(params: {
     // Codees exige un email client (customer_email) ; Stripe s'en passe.
     if (provider === "CODEES" && !order.emailClient) throw new PaymentInitError("EMAIL_REQUIS");
 
+    // Unique même avec un compte marchand partagé entre toutes les
+    // organisations — nécessaire à la réconciliation côté prestataire.
+    const reference = `${organization.slug}-${order.numero}`;
+
     const payment = await tx.onlineOrderPayment.create({
       data: {
         organizationId: organization.id,
+        referenceMarchand: reference,
         shopId: order.shopId,
         onlineOrderId: order.id,
         fournisseur: provider,
@@ -66,10 +71,6 @@ export async function initiateOrderPayment(params: {
         expiresAt: new Date(Date.now() + (provider === "STRIPE" ? STRIPE_SESSION_TTL_MS : PAIEMENT_EXPIRATION_MS)),
       },
     });
-
-    // Unique même avec un compte marchand partagé entre toutes les
-    // organisations — nécessaire à la réconciliation côté prestataire.
-    const reference = `${organization.slug}-${order.numero}`;
 
     let outcome: InitiateOutcome;
     try {
@@ -116,7 +117,7 @@ export async function initiateOrderPayment(params: {
           : "Erreur réseau inconnue.";
       await tx.onlineOrderPayment.update({
         where: { id: payment.id },
-        data: { statut: "ECHEC", erreurBrute: detail },
+        data: { statut: "ECHEC", erreurBrute: detail, codeEchec: "PAYMENT_FAILED" },
       });
       await tx.onlineOrderPaymentEvent.create({
         data: {

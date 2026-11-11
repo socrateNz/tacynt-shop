@@ -10,6 +10,7 @@ import type { OnlineOrderPayment } from "@prisma/client";
 import { notifyOrderPaid } from "@/lib/marketplace/notifications";
 
 import { CodeesError, getCheckoutStatus, type CodeesCheckoutStatus } from "./codees";
+import { fetchCodeesFailure } from "./failure";
 import { getStripeCheckoutState, type StripeSessionState } from "./stripe";
 
 function mapCodeesStatus(status: CodeesCheckoutStatus): OnlineOrderPaymentStatus | null {
@@ -59,6 +60,22 @@ async function fetchProviderStatus(
 
 type TenantRef = { organizationId: string; shopId: string };
 
+// Raison d'un paiement terminé (null si réussi). Codees ne la donne pas dans
+// le statut de session : on la lit sur la transaction (par référence
+// marchand), sauf si le webhook l'a déjà enregistrée.
+export async function resolveFailureCode(
+  payment: { fournisseur: string; codeEchec: string | null; referenceMarchand: string | null },
+  next: OnlineOrderPaymentStatus,
+  brut: string,
+): Promise<string | null> {
+  if (next === "REUSSI") return null;
+  if (payment.fournisseur !== "CODEES") return payment.codeEchec ?? (next === "EXPIRE" ? "EXPIRE" : null);
+  if (next === "EXPIRE") return payment.codeEchec ?? "EXPIRE";
+  if (payment.codeEchec) return payment.codeEchec;
+  const fetched = payment.referenceMarchand ? await fetchCodeesFailure({ reference: payment.referenceMarchand }) : null;
+  return fetched?.code ?? (brut === "cancelled" ? "ANNULE" : "PAYMENT_FAILED");
+}
+
 // Seule source de vérité pour faire progresser une commande suite à un
 // paiement Codees — idempotente (ne fait rien si le paiement est déjà dans
 // un état terminal), et jamais levée en erreur sur une panne Codees (une
@@ -80,7 +97,10 @@ export async function verifyAndApplyPayment(ctx: TenantRef, paymentId: string) {
     if (payment.expiresAt.getTime() < Date.now() || !payment.referenceExterne) {
       const updated = await tx.onlineOrderPayment.update({
         where: { id: paymentId },
-        data: { statut: payment.referenceExterne ? "EXPIRE" : "ECHEC" },
+        data: {
+          statut: payment.referenceExterne ? "EXPIRE" : "ECHEC",
+          codeEchec: payment.codeEchec ?? (payment.referenceExterne ? "EXPIRE" : null),
+        },
       });
       await tx.onlineOrderPaymentEvent.create({
         data: {
@@ -130,9 +150,10 @@ export async function verifyAndApplyPayment(ctx: TenantRef, paymentId: string) {
       return { payment, order: payment.onlineOrder, shopNom, justConfirmed: false };
     }
 
+    const codeEchec = await resolveFailureCode(payment, nextStatut, statusResult.brut);
     const updatedPayment = await tx.onlineOrderPayment.update({
       where: { id: paymentId },
-      data: { statut: nextStatut },
+      data: { statut: nextStatut, codeEchec },
     });
 
     let order: typeof payment.onlineOrder = payment.onlineOrder;

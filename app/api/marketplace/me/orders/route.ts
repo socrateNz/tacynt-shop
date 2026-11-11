@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { systemPrisma } from "@/lib/db/system-client";
 import { getMarketplaceCustomer, unauthorized } from "@/lib/marketplace/auth";
+import { paymentFailure } from "@/lib/payments/failure";
 
 // Commandes du client Sodu connecté, toutes organisations confondues —
 // lecture cross-organisation par construction, donc systemPrisma (même
@@ -17,7 +18,11 @@ export async function GET(request: Request) {
       organization: { select: { id: true, nom: true, devise: true } },
       shop: { select: { nom: true, telephone: true } },
       lines: { include: { variant: { include: { product: { select: { designation: true } } } } } },
-      payments: { orderBy: { createdAt: "desc" }, take: 1, select: { statut: true, fournisseur: true } },
+      payments: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { statut: true, fournisseur: true, codeEchec: true },
+      },
     },
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -34,7 +39,14 @@ export async function GET(request: Request) {
       modeRetrait: o.modeRetrait,
       modePaiement: o.modePaiement,
       // Dernière tentative de paiement en ligne (null si aucune).
-      paiement: o.payments[0] ? { statut: o.payments[0].statut, fournisseur: o.payments[0].fournisseur } : null,
+      paiement: o.payments[0]
+        ? {
+            statut: o.payments[0].statut,
+            fournisseur: o.payments[0].fournisseur,
+            // Raison d'un échec (solde insuffisant…), null sinon.
+            echec: paymentFailure(o.payments[0]),
+          }
+        : null,
       adresseLivraison: o.adresseLivraison,
       totalTtc: Number(o.totalTtc),
       fraisLivraison: Number(o.fraisLivraison),

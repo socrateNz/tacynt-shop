@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { systemPrisma } from "@/lib/db/system-client";
 import { getMarketplaceCustomer, unauthorized } from "@/lib/marketplace/auth";
+import { paymentFailure } from "@/lib/payments/failure";
 import { verifyAndApplyPayment } from "@/lib/payments/service";
 
 // Statut du dernier paiement d'une commande Sodu, revérifié auprès du
@@ -26,7 +27,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ orde
   if (!order) return NextResponse.json({ error: "Commande introuvable." }, { status: 404 });
 
   const last = order.payments[0];
-  if (!last) return NextResponse.json({ orderStatut: order.statut, paymentStatut: null, fournisseur: null });
+  if (!last) return NextResponse.json({ orderStatut: order.statut, paymentStatut: null, fournisseur: null, echec: null });
 
   const { payment, order: updatedOrder } = await verifyAndApplyPayment(
     { organizationId: last.organizationId, shopId: last.shopId },
@@ -36,5 +37,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ orde
     orderStatut: updatedOrder.statut,
     paymentStatut: payment.statut,
     fournisseur: last.fournisseur,
+    echec: paymentFailure(payment),
   });
 }
