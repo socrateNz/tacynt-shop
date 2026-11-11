@@ -146,7 +146,7 @@ export function NewContractDialog({
               </div>
             )}
 
-            <Button type="submit" className="self-start" disabled={isPending}>
+            <Button type="submit" className="self-end" disabled={isPending}>
               {isPending ? "Création..." : "Créer la location"}
             </Button>
           </form>

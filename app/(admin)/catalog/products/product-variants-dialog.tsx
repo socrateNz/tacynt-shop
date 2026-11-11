@@ -44,9 +44,9 @@ function VariantEditTrigger({ variant }: { variant: ProductVariantRow }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
+      <DialogTrigger render={<Button variant="ghost" size="sm" />}>
         <Pencil className="size-3.5" />
-        <span className="sr-only">Modifier la variante</span>
+        Modifier
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -77,20 +77,26 @@ export function ProductVariantsDialog({
   variants,
   canWrite,
   triggerLabel,
+  open,
+  onOpenChange,
 }: {
   productId: string;
   productDesignation: string;
   variants: ProductVariantRow[];
   canWrite: boolean;
   triggerLabel: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   return (
-    <Dialog>
-      <DialogTrigger
-        render={<button type="button" className="text-sm text-primary underline-offset-4 hover:underline" />}
-      >
-        {triggerLabel}
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {open === undefined && (
+        <DialogTrigger
+          render={<button type="button" className="text-sm text-primary underline-offset-4 hover:underline" />}
+        >
+          {triggerLabel}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Variantes — {productDesignation}</DialogTitle>

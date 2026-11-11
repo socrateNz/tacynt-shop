@@ -19,7 +19,7 @@ export function PeriodFilter({ fromInput, toInput }: { fromInput: string; toInpu
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2">
+    <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2 sm:ml-auto">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="from">Du</Label>
         <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -29,7 +29,7 @@ export function PeriodFilter({ fromInput, toInput }: { fromInput: string; toInpu
         <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
       </div>
       <Button type="submit" variant="outline">
-        Filtrer
+        Appliquer
       </Button>
     </form>
   );

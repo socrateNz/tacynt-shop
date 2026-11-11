@@ -1,3 +1,8 @@
+import Link from "next/link";
+import { BarChart3, ReceiptText, ShoppingBasket, ShoppingCart, Wallet } from "lucide-react";
+
+import { Page, PageHeader, StatCard, StatGrid, TablePanel } from "@/components/admin/page";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -52,43 +57,53 @@ export default async function DashboardPage() {
   );
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Tableau de bord</h1>
-        <p className="text-sm text-muted-foreground">{organization.nom} — 30 derniers jours</p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Tableau de bord"
+        description={<>{organization.nom} — 30 derniers jours</>}
+        actions={
+          <>
+            {canSeeReports && (
+              <Link href="/reports" className={buttonVariants({ variant: "outline" })}>
+                <BarChart3 />
+                Rapports
+              </Link>
+            )}
+            {hasCapability(ctx.role, "pos:sell") && (
+              <Link href="/caisse" className={buttonVariants()}>
+                <ShoppingCart />
+                Ouvrir la caisse
+              </Link>
+            )}
+          </>
+        }
+      />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">
-            Chiffre d&apos;affaires (30 jours)
-          </p>
-          <p className="num text-2xl font-semibold text-foreground">
-            {formatMoney(overview.chiffreAffaires, organization.devise)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Ventes (30 jours)</p>
-          <p className="num text-2xl font-semibold text-foreground">{overview.nombreVentes}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">
-            Panier moyen (30 jours)
-          </p>
-          <p className="num text-2xl font-semibold text-foreground">
-            {formatMoney(overview.panierMoyen, organization.devise)}
-          </p>
-        </div>
-      </div>
+      <StatGrid className="lg:grid-cols-3">
+        <StatCard
+          label="Chiffre d'affaires"
+          value={formatMoney(overview.chiffreAffaires, organization.devise)}
+          icon={Wallet}
+          hint="30 derniers jours"
+        />
+        <StatCard label="Ventes" value={overview.nombreVentes} icon={ReceiptText} hint="30 derniers jours" />
+        <StatCard
+          label="Panier moyen"
+          value={formatMoney(overview.panierMoyen, organization.devise)}
+          icon={ShoppingBasket}
+          hint="30 derniers jours"
+          className="col-span-2 lg:col-span-1"
+        />
+      </StatGrid>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-4 text-sm font-medium text-foreground">Ventes dans le temps</h2>
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+          <h2 className="mb-4 text-base font-semibold text-foreground">Ventes dans le temps</h2>
           <SalesChart data={overview.salesByDay} />
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-4 text-sm font-medium text-foreground">Produits les plus vendus</h2>
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+          <h2 className="mb-4 text-base font-semibold text-foreground">Produits les plus vendus</h2>
           {overview.topProducts.length === 0 ? (
             <p className="text-sm text-muted-foreground">Aucune vente sur cette période.</p>
           ) : (
@@ -123,8 +138,13 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card">
-        <h2 className="p-4 text-sm font-medium text-foreground">Ventes récentes</h2>
+      <TablePanel>
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <h2 className="text-base font-semibold text-foreground">Ventes récentes</h2>
+          <Link href="/sales" className="text-sm font-medium text-primary hover:underline">
+            Toutes les ventes
+          </Link>
+        </div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -164,7 +184,7 @@ export default async function DashboardPage() {
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </TablePanel>
+    </Page>
   );
 }

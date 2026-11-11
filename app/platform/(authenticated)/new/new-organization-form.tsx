@@ -107,7 +107,7 @@ export function NewOrganizationForm({ rootDomain }: { rootDomain: string }) {
         </p>
       </div>
 
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending ? "Création..." : "Créer l'organisation"}
       </Button>
     </form>

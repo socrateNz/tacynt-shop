@@ -1,8 +1,9 @@
 "use client";
 
-import { Eye } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
+import { TablePanel } from "@/components/admin/page";
 import { Button } from "@/components/ui/button";
 import { PhoneLink } from "@/components/phone-link";
 import {
@@ -84,9 +85,9 @@ export function OnlineOrderDialog({
 
   return (
     <Dialog>
-      <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-        <Eye className="size-3.5" />
-        <span className="sr-only">Voir</span>
+      <DialogTrigger render={<Button variant={isOpenForAction ? "outline" : "ghost"} size="sm" />}>
+        {isOpenForAction ? "Traiter" : "Voir"}
+        <ChevronRight className="size-3.5" />
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -115,7 +116,7 @@ export function OnlineOrderDialog({
           )}
         </section>
 
-        <div className="rounded-xl border border-border bg-card">
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -148,7 +149,7 @@ export function OnlineOrderDialog({
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
 
         <div className="flex justify-end">
           <p className="num text-lg font-semibold text-foreground">Total : {totalTtcLabel}</p>
@@ -156,22 +157,22 @@ export function OnlineOrderDialog({
 
         {isOpenForAction && (
           <>
-            <div className="flex gap-2">
+            <FulfillForm orderId={orderId} totalTtc={totalTtc} />
+
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+              <form action={cancelOrder}>
+                <input type="hidden" name="orderId" value={orderId} />
+                <Button type="submit" variant="ghost" className="text-destructive hover:text-destructive">
+                  Annuler la commande
+                </Button>
+              </form>
               {statut === "EN_ATTENTE" && (
                 <form action={confirmOrder}>
                   <input type="hidden" name="orderId" value={orderId} />
                   <Button type="submit">Confirmer la commande</Button>
                 </form>
               )}
-              <form action={cancelOrder}>
-                <input type="hidden" name="orderId" value={orderId} />
-                <Button type="submit" variant="ghost">
-                  Annuler
-                </Button>
-              </form>
             </div>
-
-            <FulfillForm orderId={orderId} totalTtc={totalTtc} />
           </>
         )}
 

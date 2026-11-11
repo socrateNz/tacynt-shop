@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MobileNav, SidebarNav, type NavGroup, type NavLink } from "@/components/ui/sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { hasCapability, type Capability, type Role } from "@/lib/permissions";
@@ -271,30 +272,33 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     pendingLaundryOrders,
   });
 
+  const nav = {
+    brand: organization?.nom ?? "Tacynt Shop",
+    logoSrc: branding?.hasLogo ? "/api/branding/logo" : undefined,
+    topLinks: TOP_LINKS,
+    groups: navGroups,
+    logoutAction: "/api/auth/logout",
+  };
+
   return (
     <ToastHost>
     <div className="flex h-dvh min-h-0" style={brandingStyle}>
-      <SidebarNav topLinks={TOP_LINKS} groups={navGroups} logoutAction="/api/auth/logout" />
+      <SidebarNav {...nav} />
       {/* min-w-0 : sans lui, un flex-item row ne descend jamais sous la largeur
           min-content de son contenu, et un tableau large élargirait toute la
           page au lieu de défiler dans son propre conteneur. */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
-        <header className="no-print flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3 lg:px-6 lg:py-4">
-          <div className="flex min-w-0 items-center gap-2 lg:gap-4">
-            <MobileNav topLinks={TOP_LINKS} groups={navGroups} logoutAction="/api/auth/logout" />
-            {branding?.hasLogo ? (
-              // eslint-disable-next-line @next/next/no-img-element -- logo servi dynamiquement par organisation, pas un asset statique optimisable par next/image
-              <img src="/api/branding/logo" alt={organization?.nom ?? ""} className="h-6 w-auto shrink-0" />
-            ) : (
-              <span className="truncate text-sm font-semibold text-foreground">{organization?.nom}</span>
-            )}
+        <header className="no-print flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 lg:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <MobileNav {...nav} />
+            <Breadcrumbs />
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
             <ShopSwitcher
               shops={userShops.map((us: { shop: { id: string; nom: string; }; }) => ({ id: us.shop.id, nom: us.shop.nom }))}
               activeShopId={activeShopId}
               canSwitch={hasCapability(ctx.role, "shops:manage")}
             />
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
             <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="ghost" className="shrink-0 gap-2 px-1.5" />}>
@@ -336,8 +340,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             caisse (vente, encaissement) reste utilisable.
           </div>
         )}
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-6 md:px-6 lg:py-10">
-          <div className="w-full">{children}</div>
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-6 md:px-6 lg:px-8 lg:py-8">
+          <div className="mx-auto w-full max-w-[1440px]">{children}</div>
         </main>
       </div>
     </div>

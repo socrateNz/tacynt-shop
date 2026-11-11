@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 
+import { TablePanel, Toolbar } from "@/components/admin/page";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -47,6 +49,7 @@ export type ContractRow = {
 };
 
 export function ContractsTable({ contracts }: { contracts: ContractRow[] }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -68,19 +71,21 @@ export function ContractsTable({ contracts }: { contracts: ContractRow[] }) {
   }, [contracts, search, statusFilter]);
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-48 flex-1">
+    <div className="flex flex-col gap-4">
+      <Toolbar>
+        <div className="relative min-w-0 flex-1 sm:max-w-sm">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-subtle-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher un numéro, client, logement..."
+            type="search"
+            placeholder="Numéro, client, téléphone, logement…"
+            aria-label="Rechercher une location"
             className="pl-8"
           />
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(String(v))}>
-          <SelectTrigger>
+          <SelectTrigger aria-label="Statut" className="sm:ml-auto">
             <SelectValue placeholder="Statut" />
           </SelectTrigger>
           <SelectContent>
@@ -92,35 +97,39 @@ export function ContractsTable({ contracts }: { contracts: ContractRow[] }) {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </Toolbar>
 
-      <div className="rounded-xl border border-border bg-card">
+      <TablePanel>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Numéro</TableHead>
               <TableHead>Logement</TableHead>
-              <TableHead>Boutique</TableHead>
+              <TableHead className="hidden xl:table-cell">Boutique</TableHead>
               <TableHead>Client</TableHead>
               <TableHead>Statut</TableHead>
-              <TableHead>Durée</TableHead>
+              <TableHead className="hidden md:table-cell">Durée</TableHead>
               <TableHead className="text-right">Loyer / mois</TableHead>
-              <TableHead>Début</TableHead>
+              <TableHead className="hidden lg:table-cell">Début</TableHead>
+              <TableHead className="w-10">
+                <span className="sr-only">Ouvrir</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((c) => (
-              <TableRow key={c.id}>
+              <TableRow key={c.id} className="cursor-pointer" onClick={() => router.push(`/rentals/contracts/${c.id}`)}>
                 <TableCell>
                   <Link
                     href={`/rentals/contracts/${c.id}`}
-                    className="text-primary underline-offset-4 hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                    className="num font-medium text-foreground hover:text-primary hover:underline"
                   >
                     {c.numero}
                   </Link>
                 </TableCell>
                 <TableCell className="text-foreground">{c.unitDesignation}</TableCell>
-                <TableCell className="text-muted-foreground">{c.shopNom}</TableCell>
+                <TableCell className="hidden text-muted-foreground xl:table-cell">{c.shopNom}</TableCell>
                 <TableCell>
                   <div className="flex flex-col">
                     <span className="text-muted-foreground">{c.nomClient}</span>
@@ -132,21 +141,24 @@ export function ContractsTable({ contracts }: { contracts: ContractRow[] }) {
                     {STATUS_LABELS[c.statut] ?? c.statut}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{c.dureeMois} mois</TableCell>
+                <TableCell className="hidden text-muted-foreground md:table-cell">{c.dureeMois} mois</TableCell>
                 <TableCell className="num text-right">{c.montantMensuelLabel}</TableCell>
-                <TableCell className="text-muted-foreground">{c.dateDebutLabel}</TableCell>
+                <TableCell className="hidden text-muted-foreground lg:table-cell">{c.dateDebutLabel}</TableCell>
+                <TableCell>
+                  <ChevronRight className="ml-auto size-4 text-muted-foreground" aria-hidden />
+                </TableCell>
               </TableRow>
             ))}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground">
-                  Aucune location pour l&apos;instant.
+                <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
+                  Aucune location ne correspond à ces critères.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
-      </div>
+      </TablePanel>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { OnlineOrderPaymentStatus, Organization, PaymentProvider } from "@prisma/client";
+import type { Organization, PaymentProvider } from "@prisma/client";
 
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";

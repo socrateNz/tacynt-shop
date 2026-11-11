@@ -1,7 +1,8 @@
 "use client";
 
-import { Eye } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
+import { TablePanel } from "@/components/admin/page";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -41,34 +42,19 @@ export function InventorySessionDialog({
 
   return (
     <Dialog>
-      <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-        <Eye className="size-3.5" />
-        <span className="sr-only">Voir</span>
+      <DialogTrigger render={<Button variant="ghost" size="sm" />}>
+        Ouvrir
+        <ChevronRight className="size-3.5" />
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          {countedLines} / {totalLines} ligne(s) comptée(s) — statut : {statut}
+          {countedLines} / {totalLines} ligne(s) comptée(s)
         </p>
 
-        {statut === "EN_COURS" && (
-          <div className="flex gap-2">
-            <form action={validateInventorySession}>
-              <input type="hidden" name="inventorySessionId" value={sessionId} />
-              <Button type="submit">Valider l&apos;inventaire</Button>
-            </form>
-            <form action={cancelInventorySession}>
-              <input type="hidden" name="inventorySessionId" value={sessionId} />
-              <Button type="submit" variant="ghost">
-                Annuler
-              </Button>
-            </form>
-          </div>
-        )}
-
-        <div className="rounded-xl border border-border bg-card">
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -92,7 +78,21 @@ export function InventorySessionDialog({
               ))}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
+        {statut === "EN_COURS" && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+            <form action={cancelInventorySession}>
+              <input type="hidden" name="inventorySessionId" value={sessionId} />
+              <Button type="submit" variant="ghost" className="text-destructive hover:text-destructive">
+                Annuler l&apos;inventaire
+              </Button>
+            </form>
+            <form action={validateInventorySession}>
+              <input type="hidden" name="inventorySessionId" value={sessionId} />
+              <Button type="submit">Valider l&apos;inventaire</Button>
+            </form>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

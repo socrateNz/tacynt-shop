@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, TablePanel } from "@/components/admin/page";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -40,52 +41,54 @@ export default async function CategoriesPage() {
   const canWrite = hasCapability(ctx.role, "catalog:write");
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Catégories</h1>
-          <p className="text-sm text-muted-foreground">Arborescence à 3 niveaux maximum.</p>
-        </div>
-        {canWrite && (
-          <Dialog>
-            <DialogTrigger render={<Button className="gap-1.5" />}>
-              <Plus className="size-4" />
-              Nouvelle catégorie
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-sm">
-              <DialogHeader>
-                <DialogTitle>Nouvelle catégorie</DialogTitle>
-              </DialogHeader>
-              <form action={createCategory} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="nom">Nom</Label>
-                  <Input id="nom" name="nom" required placeholder="Boissons" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="parentId">Catégorie parente (optionnel)</Label>
-                  <select
-                    id="parentId"
-                    name="parentId"
-                    className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
-                  >
-                    <option value="">Aucune</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nom}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <Button type="submit" className="self-start">
-                  Ajouter
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        )}
-      </header>
+    <Page>
+      <PageHeader
+        title="Catégories"
+        description="Arborescence à 3 niveaux maximum."
+        actions={
+          <>
+            {canWrite && (
+              <Dialog>
+                <DialogTrigger render={<Button />}>
+                  <Plus />
+                  Nouvelle catégorie
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle>Nouvelle catégorie</DialogTitle>
+                  </DialogHeader>
+                  <form action={createCategory} className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="nom">Nom</Label>
+                      <Input id="nom" name="nom" required placeholder="Boissons" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="parentId">Catégorie parente (optionnel)</Label>
+                      <select
+                        id="parentId"
+                        name="parentId"
+                        className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
+                      >
+                        <option value="">Aucune</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.nom}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <Button type="submit" className="self-end">
+                      Ajouter
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
+          </>
+        }
+      />
 
-      <div className="rounded-xl border border-border bg-card">
+      <TablePanel>
         <Table>
           <TableHeader>
             <TableRow>
@@ -109,7 +112,7 @@ export default async function CategoriesPage() {
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </TablePanel>
+    </Page>
   );
 }

@@ -1,6 +1,8 @@
 import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, TablePanel } from "@/components/admin/page";
+import { matchesQuery, SearchForm } from "@/components/admin/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +29,8 @@ import { getTenantContext } from "@/lib/tenant/context";
 import { CustomerDetailDialog } from "./customer-detail-dialog";
 import { CustomerForm } from "./customer-form";
 
-export default async function CustomersPage() {
+export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const query = ((await searchParams).q ?? "").trim();
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "customers:manage")) {
     redirect("/dashboard");
@@ -70,46 +73,50 @@ export default async function CustomersPage() {
     pointsBalances.map((p) => [p.customerId, p._sum.points ?? 0]),
   );
 
-  return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Clients</h1>
-          <p className="text-sm text-muted-foreground">
-            Le solde d&apos;un client est la somme de son journal — jamais une valeur qu&apos;on
-            écrit directement.
-          </p>
-        </div>
-        <Dialog>
-          <DialogTrigger render={<Button className="gap-1.5" />}>
-            <Plus className="size-4" />
-            Nouveau client
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Nouveau client</DialogTitle>
-            </DialogHeader>
-            <CustomerForm />
-          </DialogContent>
-        </Dialog>
-      </header>
+  const visible = customers.filter((x) => matchesQuery(query, x.nom, x.telephone));
 
-      <div className="rounded-xl border border-border bg-card">
+  return (
+    <Page>
+      <PageHeader
+        title="Clients"
+        description="Fiches clients, crédit (ardoise) et points de fidélité."
+        actions={
+          <>
+            <Dialog>
+              <DialogTrigger render={<Button />}>
+                <Plus />
+                Nouveau client
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Nouveau client</DialogTitle>
+                </DialogHeader>
+                <CustomerForm />
+              </DialogContent>
+            </Dialog>
+          </>
+        }
+      />
+
+      <SearchForm query={query} placeholder="Nom ou téléphone…" resetHref="/customers" />
+
+      <TablePanel>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nom</TableHead>
-              <TableHead>Téléphone</TableHead>
-              <TableHead>Catégorie tarifaire</TableHead>
-              <TableHead className="text-right">Plafond crédit</TableHead>
+              <TableHead>Client</TableHead>
+              <TableHead className="hidden lg:table-cell">Catégorie tarifaire</TableHead>
+              <TableHead className="hidden text-right md:table-cell">Plafond crédit</TableHead>
               <TableHead className="text-right">Solde</TableHead>
-              <TableHead className="text-right">Points</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="hidden text-right md:table-cell">Points</TableHead>
+              <TableHead className="hidden sm:table-cell">Statut</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {customers.map((c) => {
+            {visible.map((c) => {
               const solde = balanceByCustomer.get(c.id) ?? 0;
               const overLimit = solde > Number(c.plafondCredit);
               const ledgerEntries = (ledgerByCustomer.get(c.id) ?? []).map((entry) => ({
@@ -122,12 +129,16 @@ export default async function CustomersPage() {
               }));
               return (
                 <TableRow key={c.id}>
-                  <TableCell className="text-foreground">{c.nom}</TableCell>
-                  <TableCell className="text-muted-foreground">{c.telephone ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-foreground">{c.nom}</span>
+                      <span className="text-xs text-muted-foreground">{c.telephone ?? "—"}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden text-muted-foreground lg:table-cell">
                     {c.categorieTarif || "—"}
                   </TableCell>
-                  <TableCell className="num text-right">
+                  <TableCell className="num hidden text-right md:table-cell">
                     {formatMoney(c.plafondCredit, organization.devise)}
                   </TableCell>
                   <TableCell
@@ -135,10 +146,10 @@ export default async function CustomersPage() {
                   >
                     {formatMoney(solde, organization.devise)}
                   </TableCell>
-                  <TableCell className="num text-right">
+                  <TableCell className="num hidden text-right md:table-cell">
                     {pointsByCustomer.get(c.id) ?? 0}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant={c.actif ? "success" : "secondary"}>
                       {c.actif ? "Actif" : "Inactif"}
                     </Badge>
@@ -161,16 +172,16 @@ export default async function CustomersPage() {
                 </TableRow>
               );
             })}
-            {customers.length === 0 && (
+            {visible.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground">
-                  Aucun client pour l&apos;instant.
+                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                  {query ? "Aucun client ne correspond à cette recherche." : "Aucun client pour l'instant. Ajoutez-en un avec « Nouveau client »."}
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </TablePanel>
+    </Page>
   );
 }

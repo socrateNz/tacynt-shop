@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { FileUp, Hash } from "lucide-react";
+
+import { Page, PageHeader } from "@/components/admin/page";
+import { buttonVariants } from "@/components/ui/button";
 
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { systemPrisma } from "@/lib/db/system-client";
@@ -9,6 +13,7 @@ import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { profileHasLots, profileHasSerialNumbers } from "@/lib/tenant/profile";
 
+import { NewProductButton } from "./new-product-button";
 import { ProductsTable, type ProductRow } from "./products-table";
 
 export default async function ProductsPage() {
@@ -180,32 +185,40 @@ export default async function ProductsPage() {
     };
   });
 
+  const categoryOptions = categories.map((c) => ({ id: c.id, nom: c.nom }));
+  const canImport = hasCapability(ctx.role, "catalog:import");
+
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Produits</h1>
-          <p className="text-sm text-muted-foreground">
-            Catalogue mutualisé au niveau de l&apos;organisation, prix par boutique.
-          </p>
-        </div>
-        {showSerial && (
-          <Link
-            href="/catalog/serial-numbers"
-            className="text-sm text-primary underline-offset-4 hover:underline"
-          >
-            Rechercher un numéro de série
-          </Link>
-        )}
-      </header>
+    <Page>
+      <PageHeader
+        title="Produits"
+        description="Catalogue commun à toute l'organisation ; les prix sont fixés par boutique."
+        actions={
+          <>
+            {showSerial && (
+              <Link href="/catalog/serial-numbers" className={buttonVariants({ variant: "outline" })}>
+                <Hash />
+                Numéros de série
+              </Link>
+            )}
+            {canImport && (
+              <Link href="/catalog/import" className={buttonVariants({ variant: "outline" })}>
+                <FileUp />
+                Importer
+              </Link>
+            )}
+            {canWrite && <NewProductButton categories={categoryOptions} showLots={showLots} showSerial={showSerial} />}
+          </>
+        }
+      />
 
       <ProductsTable
         products={rows}
-        categories={categories.map((c) => ({ id: c.id, nom: c.nom }))}
+        categories={categoryOptions}
         canWrite={canWrite}
         showLots={showLots}
         showSerial={showSerial}
       />
-    </div>
+    </Page>
   );
 }

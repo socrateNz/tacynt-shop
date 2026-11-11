@@ -43,7 +43,7 @@ export function NameForm({ organizationId, nom }: { organizationId: string; nom:
 
   return (
     <form action={formAction} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6">
-      <h2 className="text-sm font-medium text-foreground">Nom de la boutique</h2>
+      <h2 className="text-base font-semibold text-foreground">Nom de la boutique</h2>
       <p className="text-sm text-muted-foreground">Le nom affiché aux clients sur la vitrine.</p>
       {state.error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -72,7 +72,7 @@ export function CountryForm({ organizationId, pays }: { organizationId: string; 
 
   return (
     <form action={formAction} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6">
-      <h2 className="text-sm font-medium text-foreground">Pays</h2>
+      <h2 className="text-base font-semibold text-foreground">Pays</h2>
       <p className="text-sm text-muted-foreground">
         Cameroun : paiement en ligne par Mobile Money possible. Autres pays : paiement hors ligne uniquement (à la
         réception).
@@ -127,7 +127,7 @@ export function PlanStatusForm({
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Plan et statut</h2>
+      <h2 className="text-base font-semibold text-foreground">Plan et statut</h2>
       {state.error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}
@@ -196,7 +196,7 @@ export function RecordPaymentForm({
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Constater un paiement</h2>
+      <h2 className="text-base font-semibold text-foreground">Constater un paiement</h2>
       <p className="text-sm text-muted-foreground">
         Aucun prélèvement réel — un enregistrement manuel de ce qui a été perçu hors ligne.
       </p>
@@ -224,7 +224,7 @@ export function RecordPaymentForm({
           <Input id="periodeFin" name="periodeFin" type="date" required />
         </div>
       </div>
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending ? "Enregistrement..." : "Enregistrer le paiement"}
       </Button>
     </form>
@@ -250,7 +250,7 @@ export function ModulesForm({
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Modules premium</h2>
+      <h2 className="text-base font-semibold text-foreground">Modules premium</h2>
       <p className="text-sm text-muted-foreground">
         Activation manuelle après encaissement — aucune bascule en libre-service côté
         organisation.
@@ -278,7 +278,7 @@ export function ModulesForm({
           </label>
         ))}
       </div>
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending ? "Enregistrement..." : "Enregistrer les modules"}
       </Button>
     </form>
@@ -304,7 +304,7 @@ export function OwnerCredentialsForm({
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Identifiants du propriétaire</h2>
+      <h2 className="text-base font-semibold text-foreground">Identifiants du propriétaire</h2>
       <p className="text-sm text-muted-foreground">
         Pour aider un client qui a perdu ses identifiants — à transmettre vous-même, aucun email
         n&apos;est envoyé.
@@ -351,7 +351,7 @@ export function OwnerCredentialsForm({
           />
         </div>
       </div>
-      <Button type="submit" className="self-start" disabled={isPending || !ownerEmail}>
+      <Button type="submit" className="self-end" disabled={isPending || !ownerEmail}>
         {isPending ? "Enregistrement..." : "Mettre à jour les identifiants"}
       </Button>
     </form>
@@ -402,7 +402,7 @@ export function DeleteOrganizationForm({
       <Button
         type="submit"
         variant="destructive"
-        className="self-start"
+        className="self-end"
         disabled={isPending || !confirmed}
       >
         {isPending ? "Suppression..." : "Supprimer définitivement l'organisation"}

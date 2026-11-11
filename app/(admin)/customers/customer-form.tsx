@@ -46,7 +46,7 @@ export function CustomerForm() {
         </div>
       </div>
 
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending ? "Création..." : "Créer le client"}
       </Button>
     </form>

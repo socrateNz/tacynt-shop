@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { PageHeader } from "@/components/admin/page";
+import { buttonVariants } from "@/components/ui/button";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
@@ -55,20 +57,20 @@ export default async function MobileOwnerViewPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-6 py-4">
-      <header className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-muted-foreground uppercase">{organization.nom}</p>
-          <h1 className="text-lg font-semibold text-foreground">Vue propriétaire</h1>
-        </div>
-        <Link href="/dashboard" className="text-xs text-primary underline-offset-4 hover:underline">
-          Vue complète
-        </Link>
-      </header>
+      <PageHeader
+        title="Vue propriétaire"
+        description={<>{organization.nom}</>}
+        actions={
+          <Link href="/dashboard" className={buttonVariants({ variant: "outline", size: "sm" })}>
+            Vue complète
+          </Link>
+        }
+      />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xs font-medium text-muted-foreground uppercase">Aujourd&apos;hui</h2>
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-card">
             <p className="text-xs text-muted-foreground">Chiffre d&apos;affaires</p>
             <p className="num text-xl font-semibold text-foreground">
               {formatMoney(daily.caDuJour, organization.devise)}
@@ -80,17 +82,17 @@ export default async function MobileOwnerViewPage() {
               </p>
             )}
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-card">
             <p className="text-xs text-muted-foreground">Tickets</p>
             <p className="num text-xl font-semibold text-foreground">{daily.nombreTickets}</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-card">
             <p className="text-xs text-muted-foreground">Espèces en caisse</p>
             <p className="num text-xl font-semibold text-foreground">
               {formatMoney(daily.especesEnCaisse, organization.devise)}
             </p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-card">
             <p className="text-xs text-muted-foreground">Ruptures actives</p>
             <p
               className={`num text-xl font-semibold ${daily.rupturesActives > 0 ? "text-destructive" : "text-foreground"}`}
@@ -104,19 +106,19 @@ export default async function MobileOwnerViewPage() {
       <section className="flex flex-col gap-3">
         <h2 className="text-xs font-medium text-muted-foreground uppercase">Ce mois-ci</h2>
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-card">
             <p className="text-xs text-muted-foreground">Chiffre d&apos;affaires</p>
             <p className="num text-xl font-semibold text-foreground">
               {formatMoney(ventesMois.totalCa, organization.devise)}
             </p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-card">
             <p className="text-xs text-muted-foreground">Marge brute</p>
             <p className="num text-xl font-semibold text-foreground">
               {formatMoney(margeMoisTotal, organization.devise)}
             </p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-card">
             <p className="text-xs text-muted-foreground">Solde net trésorerie</p>
             <p
               className={`num text-xl font-semibold ${tresorerieMois.soldeNet >= 0 ? "text-success" : "text-destructive"}`}
@@ -124,7 +126,7 @@ export default async function MobileOwnerViewPage() {
               {formatMoney(tresorerieMois.soldeNet, organization.devise)}
             </p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-card">
             <p className="text-xs text-muted-foreground">Créances clients</p>
             <p className="num text-xl font-semibold text-foreground">
               {formatMoney(creances.totalDu, organization.devise)}
@@ -135,9 +137,9 @@ export default async function MobileOwnerViewPage() {
 
       <Link
         href="/reports"
-        className="rounded-xl border border-border bg-card p-4 text-center text-sm text-primary underline-offset-4 hover:underline"
+        className={buttonVariants({ variant: "outline" })}
       >
-        Voir tous les rapports détaillés →
+        Voir tous les rapports détaillés
       </Link>
     </div>
   );

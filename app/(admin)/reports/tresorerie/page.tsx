@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, StatCard, TablePanel, Toolbar } from "@/components/admin/page";
 import {
   Table,
   TableBody,
@@ -55,46 +56,12 @@ export default async function TresorerieReportPage({
   );
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Trésorerie</h1>
-          <p className="text-sm text-muted-foreground">
-            Du {period.fromInput} au {period.toInput} — dépenses validées uniquement
-          </p>
-        </div>
-        <div className="no-print flex flex-wrap items-center gap-2">
-          {myShopIds.length > 1 && <ShopFilter consolidated={consolidated} />}
-          <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Encaissements</p>
-          <p className="num text-2xl font-semibold text-foreground">
-            {formatMoney(report.totalEncaissements, organization.devise)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Dépenses</p>
-          <p className="num text-2xl font-semibold text-foreground">
-            {formatMoney(report.totalDepenses, organization.devise)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Solde net</p>
-          <p
-            className={`num text-2xl font-semibold ${report.soldeNet >= 0 ? "text-success" : "text-destructive"}`}
-          >
-            {formatMoney(report.soldeNet, organization.devise)}
-          </p>
-        </div>
-      </div>
-
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-medium text-foreground">Encaissements par mode</h2>
+    <Page>
+      <PageHeader
+        back={{ href: "/reports", label: "Rapports" }}
+        title="Trésorerie"
+        description={<>Du {period.fromInput} au {period.toInput} — dépenses validées uniquement</>}
+        actions={
           <ExportButtons
             rows={report.encaissementsParMode}
             columns={[
@@ -114,8 +81,32 @@ export default async function TresorerieReportPage({
               ],
             }}
           />
+        }
+      />
+
+      <Toolbar>
+        {myShopIds.length > 1 && <ShopFilter consolidated={consolidated} />}
+        <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
+      </Toolbar>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <StatCard label="Encaissements" value={formatMoney(report.totalEncaissements, organization.devise)} />
+        <StatCard label="Dépenses" value={formatMoney(report.totalDepenses, organization.devise)} />
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+          <p className="text-xs font-medium text-muted-foreground uppercase">Solde net</p>
+          <p
+            className={`num text-2xl font-semibold ${report.soldeNet >= 0 ? "text-success" : "text-destructive"}`}
+          >
+            {formatMoney(report.soldeNet, organization.devise)}
+          </p>
         </div>
-        <div className="rounded-xl border border-border bg-card">
+      </div>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-foreground">Encaissements par mode</h2>
+        </div>
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -134,12 +125,12 @@ export default async function TresorerieReportPage({
               ))}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-foreground">Dépenses par catégorie</h2>
-        <div className="rounded-xl border border-border bg-card">
+        <h2 className="text-base font-semibold text-foreground">Dépenses par catégorie</h2>
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -165,8 +156,8 @@ export default async function TresorerieReportPage({
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </section>
-    </div>
+    </Page>
   );
 }

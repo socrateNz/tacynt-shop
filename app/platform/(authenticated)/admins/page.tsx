@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 
+import { Page, PageHeader, TablePanel } from "@/components/admin/page";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,37 +30,38 @@ export default async function PlatformAdminsPage() {
   });
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Comptes admin plateforme</h1>
-          <p className="text-sm text-muted-foreground">
-            {admins.length} compte{admins.length > 1 ? "s" : ""} — chacun a un accès complet à
-            l&apos;espace plateforme (toutes les organisations), pas de rôle restreint.
-          </p>
-        </div>
-        <Dialog>
-          <DialogTrigger render={<Button className="gap-1.5" />}>
-            <Plus className="size-4" />
-            Nouveau compte admin
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Nouveau compte admin</DialogTitle>
-            </DialogHeader>
-            <NewAdminForm />
-          </DialogContent>
-        </Dialog>
-      </header>
+    <Page>
+      <PageHeader
+        title="Comptes admin plateforme"
+        description={<>{admins.length} compte{admins.length > 1 ? "s" : ""} — chacun a un accès complet à l&apos;espace plateforme (toutes les organisations), pas de rôle restreint.</>}
+        actions={
+          <>
+            <Dialog>
+              <DialogTrigger render={<Button />}>
+                <Plus />
+                Nouveau compte admin
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Nouveau compte admin</DialogTitle>
+                </DialogHeader>
+                <NewAdminForm />
+              </DialogContent>
+            </Dialog>
+          </>
+        }
+      />
 
-      <div className="rounded-xl border border-border bg-card">
+      <TablePanel>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Email</TableHead>
               <TableHead>Créé le</TableHead>
               <TableHead>Statut</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -98,7 +100,7 @@ export default async function PlatformAdminsPage() {
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </TablePanel>
+    </Page>
   );
 }

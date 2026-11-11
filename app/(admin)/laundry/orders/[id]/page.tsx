@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Page, PageHeader } from "@/components/admin/page";
 import { PhoneLink } from "@/components/phone-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,47 +60,45 @@ export default async function LaundryOrderPage({ params }: { params: Promise<{ i
           : { label: "Paiement en ligne en attente", className: "text-warning" };
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Link href="/laundry/orders" className="text-sm text-muted-foreground hover:underline">
-            ← Commandes blanchisserie
-          </Link>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold text-foreground">Commande {order.numero}</h1>
-            <Badge variant={LAUNDRY_STATUS_VARIANTS[order.statut]}>{LAUNDRY_STATUS_LABELS[order.statut]}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
+    <Page>
+      <PageHeader
+        back={{ href: "/laundry/orders", label: "Commandes blanchisserie" }}
+        title={<>Commande {order.numero}</>}
+        meta={<Badge variant={LAUNDRY_STATUS_VARIANTS[order.statut]}>{LAUNDRY_STATUS_LABELS[order.statut]}</Badge>}
+        description={
+          <>
             {order.shop.nom} — passée le {order.createdAt.toLocaleDateString("fr-FR")} — {pieces} pièce
             {pieces > 1 ? "s" : ""} déclarée{pieces > 1 ? "s" : ""}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {stepLabel && (
-            <form action={advanceLaundryOrder}>
-              <input type="hidden" name="orderId" value={order.id} />
-              <Button type="submit">{stepLabel}</Button>
-            </form>
-          )}
-          {laundryCancellable(order.statut) && (
-            <form action={cancelLaundryOrder}>
-              <input type="hidden" name="orderId" value={order.id} />
-              <Button type="submit" variant="outline" className="text-destructive">
-                Annuler
-              </Button>
-            </form>
-          )}
-        </div>
-      </header>
+          </>
+        }
+        actions={
+          <>
+            {laundryCancellable(order.statut) && (
+              <form action={cancelLaundryOrder}>
+                <input type="hidden" name="orderId" value={order.id} />
+                <Button type="submit" variant="outline" className="text-destructive hover:text-destructive">
+                  Annuler la commande
+                </Button>
+              </form>
+            )}
+            {stepLabel && (
+              <form action={advanceLaundryOrder}>
+                <input type="hidden" name="orderId" value={order.id} />
+                <Button type="submit">{stepLabel}</Button>
+              </form>
+            )}
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
           <p className="text-xs text-muted-foreground">Client</p>
           <p className="text-foreground">{order.nomClient}</p>
           <PhoneLink telephone={order.telephoneClient} className="text-sm" />
           {order.emailClient && <p className="text-sm text-muted-foreground">{order.emailClient}</p>}
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
           <p className="text-xs text-muted-foreground">Aller / retour</p>
           <p className="text-foreground">{PICKUP_LABELS[order.modeAller]}</p>
           <p className="text-foreground">{RETURN_LABELS[order.modeRetour]}</p>
@@ -110,7 +108,7 @@ export default async function LaundryOrderPage({ params }: { params: Promise<{ i
             </p>
           )}
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
           <p className="text-xs text-muted-foreground">Montants</p>
           <p className="text-sm text-muted-foreground">
             Articles déclarés : <span className="num text-foreground">{formatMoney(order.montantDeclare, devise)}</span>
@@ -146,14 +144,14 @@ export default async function LaundryOrderPage({ params }: { params: Promise<{ i
       </div>
 
       {order.notes && (
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
           <p className="text-xs text-muted-foreground">Note du client</p>
           <p className="text-sm text-foreground">{order.notes}</p>
         </div>
       )}
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-foreground">
+        <h2 className="text-base font-semibold text-foreground">
           Pièces{recountEditable ? " — recomptage à la réception du linge" : ""}
         </h2>
         <RecountForm
@@ -170,6 +168,6 @@ export default async function LaundryOrderPage({ params }: { params: Promise<{ i
           }))}
         />
       </section>
-    </div>
+    </Page>
   );
 }

@@ -34,7 +34,7 @@ export function NewAdminForm() {
         </p>
       </div>
 
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending ? "Création..." : "Créer le compte"}
       </Button>
     </form>

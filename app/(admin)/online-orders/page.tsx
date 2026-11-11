@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
 
+import { ShoppingBag } from "lucide-react";
+
+import { FilterTabs } from "@/components/admin/filter-tabs";
+import { EmptyState, Page, PageHeader, TablePanel } from "@/components/admin/page";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -30,7 +34,16 @@ const STATUS_LABELS: Record<string, string> = {
   ANNULEE: "Annulée",
 };
 
-export default async function OnlineOrdersPage() {
+const STATUS_TONES: Record<string, "warning" | "default" | "success" | "secondary" | "destructive"> = {
+  EN_ATTENTE: "warning",
+  CONFIRMEE: "default",
+  PRETE: "success",
+  RECUPEREE: "secondary",
+  ANNULEE: "destructive",
+};
+
+export default async function OnlineOrdersPage({ searchParams }: { searchParams: Promise<{ filtre?: string }> }) {
+  const { filtre } = await searchParams;
   const ctx = await getTenantContext();
   const organization = await systemPrisma.organization.findUniqueOrThrow({
     where: { id: ctx.organizationId },
@@ -58,52 +71,66 @@ export default async function OnlineOrdersPage() {
     }),
   );
 
+  // Même définition de "à traiter" que le badge du menu (app/(admin)/layout.tsx).
   const enAttente = orders.filter((o) => o.statut === "EN_ATTENTE" || o.statut === "CONFIRMEE");
+  const showAll = filtre === "toutes";
+  const visible = showAll ? orders : enAttente;
 
   return (
-    <div className="flex flex-col gap-8">
+    <Page>
       <LiveUpdates latestOrderCreatedAt={orders[0]?.createdAt.toISOString() ?? null} />
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Commandes en ligne</h1>
-          <p className="text-sm text-muted-foreground">
-            Paiement à la réception — l&apos;encaissement en boutique convertit la commande en
-            vente normale.
-          </p>
-        </div>
-        <PushSubscribeButton />
-      </header>
+      <PageHeader
+        title="Commandes en ligne"
+        description={<>Commandes passées sur la boutique en ligne. L&apos;encaissement en boutique les convertit en vente.</>}
+        actions={<PushSubscribeButton />}
+      />
 
-      {enAttente.length > 0 && (
-        <div className="rounded-xl border border-warning/30 bg-warning/10 p-4">
-          <p className="text-sm font-medium text-foreground">
-            À traiter ({enAttente.length})
-          </p>
-        </div>
-      )}
+      <FilterTabs
+        items={[
+          { label: "À traiter", href: "/online-orders", active: !showAll, count: enAttente.length },
+          { label: "Toutes", href: "/online-orders?filtre=toutes", active: showAll },
+        ]}
+      />
 
-      <div className="rounded-xl border border-border bg-card">
+      <TablePanel>
+        {visible.length === 0 ? (
+          <EmptyState
+            icon={ShoppingBag}
+            title={showAll ? "Aucune commande en ligne" : "Aucune commande à traiter"}
+            description={
+              showAll
+                ? "Les commandes passées sur votre boutique en ligne apparaîtront ici."
+                : "Toutes les commandes ont été traitées. Les nouvelles s'afficheront ici automatiquement."
+            }
+          />
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Numéro</TableHead>
+              <TableHead>Commande</TableHead>
               <TableHead>Client</TableHead>
-              <TableHead>Boutique</TableHead>
+              <TableHead className="hidden md:table-cell">Boutique</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead className="text-right">Total</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.map((o) => (
+            {visible.map((o) => (
               <TableRow key={o.id}>
-                <TableCell className="text-foreground">{o.numero}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="num font-medium text-foreground">{o.numero}</span>
+                    <span className="text-xs text-muted-foreground">{o.createdAt.toLocaleDateString("fr-FR")}</span>
+                  </div>
+                </TableCell>
                 <TableCell className="text-muted-foreground">{o.nomClient}</TableCell>
-                <TableCell className="text-muted-foreground">{o.shop.nom}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  <div className="flex flex-col gap-1">
-                    <span>{STATUS_LABELS[o.statut] ?? o.statut}</span>
+                <TableCell className="hidden text-muted-foreground md:table-cell">{o.shop.nom}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col items-start gap-1">
+                    <Badge variant={STATUS_TONES[o.statut] ?? "secondary"}>{STATUS_LABELS[o.statut] ?? o.statut}</Badge>
                     {o.payments[0]?.statut === "REUSSI" && o.statut === "ANNULEE" ? (
                       <Badge variant="destructive">
                         Payée en ligne mais annulée — réconciliation manuelle requise
@@ -122,9 +149,6 @@ export default async function OnlineOrdersPage() {
                 </TableCell>
                 <TableCell className="num text-right">
                   {formatMoney(o.totalTtc, organization.devise)}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {o.createdAt.toLocaleDateString("fr-FR")}
                 </TableCell>
                 <TableCell className="text-right">
                   <OnlineOrderDialog
@@ -159,16 +183,10 @@ export default async function OnlineOrdersPage() {
                 </TableCell>
               </TableRow>
             ))}
-            {orders.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
-                  Aucune commande en ligne pour l&apos;instant.
-                </TableCell>
-              </TableRow>
-            )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+        )}
+      </TablePanel>
+    </Page>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { Eye } from "lucide-react";
+import { Users } from "lucide-react";
 
+import { TablePanel } from "@/components/admin/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,16 +42,16 @@ export function ShopUsersDialog({
 }) {
   return (
     <Dialog>
-      <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-        <Eye className="size-3.5" />
-        <span className="sr-only">Voir</span>
+      <DialogTrigger render={<Button variant="outline" size="sm" />}>
+        <Users className="size-3.5" />
+        Équipe ({users.filter((u) => u.assigned).length})
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Utilisateurs — {shopNom}</DialogTitle>
         </DialogHeader>
 
-        <div className="rounded-xl border border-border bg-card">
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -92,7 +93,7 @@ export function ShopUsersDialog({
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </DialogContent>
     </Dialog>
   );

@@ -59,7 +59,7 @@ export function UserForm() {
         </div>
       </div>
 
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending ? "Création..." : "Créer l'utilisateur"}
       </Button>
     </form>

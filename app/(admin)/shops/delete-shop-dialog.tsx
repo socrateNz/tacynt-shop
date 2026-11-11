@@ -33,13 +33,13 @@ export function DeleteShopDialog({ shopId, shopNom }: { shopId: string; shopNom:
         render={
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="sm"
             className="text-destructive hover:bg-destructive/10 hover:text-destructive"
           />
         }
       >
         <Trash2 className="size-3.5" />
-        <span className="sr-only">Supprimer</span>
+        Supprimer
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -76,7 +76,7 @@ export function DeleteShopDialog({ shopId, shopNom }: { shopId: string; shopNom:
           <Button
             type="submit"
             variant="destructive"
-            className="self-start"
+            className="self-end"
             disabled={isPending || !confirmed}
           >
             {isPending ? "Suppression..." : "Supprimer définitivement la boutique"}

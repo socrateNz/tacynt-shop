@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader } from "@/components/admin/page";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
@@ -10,7 +11,7 @@ import { getActiveShopId } from "@/lib/tenant/active-shop";
 import { getTenantContext } from "@/lib/tenant/context";
 import { organizationHasModule } from "@/lib/tenant/modules";
 
-import { UnitsTable, type UnitRow } from "./units-table";
+import { NewUnitButton, UnitsTable, type UnitRow } from "./units-table";
 
 export default async function RentalUnitsPage() {
   const ctx = await getTenantContext();
@@ -78,16 +79,14 @@ export default async function RentalUnitsPage() {
   }));
 
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Logements</h1>
-        <p className="text-sm text-muted-foreground">
-          Chambres, studios, appartements, villas... — loyer, durée minimale et commission par
-          logement.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Logements"
+        description="Chambres, studios, appartements, villas... — loyer, durée minimale et commission par logement."
+        actions={<NewUnitButton localities={localityOptions} />}
+      />
 
       <UnitsTable units={rows} localities={localityOptions} />
-    </div>
+    </Page>
   );
 }

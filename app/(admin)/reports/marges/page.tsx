@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, TablePanel, Toolbar } from "@/components/admin/page";
 import {
   Table,
   TableBody,
@@ -55,41 +56,41 @@ export default async function MargesReportPage({
   );
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Marges</h1>
-          <p className="text-sm text-muted-foreground">
-            Du {period.fromInput} au {period.toInput}
-          </p>
-        </div>
-        <div className="no-print flex flex-wrap items-center gap-2">
-          {myShopIds.length > 1 && <ShopFilter consolidated={consolidated} />}
-          <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
-        </div>
-      </header>
-
-      <ExportButtons
-        rows={report.parProduit}
-        columns={[
-          { key: "designation", label: "Produit" },
-          { key: "ca", label: "CA", format: "money" },
-          { key: "cout", label: "Coût", format: "money" },
-          { key: "marge", label: "Marge", format: "money" },
-          { key: "margePourcent", label: "Marge %", format: "percent" },
-        ]}
-        filename="marges-par-produit"
-        pdf={{
-          title: "Marges — Par produit",
-          subtitle: `Du ${period.fromInput} au ${period.toInput}`,
-          organizationNom: organization.nom,
-          devise: organization.devise,
-        }}
+    <Page>
+      <PageHeader
+        back={{ href: "/reports", label: "Rapports" }}
+        title="Marges"
+        description={<>Du {period.fromInput} au {period.toInput}</>}
+        actions={
+          <ExportButtons
+            rows={report.parProduit}
+            columns={[
+              { key: "designation", label: "Produit" },
+              { key: "ca", label: "CA", format: "money" },
+              { key: "cout", label: "Coût", format: "money" },
+              { key: "marge", label: "Marge", format: "money" },
+              { key: "margePourcent", label: "Marge %", format: "percent" },
+            ]}
+            filename="marges-par-produit"
+            pdf={{
+              title: "Marges — Par produit",
+              subtitle: `Du ${period.fromInput} au ${period.toInput}`,
+              organizationNom: organization.nom,
+              devise: organization.devise,
+            }}
+          />
+        }
       />
 
+      <Toolbar>
+        {myShopIds.length > 1 && <ShopFilter consolidated={consolidated} />}
+        <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
+      </Toolbar>
+
+
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-foreground">Par produit</h2>
-        <div className="rounded-xl border border-border bg-card">
+        <h2 className="text-base font-semibold text-foreground">Par produit</h2>
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -119,12 +120,12 @@ export default async function MargesReportPage({
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-foreground">Par catégorie</h2>
-        <div className="rounded-xl border border-border bg-card">
+        <h2 className="text-base font-semibold text-foreground">Par catégorie</h2>
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -147,8 +148,8 @@ export default async function MargesReportPage({
               ))}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </section>
-    </div>
+    </Page>
   );
 }

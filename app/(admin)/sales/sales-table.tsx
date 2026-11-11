@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Eye } from "lucide-react";
+import { ChevronRight, Download, Printer, ReceiptText } from "lucide-react";
 
+import { EmptyState, TablePanel } from "@/components/admin/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -42,54 +43,51 @@ export function SalesTable({
 
   return (
     <>
-      <div className="rounded-xl border border-border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Numéro</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead>Statut</TableHead>
-              {canCancel && <TableHead>Annuler</TableHead>}
-              <TableHead className="text-right">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sales.map((s) => (
-              <TableRow key={s.id}>
-                <TableCell className="num text-foreground">{s.numero}</TableCell>
-                <TableCell className="text-muted-foreground">{s.createdAtLabel}</TableCell>
-                <TableCell className="num text-right">{s.totalLabel}</TableCell>
-                <TableCell>
-                  <Badge variant={s.statut === "VALIDEE" ? "success" : "destructive"}>
-                    {s.statut === "VALIDEE" ? "Validée" : "Annulée"}
-                  </Badge>
-                </TableCell>
-                {canCancel && (
-                  <TableCell>{s.statut === "VALIDEE" && <CancelSaleForm saleId={s.id} />}</TableCell>
-                )}
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => setOpenSaleId(s.id)}
-                  >
-                    <Eye className="size-3.5" />
-                    <span className="sr-only">Voir</span>
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-            {sales.length === 0 && (
+      <TablePanel>
+        {sales.length === 0 ? (
+          <EmptyState
+            icon={ReceiptText}
+            title="Aucune vente pour l'instant"
+            description="Les tickets encaissés à la caisse de cette boutique apparaîtront ici."
+          />
+        ) : (
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={canCancel ? 6 : 5} className="text-center text-muted-foreground">
-                  Aucune vente pour l&apos;instant.
-                </TableCell>
+                <TableHead>Ticket</TableHead>
+                <TableHead className="hidden sm:table-cell">Client</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="w-12">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {sales.map((s) => (
+                <TableRow key={s.id} className="cursor-pointer" onClick={() => setOpenSaleId(s.id)}>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="num font-medium text-foreground">{s.numero}</span>
+                      <span className="text-xs text-muted-foreground">{s.createdAtLabel}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden text-muted-foreground sm:table-cell">{s.customerNom ?? "—"}</TableCell>
+                  <TableCell className="num text-right">{s.totalLabel}</TableCell>
+                  <TableCell>
+                    <Badge variant={s.statut === "VALIDEE" ? "success" : "destructive"}>
+                      {s.statut === "VALIDEE" ? "Validée" : "Annulée"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <ChevronRight className="ml-auto size-4 text-muted-foreground" aria-hidden />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </TablePanel>
 
       <Dialog open={openSale !== null} onOpenChange={(open) => !open && setOpenSaleId(null)}>
         <DialogContent className="sm:max-w-sm">
@@ -101,22 +99,20 @@ export function SalesTable({
               {openSale.customerNom && (
                 <p className="text-sm text-muted-foreground">Client : {openSale.customerNom}</p>
               )}
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => window.print()}>
-                  Imprimer le ticket
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => downloadTicketPdf(openSale.ticket)}
-                >
-                  Télécharger le PDF
-                </Button>
-              </div>
               <PrintableTicket ticket={openSale.ticket} />
-              {canCancel && openSale.statut === "VALIDEE" && (
-                <CancelSaleForm saleId={openSale.id} />
-              )}
+              <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                {canCancel && openSale.statut === "VALIDEE" && <CancelSaleForm saleId={openSale.id} />}
+                <div className="ml-auto flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => downloadTicketPdf(openSale.ticket)}>
+                    <Download />
+                    PDF
+                  </Button>
+                  <Button size="sm" onClick={() => window.print()}>
+                    <Printer />
+                    Imprimer
+                  </Button>
+                </div>
+              </div>
             </>
           )}
         </DialogContent>

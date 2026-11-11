@@ -31,17 +31,23 @@ export type ProductSerialNumberRow = {
 export function ProductSerialNumbersDialog({
   productDesignation,
   serialNumbers,
+  open,
+  onOpenChange,
 }: {
   productDesignation: string;
   serialNumbers: ProductSerialNumberRow[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   return (
-    <Dialog>
-      <DialogTrigger
-        render={<button type="button" className="text-sm text-primary underline-offset-4 hover:underline" />}
-      >
-        Voir les numéros
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {open === undefined && (
+        <DialogTrigger
+          render={<button type="button" className="text-sm text-primary underline-offset-4 hover:underline" />}
+        >
+          Voir les numéros
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Numéros de série — {productDesignation}</DialogTitle>

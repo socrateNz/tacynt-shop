@@ -1,3 +1,4 @@
+import { Page, PageHeader, TablePanel } from "@/components/admin/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,16 +19,13 @@ export default async function ContactRequestsPage() {
   });
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Demandes de contact</h1>
-        <p className="text-sm text-muted-foreground">
-          {requests.length} demande{requests.length > 1 ? "s" : ""} reçue
-          {requests.length > 1 ? "s" : ""} depuis la page d&apos;accueil publique.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Demandes de contact"
+        description={<>{requests.length} demande{requests.length > 1 ? "s" : ""} reçue{requests.length > 1 ? "s" : ""} depuis la page d&apos;accueil publique.</>}
+      />
 
-      <div className="rounded-xl border border-border bg-card">
+      <TablePanel>
         <Table>
           <TableHeader>
             <TableRow>
@@ -36,7 +34,9 @@ export default async function ContactRequestsPage() {
               <TableHead>Email</TableHead>
               <TableHead>Message</TableHead>
               <TableHead>Statut</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -77,7 +77,7 @@ export default async function ContactRequestsPage() {
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </TablePanel>
+    </Page>
   );
 }

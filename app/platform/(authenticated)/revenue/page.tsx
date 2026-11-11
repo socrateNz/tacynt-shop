@@ -1,3 +1,4 @@
+import { EmptyState, Page, PageHeader, StatCard, TablePanel } from "@/components/admin/page";
 import { platformPrisma } from "@/lib/db/platform-client";
 import { formatMoney } from "@/lib/money";
 import {
@@ -72,37 +73,32 @@ export default async function PlatformRevenuePage() {
   });
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Chiffre d&apos;affaires</h1>
-        <p className="text-sm text-muted-foreground">
-          Paiements d&apos;abonnement constatés manuellement ({payments.length} au total) — voir
-          &quot;Constater un paiement&quot; sur la fiche de chaque organisation.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title={<>Chiffre d&apos;affaires</>}
+        description={<>Paiements d&apos;abonnement constatés manuellement ({payments.length} au total) — voir &quot;Constater un paiement&quot; sur la fiche de chaque organisation.</>}
+      />
 
       {totalByDevise.size === 0 ? (
-        <p className="text-sm text-muted-foreground">Aucun paiement constaté pour l&apos;instant.</p>
+        <TablePanel>
+          <EmptyState
+            title="Aucun paiement constaté"
+            description="Constatez un paiement depuis la fiche d'une organisation : il apparaîtra ici."
+          />
+        </TablePanel>
       ) : (
-        <div className="flex flex-wrap gap-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[...totalByDevise.entries()]
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([devise, montant]) => (
-              <div key={devise} className="rounded-xl border border-border bg-card p-6">
-                <p className="text-xs font-medium text-muted-foreground uppercase">
-                  Total — {devise}
-                </p>
-                <p className="num mt-1 text-2xl font-semibold text-foreground">
-                  {formatMoney(montant, devise)}
-                </p>
-              </div>
+              <StatCard key={devise} label={`Total — ${devise}`} value={formatMoney(montant, devise)} />
             ))}
         </div>
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-foreground">Par mois</h2>
-        <div className="rounded-xl border border-border bg-card">
+        <h2 className="text-base font-semibold text-foreground">Par mois</h2>
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -131,12 +127,12 @@ export default async function PlatformRevenuePage() {
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-foreground">Par organisation</h2>
-        <div className="rounded-xl border border-border bg-card">
+        <h2 className="text-base font-semibold text-foreground">Par organisation</h2>
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -160,8 +156,8 @@ export default async function PlatformRevenuePage() {
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </section>
-    </div>
+    </Page>
   );
 }

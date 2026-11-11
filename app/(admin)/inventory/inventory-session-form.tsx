@@ -58,7 +58,7 @@ export function InventorySessionForm({
         </div>
       )}
 
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending ? "Démarrage..." : "Démarrer l'inventaire"}
       </Button>
     </form>

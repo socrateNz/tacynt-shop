@@ -61,7 +61,7 @@ export function VariantForm({
       }}
       className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">
+      <h2 className="text-base font-semibold text-foreground">
         {isEdit ? "Modifier la variante" : "Nouvelle variante"}
       </h2>
       {isEdit ? (
@@ -172,7 +172,7 @@ export function VariantForm({
         </div>
       </div>
 
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending
           ? isEdit
             ? "Enregistrement..."

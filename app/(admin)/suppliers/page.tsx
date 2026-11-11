@@ -1,6 +1,8 @@
 import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, TablePanel } from "@/components/admin/page";
+import { matchesQuery, SearchForm } from "@/components/admin/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +30,8 @@ import { getTenantContext } from "@/lib/tenant/context";
 import { SupplierDetailDialog } from "./supplier-detail-dialog";
 import { SupplierForm } from "./supplier-form";
 
-export default async function SuppliersPage() {
+export default async function SuppliersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const query = ((await searchParams).q ?? "").trim();
   const ctx = await getTenantContext();
   if (!hasCapability(ctx.role, "suppliers:manage")) {
     redirect("/dashboard");
@@ -153,44 +156,48 @@ export default async function SuppliersPage() {
     };
   });
 
-  return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Fournisseurs</h1>
-          <p className="text-sm text-muted-foreground">
-            Commandes, réceptions et dette fournisseur — le solde est un journal, pas une valeur
-            écrite directement.
-          </p>
-        </div>
-        <Dialog>
-          <DialogTrigger render={<Button className="gap-1.5" />}>
-            <Plus className="size-4" />
-            Nouveau fournisseur
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Nouveau fournisseur</DialogTitle>
-            </DialogHeader>
-            <SupplierForm />
-          </DialogContent>
-        </Dialog>
-      </header>
+  const visible = suppliers.filter((x) => matchesQuery(query, x.nom, x.telephone));
 
-      <div className="rounded-xl border border-border bg-card">
+  return (
+    <Page>
+      <PageHeader
+        title="Fournisseurs"
+        description="Fournisseurs, bons de commande, réceptions et montants dus."
+        actions={
+          <>
+            <Dialog>
+              <DialogTrigger render={<Button />}>
+                <Plus />
+                Nouveau fournisseur
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Nouveau fournisseur</DialogTitle>
+                </DialogHeader>
+                <SupplierForm />
+              </DialogContent>
+            </Dialog>
+          </>
+        }
+      />
+
+      <SearchForm query={query} placeholder="Nom ou téléphone…" resetHref="/suppliers" />
+
+      <TablePanel>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nom</TableHead>
-              <TableHead>Téléphone</TableHead>
-              <TableHead>Délai livraison</TableHead>
+              <TableHead>Fournisseur</TableHead>
+              <TableHead className="hidden md:table-cell">Délai de livraison</TableHead>
               <TableHead className="text-right">Solde dû</TableHead>
               <TableHead>Statut</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {suppliers.map((s) => {
+            {visible.map((s) => {
               const solde = balanceBySupplier.get(s.id) ?? 0;
               const ledgerEntries = (ledgerBySupplier.get(s.id) ?? []).map((entry) => ({
                 id: entry.id,
@@ -227,9 +234,13 @@ export default async function SuppliersPage() {
 
               return (
                 <TableRow key={s.id}>
-                  <TableCell className="text-foreground">{s.nom}</TableCell>
-                  <TableCell className="text-muted-foreground">{s.telephone ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-foreground">{s.nom}</span>
+                      <span className="text-xs text-muted-foreground">{s.telephone ?? "—"}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
                     {s.delaiLivraisonJours !== null ? `${s.delaiLivraisonJours} j` : "—"}
                   </TableCell>
                   <TableCell className="num text-right">
@@ -261,16 +272,16 @@ export default async function SuppliersPage() {
                 </TableRow>
               );
             })}
-            {suppliers.length === 0 && (
+            {visible.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
-                  Aucun fournisseur pour l&apos;instant.
+                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                  {query ? "Aucun fournisseur ne correspond à cette recherche." : "Aucun fournisseur pour l'instant. Ajoutez-en un avec « Nouveau fournisseur »."}
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </TablePanel>
+    </Page>
   );
 }

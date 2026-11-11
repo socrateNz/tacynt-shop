@@ -25,11 +25,12 @@ export function ShopFilter({ consolidated }: { consolidated: boolean }) {
   }
 
   return (
-    <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
+    <div className="flex w-fit items-center gap-1 rounded-lg bg-muted p-1" role="group" aria-label="Périmètre">
       <Button
         type="button"
         size="sm"
         variant={consolidated ? "ghost" : "outline"}
+        className={consolidated ? "" : "bg-card shadow-card"}
         onClick={() => setConsolidated(false)}
       >
         Cette boutique
@@ -38,6 +39,7 @@ export function ShopFilter({ consolidated }: { consolidated: boolean }) {
         type="button"
         size="sm"
         variant={consolidated ? "outline" : "ghost"}
+        className={consolidated ? "bg-card shadow-card" : ""}
         onClick={() => setConsolidated(true)}
       >
         Mes boutiques

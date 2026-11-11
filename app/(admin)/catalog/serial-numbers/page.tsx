@@ -1,5 +1,10 @@
 import { redirect } from "next/navigation";
 
+import { Hash, Search } from "lucide-react";
+
+import { EmptyState, Page, PageHeader, TablePanel } from "@/components/admin/page";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -46,38 +51,39 @@ export default async function SerialNumberSearchPage({
     : [];
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Numéros de série</h1>
-        <p className="text-sm text-muted-foreground">
-          Recherche à l&apos;échelle de l&apos;organisation, toutes boutiques confondues —
-          support garantie.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Numéros de série"
+        back={{ href: "/catalog/products", label: "Produits" }}
+        description={<>Recherche dans toutes les boutiques de l&apos;organisation — utile pour le service après-vente et la garantie.</>}
+      />
 
-      <form method="get" className="flex flex-wrap items-end gap-3">
-        <div className="flex min-w-40 flex-1 flex-col gap-1.5">
-          <label htmlFor="q" className="text-sm text-muted-foreground">
-            Numéro de série
-          </label>
-          <input
+      <form method="get" className="no-print flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-card sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1 sm:max-w-md">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-subtle-foreground" />
+          <Input
             id="q"
             name="q"
+            type="search"
             defaultValue={query}
-            placeholder="SN-000123"
-            className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
+            placeholder="Numéro de série, ex. SN-000123"
+            aria-label="Numéro de série"
+            className="pl-8"
           />
         </div>
-        <button
-          type="submit"
-          className="h-8 rounded-md bg-primary px-4 text-sm text-primary-foreground"
-        >
-          Rechercher
-        </button>
+        <Button type="submit">Rechercher</Button>
       </form>
 
+      {!query && (
+        <EmptyState
+          icon={Hash}
+          title="Recherchez un numéro de série"
+          description="Saisissez tout ou partie d'un numéro pour retrouver le produit, la boutique et la vente associée."
+        />
+      )}
+
       {query && (
-        <div className="rounded-xl border border-border bg-card">
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -125,8 +131,8 @@ export default async function SerialNumberSearchPage({
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       )}
-    </div>
+    </Page>
   );
 }

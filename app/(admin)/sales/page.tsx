@@ -1,5 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ShoppingCart } from "lucide-react";
 
+import { Page, PageHeader } from "@/components/admin/page";
+import { buttonVariants } from "@/components/ui/button";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
@@ -69,15 +73,21 @@ export default async function SalesPage() {
   }));
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Ventes</h1>
-        <p className="text-sm text-muted-foreground">
-          Derniers tickets de la boutique. Un ticket annulé n&apos;est jamais supprimé.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Ventes"
+        description={<>Les 50 derniers tickets de la boutique. Cliquez sur un ticket pour le réimprimer ou l&apos;annuler.</>}
+        actions={
+          hasCapability(ctx.role, "pos:sell") ? (
+            <Link href="/caisse" className={buttonVariants()}>
+              <ShoppingCart />
+              Ouvrir la caisse
+            </Link>
+          ) : undefined
+        }
+      />
 
       <SalesTable sales={rows} canCancel={canCancel} />
-    </div>
+    </Page>
   );
 }

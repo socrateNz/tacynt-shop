@@ -1,6 +1,7 @@
-import { Plus } from "lucide-react";
+import { PackagePlus, SlidersHorizontal } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, TablePanel } from "@/components/admin/page";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -131,53 +132,97 @@ export default async function StockMovementsPage() {
   const nomByUserId = new Map(users.map((u) => [u.id, u.nom]));
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Stock</h1>
-        <p className="text-sm text-muted-foreground">
-          Le stock n&apos;est jamais une valeur qu&apos;on écrit — c&apos;est la somme des
-          mouvements.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Stock"
+        description={<>Niveaux par produit et historique des entrées et sorties de la boutique. Le stock est toujours la somme des mouvements.</>}
+        actions={
+          canWrite ? (
+            <>
+              <Dialog>
+                <DialogTrigger render={<Button variant="outline" />}>
+                  <SlidersHorizontal />
+                  Ajuster le stock
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Ajustement d&apos;inventaire (comptage, casse, perte)</DialogTitle>
+                  </DialogHeader>
+                  <AdjustStockForm
+                    variants={variants.map((v) => ({
+                      id: v.id,
+                      label: variantLabel(v),
+                    }))}
+                  />
+                </DialogContent>
+              </Dialog>
+              <Dialog>
+                <DialogTrigger render={<Button />}>
+                  <PackagePlus />
+                  Réceptionner du stock
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Réception de stock</DialogTitle>
+                  </DialogHeader>
+                  <ReceiveStockForm
+                    showLots={showLots}
+                    showSerial={showSerial}
+                    variants={variants.map((v) => ({
+                      id: v.id,
+                      label: variantLabel(v),
+                    }))}
+                  />
+                </DialogContent>
+              </Dialog>
+            </>
+          ) : undefined
+        }
+      />
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-medium text-foreground">Niveaux actuels</h2>
-        <div className="rounded-xl border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Produit</TableHead>
-                <TableHead className="text-right">Quantité</TableHead>
-                <TableHead className="text-right">CUMP</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {levels.map((l) => (
-                <TableRow key={`${l.variantId}-${l.shopId}`}>
-                  <TableCell className="text-foreground">
-                    {variantLabel(l.variant)}
-                  </TableCell>
-                  <TableCell className="num text-right">{l.quantite.toString()}</TableCell>
-                  <TableCell className="num text-right">
-                    {formatMoney(l.cump, organization.devise)}
-                  </TableCell>
-                </TableRow>
+      {stockAlerts.length > 0 && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-base font-semibold text-foreground">Alertes de stock négatif</h2>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4">
+            <ul className="flex flex-col gap-2 text-sm">
+              {stockAlerts.map((a) => (
+                <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 text-destructive">
+                  <span>
+                    {variantLabel(a.variant)} — écart {a.ecart.toString()} —{" "}
+                    {a.createdAt.toLocaleString("fr-FR")}
+                  </span>
+                  {canWrite && (
+                    <form action={resolveStockAlert}>
+                      <input type="hidden" name="alertId" value={a.id} />
+                      <Button type="submit" variant="outline" size="sm">
+                        Marquer résolu
+                      </Button>
+                    </form>
+                  )}
+                </li>
               ))}
-              {levels.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
-                    Aucun mouvement de stock pour l&apos;instant.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </section>
-
+            </ul>
+          </div>
+        </section>
+      )}
+      {lowStockLevels.length > 0 && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-base font-semibold text-foreground">Stock bas</h2>
+          <div className="rounded-xl border border-warning/30 bg-warning/10 p-4">
+            <ul className="flex flex-col gap-1 text-sm text-foreground">
+              {lowStockLevels.map((l) => (
+                <li key={`${l.variantId}-${l.shopId}`}>
+                  {variantLabel(l.variant)} — {l.quantite.toString()} restant(s) (seuil{" "}
+                  {l.variant.shopPrices[0]?.seuilAlerte})
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
       {showLots && expiringLots.length > 0 && (
         <section className="flex flex-col gap-4">
-          <h2 className="text-sm font-medium text-foreground">
+          <h2 className="text-base font-semibold text-foreground">
             Alertes péremption (30 jours)
           </h2>
           <div className="rounded-xl border border-warning/30 bg-warning/10 p-4">
@@ -202,159 +247,118 @@ export default async function StockMovementsPage() {
           </div>
         </section>
       )}
-
-      {stockAlerts.length > 0 && (
+      <div className="flex flex-col gap-6">
         <section className="flex flex-col gap-4">
-          <h2 className="text-sm font-medium text-foreground">Alertes de stock négatif</h2>
-          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4">
-            <ul className="flex flex-col gap-2 text-sm">
-              {stockAlerts.map((a) => (
-                <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 text-destructive">
-                  <span>
-                    {variantLabel(a.variant)} — écart {a.ecart.toString()} —{" "}
-                    {a.createdAt.toLocaleString("fr-FR")}
-                  </span>
-                  {canWrite && (
-                    <form action={resolveStockAlert}>
-                      <input type="hidden" name="alertId" value={a.id} />
-                      <Button type="submit" variant="ghost" size="sm">
-                        Marquer résolu
-                      </Button>
-                    </form>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      )}
-
-      {lowStockLevels.length > 0 && (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-sm font-medium text-foreground">Stock bas</h2>
-          <div className="rounded-xl border border-warning/30 bg-warning/10 p-4">
-            <ul className="flex flex-col gap-1 text-sm text-foreground">
-              {lowStockLevels.map((l) => (
-                <li key={`${l.variantId}-${l.shopId}`}>
-                  {variantLabel(l.variant)} — {l.quantite.toString()} restant(s) (seuil{" "}
-                  {l.variant.shopPrices[0]?.seuilAlerte})
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      )}
-
-      {canWrite && (
-        <div className="flex flex-wrap gap-2">
-          <Dialog>
-            <DialogTrigger render={<Button className="gap-1.5" />}>
-              <Plus className="size-4" />
-              Réceptionner du stock
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Réception de stock</DialogTitle>
-              </DialogHeader>
-              <ReceiveStockForm
-                showLots={showLots}
-                showSerial={showSerial}
-                variants={variants.map((v) => ({
-                  id: v.id,
-                  label: variantLabel(v),
-                }))}
-              />
-            </DialogContent>
-          </Dialog>
-          <Dialog>
-            <DialogTrigger render={<Button variant="outline" className="gap-1.5" />}>
-              <Plus className="size-4" />
-              Ajuster le stock
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Ajustement d&apos;inventaire (comptage, casse, perte)</DialogTitle>
-              </DialogHeader>
-              <AdjustStockForm
-                variants={variants.map((v) => ({
-                  id: v.id,
-                  label: variantLabel(v),
-                }))}
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
-      )}
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-medium text-foreground">Derniers mouvements</h2>
-        <div className="rounded-xl border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Produit</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Quantité</TableHead>
-                <TableHead className="text-right">Coût unitaire</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {movements.map((m) => (
-                <TableRow key={m.id}>
-                  <TableCell className="text-muted-foreground">
-                    {m.createdAt.toLocaleString("fr-FR")}
-                  </TableCell>
-                  <TableCell className="text-foreground">
-                    {variantLabel(m.variant)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{m.type}</TableCell>
-                  <TableCell className="num text-right">{m.quantite.toString()}</TableCell>
-                  <TableCell className="num text-right">
-                    {formatMoney(m.coutUnitaire, organization.devise)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <ViewDetailDialog
-                      title="Mouvement de stock"
-                      rows={[
-                        { label: "Date", value: m.createdAt.toLocaleString("fr-FR") },
-                        { label: "Produit", value: variantLabel(m.variant) },
-                        { label: "Type", value: TYPE_LABELS[m.type] ?? m.type },
-                        { label: "Quantité", value: m.quantite.toString() },
-                        {
-                          label: "Coût unitaire",
-                          value: formatMoney(m.coutUnitaire, organization.devise),
-                        },
-                        ...(m.lot ? [{ label: "Lot", value: m.lot.numero }] : []),
-                        ...(m.motif ? [{ label: "Motif", value: m.motif }] : []),
-                        ...(m.userId && nomByUserId.has(m.userId)
-                          ? [{ label: "Utilisateur", value: nomByUserId.get(m.userId)! }]
-                          : []),
-                        ...(m.documentType
-                          ? [
-                              {
-                                label: "Document source",
-                                value: `${m.documentType}${m.documentId ? ` (${m.documentId})` : ""}`,
-                              },
-                            ]
-                          : []),
-                      ]}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-              {movements.length === 0 && (
+          <h2 className="text-base font-semibold text-foreground">Niveaux actuels</h2>
+          <TablePanel>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    Aucun mouvement pour l&apos;instant.
-                  </TableCell>
+                  <TableHead>Produit</TableHead>
+                  <TableHead className="text-right">Quantité</TableHead>
+                  <TableHead className="text-right">CUMP</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </section>
-    </div>
+              </TableHeader>
+              <TableBody>
+                {levels.map((l) => (
+                  <TableRow key={`${l.variantId}-${l.shopId}`}>
+                    <TableCell className="text-foreground">
+                      {variantLabel(l.variant)}
+                    </TableCell>
+                    <TableCell className="num text-right">{l.quantite.toString()}</TableCell>
+                    <TableCell className="num text-right">
+                      {formatMoney(l.cump, organization.devise)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {levels.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground">
+                      Aucun mouvement de stock pour l&apos;instant.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TablePanel>
+        </section>
+        <section className="flex flex-col gap-4">
+          <h2 className="text-base font-semibold text-foreground">Derniers mouvements</h2>
+          <TablePanel>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Produit</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Quantité</TableHead>
+                  <TableHead className="text-right">Coût unitaire</TableHead>
+                  <TableHead className="w-12">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {movements.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell className="text-muted-foreground">
+                      {m.createdAt.toLocaleString("fr-FR")}
+                    </TableCell>
+                    <TableCell className="text-foreground">
+                      {variantLabel(m.variant)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{TYPE_LABELS[m.type] ?? m.type}</TableCell>
+                    <TableCell className="num text-right">{m.quantite.toString()}</TableCell>
+                    <TableCell className="num text-right">
+                      {formatMoney(m.coutUnitaire, organization.devise)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <ViewDetailDialog
+                        title="Mouvement de stock"
+                        rows={[
+                          { label: "Date", value: m.createdAt.toLocaleString("fr-FR") },
+                          { label: "Produit", value: variantLabel(m.variant) },
+                          { label: "Type", value: TYPE_LABELS[m.type] ?? m.type },
+                          { label: "Quantité", value: m.quantite.toString() },
+                          {
+                            label: "Coût unitaire",
+                            value: formatMoney(m.coutUnitaire, organization.devise),
+                          },
+                          ...(m.lot ? [{ label: "Lot", value: m.lot.numero }] : []),
+                          ...(m.motif ? [{ label: "Motif", value: m.motif }] : []),
+                          ...(m.userId && nomByUserId.has(m.userId)
+                            ? [{ label: "Utilisateur", value: nomByUserId.get(m.userId)! }]
+                            : []),
+                          ...(m.documentType
+                            ? [
+                                {
+                                  label: "Document source",
+                                  value: `${m.documentType}${m.documentId ? ` (${m.documentId})` : ""}`,
+                                },
+                              ]
+                            : []),
+                        ]}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {movements.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      Aucun mouvement pour l&apos;instant.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TablePanel>
+        </section>
+      </div>
+
+
+
+
+
+    </Page>
   );
 }

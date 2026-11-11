@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Download } from "lucide-react";
+
+import { TablePanel } from "@/components/admin/page";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -95,42 +98,46 @@ export function ImportClient() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6">
-        <h2 className="text-sm font-medium text-foreground">Fichier catalogue</h2>
-        <p className="text-sm text-muted-foreground">
-          Colonnes attendues : designation, categorie (optionnel), codeBarres (optionnel),
-          prixAchat, prixVente, quantiteInitiale (optionnel), unite (optionnel), tauxTaxe
-          (optionnel), suiviStock (oui/non, optionnel). La référence est générée
-          automatiquement, inutile de la fournir.
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          className="self-start"
-          nativeButton={false}
-          render={<a href="/api/catalog/import/template" download />}
-        >
-          Télécharger le modèle
-        </Button>
-        <input
-          type="file"
-          accept=".csv,.xlsx,.xls"
-          onChange={(e) => {
-            setFile(e.target.files?.[0] ?? null);
-            setPreview(null);
-            setCommitResult(null);
-            setError(null);
-          }}
-          className="text-sm text-foreground"
-        />
-        <Button
-          type="button"
-          className="self-start"
-          disabled={!file || isAnalyzing}
-          onClick={handleAnalyze}
-        >
-          {isAnalyzing ? "Analyse..." : "Analyser le fichier"}
-        </Button>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-card">
+          <h2 className="text-base font-semibold text-foreground">1. Préparer le fichier</h2>
+          <p className="text-sm text-muted-foreground">
+            Colonnes attendues : designation, categorie (optionnel), codeBarres (optionnel), prixAchat, prixVente,
+            quantiteInitiale (optionnel), unite (optionnel), tauxTaxe (optionnel), suiviStock (oui/non, optionnel). La
+            référence est générée automatiquement.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-auto self-start"
+            nativeButton={false}
+            render={<a href="/api/catalog/import/template" download />}
+          >
+            <Download />
+            Télécharger le modèle
+          </Button>
+        </div>
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-card">
+          <h2 className="text-base font-semibold text-foreground">2. Analyser le fichier</h2>
+          <p className="text-sm text-muted-foreground">
+            Fichier CSV ou Excel. L&apos;analyse ne modifie rien : vous vérifiez le résultat avant de confirmer.
+          </p>
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            aria-label="Fichier catalogue"
+            onChange={(e) => {
+              setFile(e.target.files?.[0] ?? null);
+              setPreview(null);
+              setCommitResult(null);
+              setError(null);
+            }}
+            className="text-sm text-foreground file:mr-3 file:rounded-md file:border file:border-border file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium"
+          />
+          <Button type="button" className="mt-auto self-start" disabled={!file || isAnalyzing} onClick={handleAnalyze}>
+            {isAnalyzing ? "Analyse…" : "Analyser le fichier"}
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -140,15 +147,23 @@ export function ImportClient() {
       )}
 
       {preview && !commitResult && (
-        <div className="flex flex-col gap-4">
-          <p className="text-sm text-muted-foreground">
-            {preview.validCount} ligne{preview.validCount > 1 ? "s" : ""} valide
-            {preview.validCount > 1 ? "s" : ""}
-            {preview.errorCount > 0 &&
-              `, ${preview.errorCount} ligne${preview.errorCount > 1 ? "s" : ""} en erreur (ignorée${preview.errorCount > 1 ? "s" : ""} à l'import).`}
-          </p>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-0.5">
+              <h2 className="text-base font-semibold text-foreground">3. Vérifier et confirmer</h2>
+              <p className="text-sm text-muted-foreground">
+                {preview.validCount} ligne{preview.validCount > 1 ? "s" : ""} valide
+                {preview.validCount > 1 ? "s" : ""}
+                {preview.errorCount > 0 &&
+                  `, ${preview.errorCount} ligne${preview.errorCount > 1 ? "s" : ""} en erreur (ignorée${preview.errorCount > 1 ? "s" : ""} à l'import).`}
+              </p>
+            </div>
+            <Button type="button" disabled={preview.validCount === 0 || isCommitting} onClick={handleCommit}>
+              {isCommitting ? "Import…" : `Confirmer l'import (${preview.validCount})`}
+            </Button>
+          </div>
 
-          <div className="overflow-x-auto rounded-xl border border-border bg-card">
+          <TablePanel>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -171,21 +186,12 @@ export function ImportClient() {
                 ))}
               </TableBody>
             </Table>
-          </div>
-
-          <Button
-            type="button"
-            className="self-start"
-            disabled={preview.validCount === 0 || isCommitting}
-            onClick={handleCommit}
-          >
-            {isCommitting ? "Import..." : `Confirmer l'import (${preview.validCount})`}
-          </Button>
+          </TablePanel>
         </div>
       )}
 
       {commitResult && (
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6">
+        <div className="flex flex-col gap-3 rounded-xl border border-success/30 bg-success/10 p-5">
           <p className="text-sm text-foreground">
             {commitResult.created} produit{commitResult.created > 1 ? "s" : ""} créé
             {commitResult.created > 1 ? "s" : ""}.

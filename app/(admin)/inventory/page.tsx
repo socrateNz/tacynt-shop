@@ -1,6 +1,8 @@
 import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, TablePanel } from "@/components/admin/page";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -109,31 +111,29 @@ export default async function InventoryPage() {
   );
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Inventaire</h1>
-          <p className="text-sm text-muted-foreground">
-            La boutique continue de vendre pendant un inventaire — chaque ligne est comparée au
-            stock théorique au moment précis où elle est comptée, pas à l&apos;ouverture de la
-            session.
-          </p>
-        </div>
-        <Dialog>
-          <DialogTrigger render={<Button className="gap-1.5" />}>
-            <Plus className="size-4" />
-            Nouvel inventaire
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Nouvel inventaire</DialogTitle>
-            </DialogHeader>
-            <InventorySessionForm categories={categories.map((c) => ({ id: c.id, nom: c.nom }))} />
-          </DialogContent>
-        </Dialog>
-      </header>
+    <Page>
+      <PageHeader
+        title="Inventaire"
+        description="Comptages de stock. La boutique peut continuer à vendre : chaque ligne est comparée au stock théorique au moment où elle est comptée."
+        actions={
+          <>
+            <Dialog>
+              <DialogTrigger render={<Button />}>
+                <Plus />
+                Nouvel inventaire
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Nouvel inventaire</DialogTitle>
+                </DialogHeader>
+                <InventorySessionForm categories={categories.map((c) => ({ id: c.id, nom: c.nom }))} />
+              </DialogContent>
+            </Dialog>
+          </>
+        }
+      />
 
-      <div className="rounded-xl border border-border bg-card">
+      <TablePanel>
         <Table>
           <TableHeader>
             <TableRow>
@@ -142,7 +142,9 @@ export default async function InventoryPage() {
               <TableHead>Statut</TableHead>
               <TableHead className="text-right">Lignes comptées</TableHead>
               <TableHead>Date</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -159,8 +161,10 @@ export default async function InventoryPage() {
                     {s.type === "COMPLET" ? "Complet" : "Partiel"}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{s.category?.nom ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {STATUS_LABELS[s.statut] ?? s.statut}
+                  <TableCell>
+                    <Badge variant={s.statut === "EN_COURS" ? "warning" : s.statut === "VALIDEE" ? "success" : "secondary"}>
+                      {STATUS_LABELS[s.statut] ?? s.statut}
+                    </Badge>
                   </TableCell>
                   <TableCell className="num text-right">{s._count.counts}</TableCell>
                   <TableCell className="text-muted-foreground">
@@ -188,7 +192,7 @@ export default async function InventoryPage() {
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </TablePanel>
+    </Page>
   );
 }

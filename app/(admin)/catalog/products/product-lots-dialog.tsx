@@ -30,17 +30,23 @@ export type ProductLotRow = {
 export function ProductLotsDialog({
   productDesignation,
   lots,
+  open,
+  onOpenChange,
 }: {
   productDesignation: string;
   lots: ProductLotRow[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   return (
-    <Dialog>
-      <DialogTrigger
-        render={<button type="button" className="text-sm text-primary underline-offset-4 hover:underline" />}
-      >
-        Voir les lots
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {open === undefined && (
+        <DialogTrigger
+          render={<button type="button" className="text-sm text-primary underline-offset-4 hover:underline" />}
+        >
+          Voir les lots
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Lots — {productDesignation}</DialogTitle>

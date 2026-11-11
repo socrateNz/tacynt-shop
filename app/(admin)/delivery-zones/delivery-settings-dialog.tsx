@@ -110,7 +110,7 @@ function ShopSettingsForm({ shop, devise }: { shop: ShopDeliverySettings; devise
         )}
       </fieldset>
 
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending ? "Enregistrement..." : "Enregistrer"}
       </Button>
     </form>

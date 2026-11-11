@@ -310,7 +310,7 @@ export function UnitEditDialog({
             Actif (visible et proposable à la location)
           </label>
 
-          <Button type="submit" className="self-start" disabled={isPending}>
+          <Button type="submit" className="self-end" disabled={isPending}>
             {isPending ? "Enregistrement..." : "Enregistrer"}
           </Button>
         </form>

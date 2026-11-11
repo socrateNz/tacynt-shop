@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,9 +46,9 @@ export function PurchaseOrderReceiveDialog({
 
   return (
     <Dialog>
-      <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-        <Eye className="size-3.5" />
-        <span className="sr-only">Voir</span>
+      <DialogTrigger render={<Button variant="ghost" size="sm" />}>
+        Ouvrir
+        <ChevronRight className="size-3.5" />
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>

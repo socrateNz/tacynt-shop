@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 
+import { Page, PageHeader, TablePanel } from "@/components/admin/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -25,68 +26,67 @@ export default async function LaundryItemsPage() {
   );
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Catalogue blanchisserie</h1>
-          <p className="text-sm text-muted-foreground">
-            Les pièces que vous lavez et leur prix à la pièce. Le client déclare ses pièces en commandant ; vous
-            recomptez à la réception du linge.
-          </p>
-        </div>
-        <Dialog>
-          <DialogTrigger render={<Button className="gap-1.5" disabled={shops.length === 0} />}>
-            <Plus className="size-4" />
-            Nouvel article
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Nouvel article</DialogTitle>
-            </DialogHeader>
-            <form action={createLaundryItem} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="shopId">Boutique</Label>
-                <select
-                  id="shopId"
-                  name="shopId"
-                  required
-                  className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
-                >
-                  {shops.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nom}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="nom">Article</Label>
-                <Input id="nom" name="nom" required maxLength={120} placeholder="T-shirt" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="categorie">Catégorie (facultatif)</Label>
-                <Input id="categorie" name="categorie" maxLength={80} placeholder="Hauts" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="prixUnitaire">Prix par pièce ({devise})</Label>
-                <Input
-                  id="prixUnitaire"
-                  name="prixUnitaire"
-                  type="number"
-                  min={0}
-                  step="1"
-                  inputMode="decimal"
-                  required
-                  placeholder="500"
-                />
-              </div>
-              <Button type="submit" className="self-start">
-                Ajouter
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </header>
+    <Page>
+      <PageHeader
+        title="Catalogue blanchisserie"
+        description="Les pièces que vous lavez et leur prix à la pièce. Le client déclare ses pièces en commandant ; vous recomptez à la réception du linge."
+        actions={
+          <>
+            <Dialog>
+              <DialogTrigger render={<Button disabled={shops.length === 0} />}>
+                <Plus />
+                Nouvel article
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Nouvel article</DialogTitle>
+                </DialogHeader>
+                <form action={createLaundryItem} className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="shopId">Boutique</Label>
+                    <select
+                      id="shopId"
+                      name="shopId"
+                      required
+                      className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
+                    >
+                      {shops.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.nom}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="nom">Article</Label>
+                    <Input id="nom" name="nom" required maxLength={120} placeholder="T-shirt" />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="categorie">Catégorie (facultatif)</Label>
+                    <Input id="categorie" name="categorie" maxLength={80} placeholder="Hauts" />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="prixUnitaire">Prix par pièce ({devise})</Label>
+                    <Input
+                      id="prixUnitaire"
+                      name="prixUnitaire"
+                      type="number"
+                      min={0}
+                      step="1"
+                      inputMode="decimal"
+                      required
+                      placeholder="500"
+                    />
+                  </div>
+                  <Button type="submit" className="self-end">
+                    Ajouter
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </>
+        }
+      />
 
       {shops.map((shop) => {
         const shopItems = items.filter((i) => i.shopId === shop.id);
@@ -94,12 +94,12 @@ export default async function LaundryItemsPage() {
         return (
           <section key={shop.id} className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-medium text-foreground">{shop.nom}</h2>
+              <h2 className="text-base font-semibold text-foreground">{shop.nom}</h2>
               <Badge variant={activeCount > 0 ? "success" : "secondary"}>
                 {activeCount} article{activeCount > 1 ? "s" : ""} proposé{activeCount > 1 ? "s" : ""}
               </Badge>
             </div>
-            <div className="rounded-xl border border-border bg-card">
+            <TablePanel>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -107,7 +107,9 @@ export default async function LaundryItemsPage() {
                     <TableHead>Catégorie</TableHead>
                     <TableHead>Prix par pièce</TableHead>
                     <TableHead>Statut</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+                    <TableHead className="w-12">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -131,8 +133,8 @@ export default async function LaundryItemsPage() {
                             className="h-8 w-28"
                           />
                           <span className="text-xs text-muted-foreground">{devise}</span>
-                          <Button type="submit" variant="ghost" size="sm">
-                            OK
+                          <Button type="submit" variant="outline" size="sm">
+                            Enregistrer
                           </Button>
                         </form>
                       </TableCell>
@@ -160,10 +162,10 @@ export default async function LaundryItemsPage() {
                   )}
                 </TableBody>
               </Table>
-            </div>
+            </TablePanel>
           </section>
         );
       })}
-    </div>
+    </Page>
   );
 }

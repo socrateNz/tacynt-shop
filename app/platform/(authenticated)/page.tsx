@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
 
+import { Page, PageHeader, TablePanel } from "@/components/admin/page";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -60,49 +63,55 @@ export default async function PlatformOrganizationsPage() {
   const ownerEmailByOrg = new Map(owners.map((u) => [u.organizationId, u.email]));
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Organisations</h1>
-          <p className="text-sm text-muted-foreground">
-            {organizations.length} organisation{organizations.length > 1 ? "s" : ""} — plan et
-            statut d&apos;abonnement gérés manuellement après encaissement hors ligne.
-          </p>
-        </div>
-        <Button nativeButton={false} render={<Link href="/platform/new" />}>
-          Nouvelle organisation
-        </Button>
-      </header>
+    <Page>
+      <PageHeader
+        title="Organisations"
+        description={<>{organizations.length} organisation{organizations.length > 1 ? "s" : ""} — plan et statut d&apos;abonnement gérés manuellement après encaissement hors ligne.</>}
+        actions={
+          <>
+            <Button nativeButton={false} render={<Link href="/platform/new" />}>
+              <Plus />
+              Nouvelle organisation
+            </Button>
+          </>
+        }
+      />
 
-      <div className="rounded-xl border border-border bg-card">
+      <TablePanel>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nom</TableHead>
-              <TableHead>Sous-domaine</TableHead>
-              <TableHead>Plan</TableHead>
+              <TableHead>Organisation</TableHead>
+              <TableHead className="hidden md:table-cell">Plan</TableHead>
               <TableHead>Statut</TableHead>
-              <TableHead>Créée le</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="hidden lg:table-cell">Créée le</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {organizations.map((org) => (
               <TableRow key={org.id}>
-                <TableCell className="text-sm text-foreground">{org.nom}</TableCell>
-                <TableCell className="text-muted-foreground">{org.slug}</TableCell>
-                <TableCell className="text-muted-foreground">{org.plan}</TableCell>
-                <TableCell
-                  className={
-                    org.statut === "SUSPENDED" ? "text-destructive" : "text-muted-foreground"
-                  }
-                >
-                  {STATUS_LABELS[org.statut] ?? org.statut}
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-foreground">{org.nom}</span>
+                    <span className="text-xs text-muted-foreground">{org.slug}</span>
+                  </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground">
+                <TableCell className="hidden text-muted-foreground md:table-cell">{org.plan}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant={org.statut === "SUSPENDED" ? "destructive" : org.statut === "GRACE_PERIOD" ? "warning" : "success"}
+                  >
+                    {STATUS_LABELS[org.statut] ?? org.statut}
+                  </Badge>
+                </TableCell>
+                <TableCell className="hidden text-muted-foreground lg:table-cell">
                   {org.createdAt.toLocaleDateString("fr-FR")}
                 </TableCell>
-                <TableCell className="flex justify-end gap-1">
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
                   <CopyLinkButton url={shopUrl(org.slug)} />
                   <OrganizationDetailDialog
                     organizationId={org.id}
@@ -127,19 +136,20 @@ export default async function PlatformOrganizationsPage() {
                     }))}
                     ownerEmail={ownerEmailByOrg.get(org.id) ?? null}
                   />
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
             {organizations.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   Aucune organisation pour l&apos;instant.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </TablePanel>
+    </Page>
   );
 }

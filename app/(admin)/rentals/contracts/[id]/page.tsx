@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { Page, PageHeader, TablePanel } from "@/components/admin/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PhoneLink } from "@/components/phone-link";
@@ -95,67 +95,59 @@ export default async function RentalContractDetailPage({
   const devise = organization.devise;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <Link href="/rentals/contracts" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Retour aux locations
-        </Link>
-      </div>
-
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-foreground">{contract.numero}</h1>
-            <Badge variant={contract.statut === "EN_COURS" ? "success" : contract.statut === "ANNULEE" ? "destructive" : "secondary"}>
-              {STATUS_LABELS[contract.statut] ?? contract.statut}
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {contract.rentalUnit.designation} — {contract.shop.nom}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {contract.statut === "DEMANDE" && (
-            <>
-              <form action={confirmContract}>
-                <input type="hidden" name="contractId" value={contract.id} />
-                <Button type="submit">Confirmer la demande</Button>
-              </form>
+    <Page>
+      <PageHeader
+        back={{ href: "/rentals/contracts", label: "Locations" }}
+        title={contract.numero}
+        meta={
+          <Badge variant={contract.statut === "EN_COURS" ? "success" : contract.statut === "ANNULEE" ? "destructive" : "secondary"}>
+            {STATUS_LABELS[contract.statut] ?? contract.statut}
+          </Badge>
+        }
+        description={<>{contract.rentalUnit.designation} — {contract.shop.nom}</>}
+        actions={
+          <>
+            {contract.statut === "DEMANDE" && (
+              <>
+                <form action={cancelContract}>
+                  <input type="hidden" name="contractId" value={contract.id} />
+                  <Button type="submit" variant="outline">
+                    Refuser
+                  </Button>
+                </form>
+                <form action={confirmContract}>
+                  <input type="hidden" name="contractId" value={contract.id} />
+                  <Button type="submit">Confirmer la demande</Button>
+                </form>
+              </>
+            )}
+            {contract.statut === "CONFIRMEE" && (
               <form action={cancelContract}>
                 <input type="hidden" name="contractId" value={contract.id} />
                 <Button type="submit" variant="outline">
-                  Refuser
+                  Annuler la location
                 </Button>
               </form>
-            </>
-          )}
-          {contract.statut === "CONFIRMEE" && (
-            <form action={cancelContract}>
-              <input type="hidden" name="contractId" value={contract.id} />
-              <Button type="submit" variant="outline">
-                Annuler
-              </Button>
-            </form>
-          )}
-          {contract.statut === "EN_COURS" && (
-            <form action={terminateContract}>
-              <input type="hidden" name="contractId" value={contract.id} />
-              <Button type="submit" variant="outline">
-                Résilier
-              </Button>
-            </form>
-          )}
-        </div>
-      </header>
+            )}
+            {contract.statut === "EN_COURS" && (
+              <form action={terminateContract}>
+                <input type="hidden" name="contractId" value={contract.id} />
+                <Button type="submit" variant="outline">
+                  Résilier
+                </Button>
+              </form>
+            )}
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
           <p className="text-xs text-muted-foreground">Client</p>
           <p className="text-foreground">{contract.nomClient}</p>
           <PhoneLink telephone={contract.telephoneClient} className="text-sm" />
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
           <p className="text-xs text-muted-foreground">Durée</p>
           <p className="text-foreground">
             {contract.dureeMois} mois à partir du {contract.dateDebut.toLocaleDateString("fr-FR")}
@@ -164,7 +156,7 @@ export default async function RentalContractDetailPage({
             {formatMoney(contract.montantMensuel, devise)} / mois
           </p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
           <p className="text-xs text-muted-foreground">Commission</p>
           <p className="num text-foreground">{formatMoney(contract.commissionMontant, devise)}</p>
           <Badge variant={contract.commissionPayee ? "success" : "secondary"}>
@@ -197,8 +189,8 @@ export default async function RentalContractDetailPage({
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-foreground">Échéancier</h2>
-        <div className="rounded-xl border border-border bg-card">
+        <h2 className="text-base font-semibold text-foreground">Échéancier</h2>
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -206,7 +198,9 @@ export default async function RentalContractDetailPage({
                 <TableHead>Échéance</TableHead>
                 <TableHead className="text-right">Montant</TableHead>
                 <TableHead>Statut</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead className="w-12">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -251,12 +245,12 @@ export default async function RentalContractDetailPage({
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-foreground">Paiements encaissés</h2>
-        <div className="rounded-xl border border-border bg-card">
+        <h2 className="text-base font-semibold text-foreground">Paiements encaissés</h2>
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -293,8 +287,8 @@ export default async function RentalContractDetailPage({
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </section>
-    </div>
+    </Page>
   );
 }

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, StatCard, TablePanel, Toolbar } from "@/components/admin/page";
 import {
   Table,
   TableBody,
@@ -67,57 +68,49 @@ export default async function ComptabiliteReportPage({
   const totalDebit = journal.reduce((sum, l) => sum + l.montant, 0);
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Comptabilité</h1>
-          <p className="text-sm text-muted-foreground">
-            Du {period.fromInput} au {period.toInput} — export uniquement, aucune intégration
-            comptable en direct.
-          </p>
-        </div>
-        <div className="no-print flex flex-wrap items-center gap-2">
-          {myShopIds.length > 1 && <ShopFilter consolidated={consolidated} />}
-          <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
-        </div>
-      </header>
-
-      <div className="rounded-xl border border-border bg-card p-4">
-        <p className="text-xs font-medium text-muted-foreground uppercase">
-          Total du journal (débit = crédit)
-        </p>
-        <p className="num text-2xl font-semibold text-foreground">
-          {formatMoney(totalDebit, organization.devise)}
-        </p>
-      </div>
-
-      <ExportButtons
-        rows={journal}
-        columns={[
-          { key: "date", label: "Date" },
-          { key: "piece", label: "Pièce" },
-          { key: "compteDebit", label: "Compte débit" },
-          { key: "compteCredit", label: "Compte crédit" },
-          { key: "montant", label: "Montant", format: "money" },
-          { key: "libelle", label: "Libellé" },
-        ]}
-        filename="journal-comptable"
-        pdf={{
-          title: "Comptabilité — Journal comptable",
-          subtitle: `Du ${period.fromInput} au ${period.toInput}`,
-          organizationNom: organization.nom,
-          devise: organization.devise,
-          summary: [
-            {
-              label: "Total du journal (débit = crédit)",
-              value: formatMoney(totalDebit, organization.devise),
-            },
-          ],
-        }}
+    <Page>
+      <PageHeader
+        back={{ href: "/reports", label: "Rapports" }}
+        title="Comptabilité"
+        description={<>Du {period.fromInput} au {period.toInput} — export uniquement, aucune intégration comptable en direct.</>}
+        actions={
+          <ExportButtons
+            rows={journal}
+            columns={[
+              { key: "date", label: "Date" },
+              { key: "piece", label: "Pièce" },
+              { key: "compteDebit", label: "Compte débit" },
+              { key: "compteCredit", label: "Compte crédit" },
+              { key: "montant", label: "Montant", format: "money" },
+              { key: "libelle", label: "Libellé" },
+            ]}
+            filename="journal-comptable"
+            pdf={{
+              title: "Comptabilité — Journal comptable",
+              subtitle: `Du ${period.fromInput} au ${period.toInput}`,
+              organizationNom: organization.nom,
+              devise: organization.devise,
+              summary: [
+                {
+                  label: "Total du journal (débit = crédit)",
+                  value: formatMoney(totalDebit, organization.devise),
+                },
+              ],
+            }}
+          />
+        }
       />
 
+      <Toolbar>
+        {myShopIds.length > 1 && <ShopFilter consolidated={consolidated} />}
+        <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
+      </Toolbar>
+
+      <StatCard label="Total du journal (débit = crédit)" value={formatMoney(totalDebit, organization.devise)} />
+
+
       <section className="flex flex-col gap-3">
-        <div className="rounded-xl border border-border bg-card">
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -151,8 +144,8 @@ export default async function ComptabiliteReportPage({
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </section>
-    </div>
+    </Page>
   );
 }

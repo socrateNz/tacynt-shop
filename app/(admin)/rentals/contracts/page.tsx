@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader } from "@/components/admin/page";
+import { Badge } from "@/components/ui/badge";
 import { systemPrisma } from "@/lib/db/system-client";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
@@ -75,26 +77,15 @@ export default async function RentalContractsPage() {
   }));
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Locations</h1>
-          <p className="text-sm text-muted-foreground">
-            Contrats de location — demandes, échéanciers et paiements.
-          </p>
-        </div>
-        <NewContractDialog availableUnits={availableUnitOptions} devise={organization.devise} />
-      </header>
-
-      {pendingCount > 0 && (
-        <div className="rounded-xl border border-warning/30 bg-warning/10 p-4">
-          <p className="text-sm font-medium text-foreground">
-            Demandes en attente ({pendingCount})
-          </p>
-        </div>
-      )}
+    <Page>
+      <PageHeader
+        title="Locations"
+        description="Contrats de location — demandes, échéanciers et paiements."
+        meta={pendingCount > 0 ? <Badge variant="warning">{pendingCount} demande{pendingCount > 1 ? "s" : ""} en attente</Badge> : undefined}
+        actions={<NewContractDialog availableUnits={availableUnitOptions} devise={organization.devise} />}
+      />
 
       <ContractsTable contracts={rows} />
-    </div>
+    </Page>
   );
 }

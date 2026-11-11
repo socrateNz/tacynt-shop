@@ -25,7 +25,7 @@ export function PurchaseOrderForm({
       action={formAction}
       className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Nouvelle commande</h2>
+      <h2 className="text-base font-semibold text-foreground">Nouvelle commande</h2>
       <input type="hidden" name="supplierId" value={supplierId} />
 
       {state.error && (
@@ -81,7 +81,7 @@ export function PurchaseOrderForm({
         </Button>
       </div>
 
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending ? "Création..." : "Créer la commande (brouillon)"}
       </Button>
     </form>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 
+import { TablePanel } from "@/components/admin/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -33,6 +34,25 @@ export type UnitRow = {
   edit: UnitEditValues;
 };
 
+// Action principale de la page, placée dans l'en-tête (à droite du titre).
+export function NewUnitButton({ localities }: { localities: LocalityOption[] }) {
+  const [formOpen, setFormOpen] = useState(false);
+  return (
+    <Dialog open={formOpen} onOpenChange={setFormOpen}>
+      <Button onClick={() => setFormOpen(true)}>
+        <Plus />
+        Nouveau logement
+      </Button>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Nouveau logement</DialogTitle>
+        </DialogHeader>
+        <UnitForm localities={localities} onSuccess={() => setFormOpen(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function UnitsTable({
   units,
   localities,
@@ -40,26 +60,8 @@ export function UnitsTable({
   units: UnitRow[];
   localities: LocalityOption[];
 }) {
-  const [formOpen, setFormOpen] = useState(false);
-
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-end">
-        <Dialog open={formOpen} onOpenChange={setFormOpen}>
-          <Button className="gap-1.5" onClick={() => setFormOpen(true)}>
-            <Plus className="size-4" />
-            Nouveau logement
-          </Button>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Nouveau logement</DialogTitle>
-            </DialogHeader>
-            <UnitForm localities={localities} onSuccess={() => setFormOpen(false)} />
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="rounded-xl border border-border bg-card">
+    <TablePanel>
         <Table>
           <TableHeader>
             <TableRow>
@@ -71,7 +73,9 @@ export function UnitsTable({
               <TableHead>Durée min.</TableHead>
               <TableHead className="text-right">Commission</TableHead>
               <TableHead>Statut</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -109,14 +113,13 @@ export function UnitsTable({
             ))}
             {units.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground">
-                  Aucun logement pour l&apos;instant.
+                <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
+                  Aucun logement pour l&apos;instant. Ajoutez-en un avec « Nouveau logement ».
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </TablePanel>
   );
 }

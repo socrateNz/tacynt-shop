@@ -1,5 +1,6 @@
 "use client";
 
+import { TablePanel } from "@/components/admin/page";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -71,14 +72,16 @@ export function PurchaseOrdersDialog({
           </div>
         )}
 
-        <div className="rounded-xl border border-border bg-card">
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Numéro</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead className="w-12">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -117,7 +120,7 @@ export function PurchaseOrdersDialog({
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
 
         <PurchaseOrderForm supplierId={supplierId} products={products} />
       </DialogContent>

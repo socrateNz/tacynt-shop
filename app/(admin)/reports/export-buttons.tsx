@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 
+import { ChevronDown, Download } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   downloadReportPdf,
   type PdfColumnFormat,
@@ -98,21 +101,24 @@ export function ExportButtons({
   }
 
   return (
-    <div className="no-print flex flex-wrap items-center gap-2">
-      <Button type="button" variant="outline" size="sm" onClick={exportCsv}>
-        Export CSV
-      </Button>
-      <Button type="button" variant="outline" size="sm" onClick={exportExcel}>
-        Export Excel
-      </Button>
-      <Button type="button" variant="outline" size="sm" onClick={exportPdf} disabled={pdfPending}>
-        {pdfPending ? "Génération..." : "Export PDF"}
-      </Button>
+    <div className="no-print flex items-center gap-2">
       {pdfError && (
         <span role="alert" className="text-xs text-destructive">
           Impossible de générer le PDF.
         </span>
       )}
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button type="button" variant="outline" disabled={pdfPending} />}>
+          <Download />
+          {pdfPending ? "Génération…" : "Exporter"}
+          <ChevronDown className="size-3.5" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-40">
+          <DropdownMenuItem onClick={exportExcel}>Excel (.xlsx)</DropdownMenuItem>
+          <DropdownMenuItem onClick={exportCsv}>CSV</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => void exportPdf()}>PDF</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

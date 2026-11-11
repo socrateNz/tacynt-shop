@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, TablePanel } from "@/components/admin/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,29 +44,29 @@ export default async function UsersPage() {
   );
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Utilisateurs</h1>
-          <p className="text-sm text-muted-foreground">
-            Rôles et accès de l&apos;équipe pour cette organisation.
-          </p>
-        </div>
-        <Dialog>
-          <DialogTrigger render={<Button className="gap-1.5" />}>
-            <Plus className="size-4" />
-            Nouvel utilisateur
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Nouvel utilisateur</DialogTitle>
-            </DialogHeader>
-            <UserForm />
-          </DialogContent>
-        </Dialog>
-      </header>
+    <Page>
+      <PageHeader
+        title="Utilisateurs"
+        description={<>Rôles et accès de l&apos;équipe pour cette organisation.</>}
+        actions={
+          <>
+            <Dialog>
+              <DialogTrigger render={<Button />}>
+                <Plus />
+                Nouvel utilisateur
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Nouvel utilisateur</DialogTitle>
+                </DialogHeader>
+                <UserForm />
+              </DialogContent>
+            </Dialog>
+          </>
+        }
+      />
 
-      <div className="rounded-xl border border-border bg-card">
+      <TablePanel>
         <Table>
           <TableHeader>
             <TableRow>
@@ -92,7 +93,7 @@ export default async function UsersPage() {
             ))}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </TablePanel>
+    </Page>
   );
 }

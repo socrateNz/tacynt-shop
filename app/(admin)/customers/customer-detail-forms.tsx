@@ -27,7 +27,7 @@ export function PaymentForm({ customerId }: { customerId: string }) {
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Enregistrer un paiement</h2>
+      <h2 className="text-base font-semibold text-foreground">Enregistrer un paiement</h2>
       {state.error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}
@@ -65,7 +65,7 @@ export function LoyaltyConversionForm({
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Convertir des points en crédit</h2>
+      <h2 className="text-base font-semibold text-foreground">Convertir des points en crédit</h2>
       <p className="text-sm text-muted-foreground">Solde de points : {pointsBalance}</p>
       {state.error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -104,7 +104,7 @@ export function CustomerSettingsForm({
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Paramètres</h2>
+      <h2 className="text-base font-semibold text-foreground">Paramètres</h2>
       {state.error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}
@@ -131,7 +131,7 @@ export function CustomerSettingsForm({
         <input type="checkbox" name="actif" defaultChecked={actif} className="size-4" />
         Client actif
       </label>
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending ? "Enregistrement..." : "Mettre à jour"}
       </Button>
     </form>

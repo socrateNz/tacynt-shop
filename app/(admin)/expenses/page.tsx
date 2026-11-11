@@ -1,6 +1,7 @@
-import { Plus } from "lucide-react";
+import { Paperclip, Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, TablePanel } from "@/components/admin/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,83 +78,82 @@ export default async function ExpensesPage() {
   const nomByUserId = new Map(users.map((u) => [u.id, u.nom]));
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Dépenses</h1>
-          <p className="text-sm text-muted-foreground">
-            Une dépense en espèces s&apos;impute automatiquement sur la session de caisse ouverte
-            au moment de la saisie.
-          </p>
-        </div>
-        <Dialog>
-          <DialogTrigger render={<Button className="gap-1.5" />}>
-            <Plus className="size-4" />
-            Nouvelle dépense
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Nouvelle dépense</DialogTitle>
-            </DialogHeader>
-            <ExpenseForm />
-          </DialogContent>
-        </Dialog>
-      </header>
+    <Page>
+      <PageHeader
+        title="Dépenses"
+        description={<>Une dépense en espèces s&apos;impute automatiquement sur la session de caisse ouverte au moment de la saisie.</>}
+        actions={
+          <>
+            <Dialog>
+              <DialogTrigger render={<Button />}>
+                <Plus />
+                Nouvelle dépense
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Nouvelle dépense</DialogTitle>
+                </DialogHeader>
+                <ExpenseForm />
+              </DialogContent>
+            </Dialog>
+          </>
+        }
+      />
 
-      <div className="rounded-xl border border-border bg-card">
+      <TablePanel>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Catégorie</TableHead>
+              <TableHead>Dépense</TableHead>
               <TableHead className="text-right">Montant</TableHead>
-              <TableHead>Mode</TableHead>
+              <TableHead className="hidden md:table-cell">Mode</TableHead>
               <TableHead>Statut</TableHead>
-              <TableHead>Justificatif</TableHead>
-              {canApprove && <TableHead />}
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {expenses.map((e) => (
               <TableRow key={e.id}>
-                <TableCell className="text-muted-foreground">
-                  {e.createdAt.toLocaleString("fr-FR")}
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="flex items-center gap-1.5 font-medium text-foreground">
+                      {e.categorie}
+                      {e.justificatifMimeType && (
+                        <Paperclip className="size-3.5 text-muted-foreground" aria-label="Justificatif joint" />
+                      )}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{e.createdAt.toLocaleString("fr-FR")}</span>
+                  </div>
                 </TableCell>
-                <TableCell className="text-foreground">{e.categorie}</TableCell>
                 <TableCell className="num text-right">
                   {formatMoney(e.montant, organization.devise)}
                 </TableCell>
-                <TableCell className="text-muted-foreground">{e.modePaiement}</TableCell>
+                <TableCell className="hidden text-muted-foreground md:table-cell">{e.modePaiement}</TableCell>
                 <TableCell>
                   <Badge variant={STATUS_VARIANT[e.statut] ?? "secondary"}>
                     {STATUS_LABELS[e.statut] ?? e.statut}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {e.justificatifMimeType ? "Oui" : "—"}
-                </TableCell>
-                {canApprove && (
-                  <TableCell className="flex justify-end gap-2">
-                    {e.statut === "EN_ATTENTE" && (
-                      <>
-                        <form action={approveExpense}>
-                          <input type="hidden" name="expenseId" value={e.id} />
-                          <Button type="submit" size="sm" variant="outline">
-                            Valider
-                          </Button>
-                        </form>
-                        <form action={rejectExpense}>
-                          <input type="hidden" name="expenseId" value={e.id} />
-                          <Button type="submit" size="sm" variant="ghost">
-                            Rejeter
-                          </Button>
-                        </form>
-                      </>
-                    )}
-                  </TableCell>
-                )}
                 <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1.5">
+                  {canApprove && e.statut === "EN_ATTENTE" && (
+                    <>
+                      <form action={rejectExpense}>
+                        <input type="hidden" name="expenseId" value={e.id} />
+                        <Button type="submit" size="sm" variant="ghost">
+                          Rejeter
+                        </Button>
+                      </form>
+                      <form action={approveExpense}>
+                        <input type="hidden" name="expenseId" value={e.id} />
+                        <Button type="submit" size="sm" variant="outline">
+                          Valider
+                        </Button>
+                      </form>
+                    </>
+                  )}
                   <ViewDetailDialog
                     title={e.categorie}
                     rows={[
@@ -196,19 +196,20 @@ export default async function ExpensesPage() {
                       </div>
                     )}
                   </ViewDetailDialog>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
             {expenses.length === 0 && (
               <TableRow>
-                <TableCell colSpan={canApprove ? 8 : 7} className="text-center text-muted-foreground">
-                  Aucune dépense pour l&apos;instant.
+                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                  Aucune dépense pour l&apos;instant. Saisissez-en une avec « Nouvelle dépense ».
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </TablePanel>
+    </Page>
   );
 }

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, TablePanel, Toolbar } from "@/components/admin/page";
 import {
   Table,
   TableBody,
@@ -55,39 +56,39 @@ export default async function PersonnelReportPage({
   );
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Personnel</h1>
-          <p className="text-sm text-muted-foreground">
-            Du {period.fromInput} au {period.toInput}
-          </p>
-        </div>
-        <div className="no-print flex flex-wrap items-center gap-2">
-          {myShopIds.length > 1 && <ShopFilter consolidated={consolidated} />}
-          <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
-        </div>
-      </header>
-
-      <ExportButtons
-        rows={report.parVendeur}
-        columns={[
-          { key: "nom", label: "Vendeur" },
-          { key: "ca", label: "CA", format: "money" },
-          { key: "tickets", label: "Tickets", format: "number" },
-          { key: "remises", label: "Remises accordées", format: "money" },
-          { key: "annulations", label: "Annulations", format: "number" },
-        ]}
-        filename="personnel"
-        pdf={{
-          title: "Personnel — Par vendeur",
-          subtitle: `Du ${period.fromInput} au ${period.toInput}`,
-          organizationNom: organization.nom,
-          devise: organization.devise,
-        }}
+    <Page>
+      <PageHeader
+        back={{ href: "/reports", label: "Rapports" }}
+        title="Personnel"
+        description={<>Du {period.fromInput} au {period.toInput}</>}
+        actions={
+          <ExportButtons
+            rows={report.parVendeur}
+            columns={[
+              { key: "nom", label: "Vendeur" },
+              { key: "ca", label: "CA", format: "money" },
+              { key: "tickets", label: "Tickets", format: "number" },
+              { key: "remises", label: "Remises accordées", format: "money" },
+              { key: "annulations", label: "Annulations", format: "number" },
+            ]}
+            filename="personnel"
+            pdf={{
+              title: "Personnel — Par vendeur",
+              subtitle: `Du ${period.fromInput} au ${period.toInput}`,
+              organizationNom: organization.nom,
+              devise: organization.devise,
+            }}
+          />
+        }
       />
 
-      <div className="rounded-xl border border-border bg-card">
+      <Toolbar>
+        {myShopIds.length > 1 && <ShopFilter consolidated={consolidated} />}
+        <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
+      </Toolbar>
+
+
+      <TablePanel>
         <Table>
           <TableHeader>
             <TableRow>
@@ -123,7 +124,7 @@ export default async function PersonnelReportPage({
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </TablePanel>
+    </Page>
   );
 }

@@ -48,7 +48,7 @@ export function AdjustStockForm({ variants }: { variants: { id: string; label: s
         </div>
       </div>
 
-      <Button type="submit" variant="outline" className="self-start" disabled={isPending}>
+      <Button type="submit" variant="outline" className="self-end" disabled={isPending}>
         {isPending ? "Enregistrement..." : "Enregistrer l'ajustement"}
       </Button>
     </form>

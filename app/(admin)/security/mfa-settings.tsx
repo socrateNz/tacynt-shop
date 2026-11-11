@@ -59,7 +59,7 @@ export function MfaSettings({ initiallyEnabled }: { initiallyEnabled: boolean })
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6">
-      <h2 className="text-sm font-medium text-foreground">Double authentification (MFA)</h2>
+      <h2 className="text-base font-semibold text-foreground">Double authentification (MFA)</h2>
       <p className="text-sm text-muted-foreground">
         Recommandée pour les rôles Propriétaire et Gérant (section 8 du cahier des charges).
       </p>

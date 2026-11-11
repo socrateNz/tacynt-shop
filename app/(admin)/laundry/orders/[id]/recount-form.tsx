@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 
+import { TablePanel } from "@/components/admin/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -46,7 +47,7 @@ export function RecountForm({
   return (
     <form action={formAction} className="flex flex-col gap-3">
       <input type="hidden" name="orderId" value={orderId} />
-      <div className="rounded-xl border border-border bg-card">
+      <TablePanel>
         <Table>
           <TableHeader>
             <TableRow>
@@ -91,7 +92,7 @@ export function RecountForm({
             })}
           </TableBody>
         </Table>
-      </div>
+      </TablePanel>
 
       {editable && (
         <div className="flex flex-wrap items-center justify-between gap-3">

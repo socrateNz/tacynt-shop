@@ -25,12 +25,11 @@ export function FulfillForm({ orderId, totalTtc }: { orderId: string; totalTtc: 
   return (
     <form
       action={formAction}
-      className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
+      className="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-4"
     >
-      <h2 className="text-sm font-medium text-foreground">Encaisser / Marquer récupérée</h2>
+      <h2 className="text-base font-semibold text-foreground">Encaisser la commande</h2>
       <p className="text-sm text-muted-foreground">
-        Convertit la commande en vente normale — décrémente le stock à ce moment précis, jamais
-        avant.
+        À faire quand le client récupère sa commande : elle devient une vente et le stock est décompté à ce moment-là.
       </p>
       {state.error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

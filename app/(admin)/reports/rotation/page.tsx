@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, TablePanel, Toolbar } from "@/components/admin/page";
 import {
   Table,
   TableBody,
@@ -54,23 +55,12 @@ export default async function RotationReportPage({
   );
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Rotation</h1>
-          <p className="text-sm text-muted-foreground">
-            Du {period.fromInput} au {period.toInput}
-          </p>
-        </div>
-        <div className="no-print flex flex-wrap items-center gap-2">
-          {myShopIds.length > 1 && <ShopFilter consolidated={consolidated} />}
-          <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
-        </div>
-      </header>
-
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-medium text-foreground">Produits les plus vendus</h2>
+    <Page>
+      <PageHeader
+        back={{ href: "/reports", label: "Rapports" }}
+        title="Rotation"
+        description={<>Du {period.fromInput} au {period.toInput}</>}
+        actions={
           <ExportButtons
             rows={report.plusVendus}
             columns={[
@@ -85,8 +75,19 @@ export default async function RotationReportPage({
               devise: organization.devise,
             }}
           />
+        }
+      />
+
+      <Toolbar>
+        {myShopIds.length > 1 && <ShopFilter consolidated={consolidated} />}
+        <PeriodFilter fromInput={period.fromInput} toInput={period.toInput} />
+      </Toolbar>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-foreground">Produits les plus vendus</h2>
         </div>
-        <div className="rounded-xl border border-border bg-card">
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -110,14 +111,14 @@ export default async function RotationReportPage({
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-foreground">
+        <h2 className="text-base font-semibold text-foreground">
           Produits dormants (aucune vente sur la période)
         </h2>
-        <div className="rounded-xl border border-border bg-card">
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -141,16 +142,16 @@ export default async function RotationReportPage({
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-foreground">Taux de rotation</h2>
+        <h2 className="text-base font-semibold text-foreground">Taux de rotation</h2>
         <p className="text-xs text-muted-foreground">
           Quantité vendue sur la période ÷ stock actuel — un taux élevé signale un produit qui
           tourne vite.
         </p>
-        <div className="rounded-xl border border-border bg-card">
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -171,8 +172,8 @@ export default async function RotationReportPage({
               ))}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </section>
-    </div>
+    </Page>
   );
 }

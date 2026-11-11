@@ -110,14 +110,22 @@ export function ProductEditDialog({
   categories,
   showLots,
   showSerial,
+  open: openProp,
+  onOpenChange,
 }: {
   product: ProductEditValues;
   categories: { id: string; nom: string }[];
   showLots: boolean;
   showSerial: boolean;
+  // Mode contrôlé (ouvert depuis le menu d'actions de la ligne) : pas de
+  // bouton déclencheur propre.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [variantRows, setVariantRows] = useState<VariantRow[]>(() =>
@@ -225,10 +233,12 @@ export function ProductEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-        <Pencil className="size-3.5" />
-        <span className="sr-only">Modifier</span>
-      </DialogTrigger>
+      {openProp === undefined && (
+        <DialogTrigger render={<Button variant="ghost" size="sm" />}>
+          <Pencil className="size-3.5" />
+          Modifier
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Modifier — {product.designation}</DialogTitle>
@@ -506,7 +516,7 @@ export function ProductEditDialog({
             )}
           </div>
 
-          <Button type="submit" className="self-start" disabled={isPending}>
+          <Button type="submit" className="self-end" disabled={isPending}>
             {isPending ? "Enregistrement..." : "Enregistrer les modifications"}
           </Button>
         </form>

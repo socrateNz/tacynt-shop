@@ -27,7 +27,7 @@ export function SupplierPaymentForm({ supplierId }: { supplierId: string }) {
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Enregistrer un paiement</h2>
+      <h2 className="text-base font-semibold text-foreground">Enregistrer un paiement</h2>
       {state.error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}
@@ -67,7 +67,7 @@ export function SupplierSettingsForm({
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Paramètres</h2>
+      <h2 className="text-base font-semibold text-foreground">Paramètres</h2>
       {state.error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}
@@ -87,7 +87,7 @@ export function SupplierSettingsForm({
         <input type="checkbox" name="actif" defaultChecked={actif} className="size-4" />
         Fournisseur actif
       </label>
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending ? "Enregistrement..." : "Mettre à jour"}
       </Button>
     </form>
@@ -108,7 +108,7 @@ export function SupplierProductForm({
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Associer un produit</h2>
+      <h2 className="text-base font-semibold text-foreground">Associer un produit</h2>
       {state.error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}
@@ -141,7 +141,7 @@ export function SupplierProductForm({
           Fournisseur préféré
         </label>
       </div>
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending ? "Ajout..." : "Associer"}
       </Button>
     </form>

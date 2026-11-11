@@ -28,7 +28,7 @@ export function AccountingMappingForm({ mapping }: { mapping: AccountingMapping 
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Plan comptable</h2>
+      <h2 className="text-base font-semibold text-foreground">Plan comptable</h2>
       <p className="text-sm text-muted-foreground">
         Mapping par défaut inspiré du SYSCOHADA — un point de départ éditable, pas une garantie
         de conformité comptable certifiée.
@@ -68,7 +68,7 @@ export function AccountingMappingForm({ mapping }: { mapping: AccountingMapping 
           </div>
         ))}
       </div>
-      <Button type="submit" className="mt-2 self-start" disabled={isPending}>
+      <Button type="submit" className="mt-2 self-end" disabled={isPending}>
         {isPending ? "Enregistrement..." : "Enregistrer"}
       </Button>
     </form>

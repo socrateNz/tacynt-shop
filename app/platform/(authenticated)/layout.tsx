@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MobileNav, SidebarNav, type NavLink } from "@/components/ui/sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 import { platformPrisma } from "@/lib/db/platform-client";
 import { getPlatformAdminContext } from "@/lib/platform/context";
 
@@ -39,10 +40,10 @@ export default async function PlatformLayout({ children }: { children: ReactNode
     <div className="flex h-dvh min-h-0">
       <SidebarNav brand="Tacynt Shop" topLinks={topLinks} logoutAction="/api/platform/auth/logout" />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
-        <header className="no-print flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3 lg:px-6 lg:py-4">
+        <header className="no-print flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 lg:px-6">
           <div className="flex min-w-0 items-center gap-2">
             <MobileNav brand="Tacynt Shop" topLinks={topLinks} logoutAction="/api/platform/auth/logout" />
-            <span className="truncate text-sm font-semibold text-foreground">Espace admin plateforme</span>
+            <Breadcrumbs />
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <ThemeToggle />
@@ -71,8 +72,8 @@ export default async function PlatformLayout({ children }: { children: ReactNode
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-6 md:px-6 lg:py-10">
-          <div className="w-full">{children}</div>
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-6 md:px-6 lg:px-8 lg:py-8">
+          <div className="mx-auto w-full max-w-[1440px]">{children}</div>
         </main>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, StatCard, TablePanel } from "@/components/admin/page";
 import {
   Table,
   TableBody,
@@ -32,48 +33,10 @@ export default async function CreancesReportPage() {
   );
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Créances</h1>
-        <p className="text-sm text-muted-foreground">
-          Balance âgée des ardoises clients — instantané au moment présent.
-        </p>
-      </header>
-
-      <div className="rounded-xl border border-border bg-card p-4">
-        <p className="text-xs font-medium text-muted-foreground uppercase">Total dû</p>
-        <p className="num text-2xl font-semibold text-foreground">
-          {formatMoney(report.totalDu, organization.devise)}
-        </p>
-      </div>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-foreground">Par tranche d&apos;âge</h2>
-        <div className="rounded-xl border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tranche</TableHead>
-                <TableHead className="text-right">Montant</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {report.parTranche.map((r) => (
-                <TableRow key={r.tranche}>
-                  <TableCell className="text-foreground">{r.tranche}</TableCell>
-                  <TableCell className="num text-right">
-                    {formatMoney(r.montant, organization.devise)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-medium text-foreground">Par client</h2>
+    <Page>
+      <PageHeader
+        back={{ href: "/reports", label: "Rapports" }}
+        actions={
           <ExportButtons
             rows={report.parClient}
             columns={[
@@ -93,8 +56,42 @@ export default async function CreancesReportPage() {
               summary: [{ label: "Total dû", value: formatMoney(report.totalDu, organization.devise) }],
             }}
           />
+        }
+        title="Créances"
+        description="Balance âgée des ardoises clients — instantané au moment présent."
+      />
+
+      <StatCard label="Total dû" value={formatMoney(report.totalDu, organization.devise)} />
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold text-foreground">Par tranche d&apos;âge</h2>
+        <TablePanel>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tranche</TableHead>
+                <TableHead className="text-right">Montant</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {report.parTranche.map((r) => (
+                <TableRow key={r.tranche}>
+                  <TableCell className="text-foreground">{r.tranche}</TableCell>
+                  <TableCell className="num text-right">
+                    {formatMoney(r.montant, organization.devise)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TablePanel>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-foreground">Par client</h2>
         </div>
-        <div className="rounded-xl border border-border bg-card">
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -138,8 +135,8 @@ export default async function CreancesReportPage() {
               )}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
       </section>
-    </div>
+    </Page>
   );
 }

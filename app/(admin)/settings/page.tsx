@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader } from "@/components/admin/page";
 import { systemPrisma } from "@/lib/db/system-client";
 import { hasCapability } from "@/lib/permissions";
 import { getTenantContext } from "@/lib/tenant/context";
@@ -27,10 +28,11 @@ export default async function SettingsPage() {
   const settings = parseOrgSettings(organization.settings);
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-xl font-semibold text-foreground">Paramètres</h1>
-      </header>
+    <Page>
+      <PageHeader
+        title="Paramètres"
+        description="Réglages de l'organisation : métier, devise, modules, marque et notifications."
+      />
 
       {canManageShop && (
         <>
@@ -38,7 +40,7 @@ export default async function SettingsPage() {
           <DeviseForm devise={organization.devise} />
 
           <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6">
-            <h2 className="text-sm font-medium text-foreground">Modules premium</h2>
+            <h2 className="text-base font-semibold text-foreground">Modules premium</h2>
             <p className="text-sm text-muted-foreground">
               Activés par l&apos;équipe Tacynt après souscription — aucune bascule en
               libre-service depuis cet espace.
@@ -86,6 +88,6 @@ export default async function SettingsPage() {
           email={settings.onlineOrderEmailAlert?.email ?? null}
         />
       )}
-    </div>
+    </Page>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { Eye } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
+import { TablePanel } from "@/components/admin/page";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -55,9 +56,9 @@ export function TransferDialog({
 }) {
   return (
     <Dialog>
-      <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-        <Eye className="size-3.5" />
-        <span className="sr-only">Voir</span>
+      <DialogTrigger render={<Button variant="ghost" size="sm" />}>
+        Ouvrir
+        <ChevronRight className="size-3.5" />
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -69,7 +70,7 @@ export function TransferDialog({
           Statut : {STATUS_LABELS[statut] ?? statut}
         </p>
 
-        <div className="rounded-xl border border-border bg-card">
+        <TablePanel>
           <Table>
             <TableHeader>
               <TableRow>
@@ -102,7 +103,7 @@ export function TransferDialog({
               })}
             </TableBody>
           </Table>
-        </div>
+        </TablePanel>
 
         {statut === "DEMANDE" && (
           <>
@@ -114,9 +115,9 @@ export function TransferDialog({
                 quantiteDemandee: l.quantiteDemandee,
               }))}
             />
-            <form action={cancelTransfer}>
+            <form action={cancelTransfer} className="border-t border-border pt-3">
               <input type="hidden" name="transferId" value={transferId} />
-              <Button type="submit" variant="ghost">
+              <Button type="submit" variant="ghost" className="text-destructive hover:text-destructive">
                 Annuler la demande
               </Button>
             </form>

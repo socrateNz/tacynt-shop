@@ -25,7 +25,7 @@ export function ProfilMetierForm({ profilMetier }: { profilMetier: string }) {
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Profil métier</h2>
+      <h2 className="text-base font-semibold text-foreground">Profil métier</h2>
       <p className="text-sm text-muted-foreground">
         Active les spécificités de votre secteur (lots et péremption, numéros de série...).
         Modifiable à tout moment.
@@ -69,7 +69,7 @@ export function DeviseForm({ devise }: { devise: string }) {
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Devise</h2>
+      <h2 className="text-base font-semibold text-foreground">Devise</h2>
       <p className="text-sm text-muted-foreground">
         Utilisée pour tous les prix affichés (catalogue, panier, caisse, rapports).
       </p>
@@ -125,7 +125,7 @@ export function OnlineOrderEmailAlertForm({
       action={formAction}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
     >
-      <h2 className="text-sm font-medium text-foreground">Alerte email — commandes en ligne</h2>
+      <h2 className="text-base font-semibold text-foreground">Alerte email — commandes en ligne</h2>
       <p className="text-sm text-muted-foreground">
         Reçoit un email à chaque nouvelle commande passée sur la vitrine, en plus des notifications
         affichées dans l&apos;admin.
@@ -159,7 +159,7 @@ export function OnlineOrderEmailAlertForm({
           />
         </div>
       )}
-      <Button type="submit" className="self-start" disabled={isPending}>
+      <Button type="submit" className="self-end" disabled={isPending}>
         {isPending ? "Enregistrement..." : "Enregistrer"}
       </Button>
     </form>

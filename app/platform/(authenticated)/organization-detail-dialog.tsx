@@ -1,7 +1,8 @@
 "use client";
 
-import { Eye } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
+import { TablePanel } from "@/components/admin/page";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -65,9 +66,9 @@ export function OrganizationDetailDialog({
 }) {
   return (
     <Dialog>
-      <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-        <Eye className="size-3.5" />
-        <span className="sr-only">Voir</span>
+      <DialogTrigger render={<Button variant="ghost" size="sm" />}>
+        Ouvrir
+        <ChevronRight className="size-3.5" />
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
@@ -86,7 +87,7 @@ export function OrganizationDetailDialog({
 
         <section className="flex flex-col gap-4">
           <h3 className="text-sm font-medium text-foreground">Historique des paiements constatés</h3>
-          <div className="rounded-xl border border-border bg-card">
+          <TablePanel>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -114,7 +115,7 @@ export function OrganizationDetailDialog({
                 )}
               </TableBody>
             </Table>
-          </div>
+          </TablePanel>
         </section>
 
         <DeleteOrganizationForm organizationId={organizationId} slug={slug} />

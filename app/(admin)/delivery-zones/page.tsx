@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { Page, PageHeader, TablePanel } from "@/components/admin/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -52,59 +53,58 @@ export default async function DeliveryZonesPage() {
   }));
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Zones de livraison</h1>
-          <p className="text-sm text-muted-foreground">
-            Les quartiers ou secteurs que chaque boutique livre, avec leur prix. Le client choisit obligatoirement
-            l&apos;une de ces zones et précise un lieu-dit.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <DeliverySettingsDialog shops={settings} devise={devise} />
-          <Dialog>
-            <DialogTrigger render={<Button className="gap-1.5" disabled={shops.length === 0} />}>
-              <Plus className="size-4" />
-              Nouvelle zone
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-sm">
-              <DialogHeader>
-                <DialogTitle>Nouvelle zone de livraison</DialogTitle>
-              </DialogHeader>
-              <form action={createDeliveryZone} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="shopId">Boutique</Label>
-                  <select
-                    id="shopId"
-                    name="shopId"
-                    required
-                    className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
-                  >
-                    {shops.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nom}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="nom">Nom de la zone</Label>
-                  <Input id="nom" name="nom" required maxLength={120} placeholder="Bonamoussadi" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="frais">Prix de la livraison ({devise})</Label>
-                  <Input id="frais" name="frais" type="number" min={0} step="1" inputMode="decimal" placeholder="0" />
-                  <p className="text-xs text-muted-foreground">Laissez vide ou 0 pour une livraison gratuite.</p>
-                </div>
-                <Button type="submit" className="self-start">
-                  Ajouter
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </header>
+    <Page>
+      <PageHeader
+        title="Zones de livraison"
+        description={<>Les quartiers ou secteurs que chaque boutique livre, avec leur prix. Le client choisit obligatoirement l&apos;une de ces zones et précise un lieu-dit.</>}
+        actions={
+          <>
+            <>
+              <DeliverySettingsDialog shops={settings} devise={devise} />
+              <Dialog>
+                <DialogTrigger render={<Button disabled={shops.length === 0} />}>
+                  <Plus />
+                  Nouvelle zone
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle>Nouvelle zone de livraison</DialogTitle>
+                  </DialogHeader>
+                  <form action={createDeliveryZone} className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="shopId">Boutique</Label>
+                      <select
+                        id="shopId"
+                        name="shopId"
+                        required
+                        className="h-8 rounded-md border border-border bg-background px-2.5 text-sm"
+                      >
+                        {shops.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.nom}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="nom">Nom de la zone</Label>
+                      <Input id="nom" name="nom" required maxLength={120} placeholder="Bonamoussadi" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="frais">Prix de la livraison ({devise})</Label>
+                      <Input id="frais" name="frais" type="number" min={0} step="1" inputMode="decimal" placeholder="0" />
+                      <p className="text-xs text-muted-foreground">Laissez vide ou 0 pour une livraison gratuite.</p>
+                    </div>
+                    <Button type="submit" className="self-end">
+                      Ajouter
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </>
+          </>
+        }
+      />
 
       {shops.map((shop) => {
         const shopZones = zones.filter((z) => z.shopId === shop.id);
@@ -114,7 +114,7 @@ export default async function DeliveryZonesPage() {
         return (
           <section key={shop.id} className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-sm font-medium text-foreground">{shop.nom}</h2>
+              <h2 className="text-base font-semibold text-foreground">{shop.nom}</h2>
               {!shop.livraisonActive ? (
                 <Badge variant="destructive">Livraison désactivée</Badge>
               ) : (
@@ -131,14 +131,16 @@ export default async function DeliveryZonesPage() {
                 <Badge variant="success">Gratuite dès {formatMoney(seuilGratuite, devise)}</Badge>
               )}
             </div>
-            <div className="rounded-xl border border-border bg-card">
+            <TablePanel>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Zone</TableHead>
                     <TableHead>Prix de la livraison</TableHead>
                     <TableHead>Statut</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+                    <TableHead className="w-12">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -159,8 +161,8 @@ export default async function DeliveryZonesPage() {
                             className="h-8 w-28"
                           />
                           <span className="text-xs text-muted-foreground">{devise}</span>
-                          <Button type="submit" variant="ghost" size="sm">
-                            OK
+                          <Button type="submit" variant="outline" size="sm">
+                            Enregistrer
                           </Button>
                         </form>
                       </TableCell>
@@ -186,10 +188,10 @@ export default async function DeliveryZonesPage() {
                   )}
                 </TableBody>
               </Table>
-            </div>
+            </TablePanel>
           </section>
         );
       })}
-    </div>
+    </Page>
   );
 }
