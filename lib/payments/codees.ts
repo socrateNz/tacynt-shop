@@ -148,3 +148,42 @@ export function verifyCodeesSignature(rawBody: string, signature: string | null)
   const b = Buffer.from(signature.trim().toLowerCase(), "utf8");
   return a.length === b.length && timingSafeEqual(a, b) ? "ok" : "invalide";
 }
+
+export type CodeesNetwork = "MTN_CM" | "ORANGE_CM";
+
+// Montants acceptés par le paiement direct (documenté) ; au-delà, on passe
+// par la page de paiement hébergée.
+export const DIRECT_MIN_XAF = 100;
+export const DIRECT_MAX_XAF = 500_000;
+
+export type ProcessPaymentInput = {
+  amount: number;
+  customer_phone: string;
+  network_code: CodeesNetwork;
+  reference: string;
+  customer_name?: string;
+  customer_email?: string;
+};
+
+// Paiement direct : Codees envoie une demande de paiement sur le téléphone
+// du client, qui la valide avec son code PIN Mobile Money — sans page web.
+// Réponse "pending" + transaction_id ; issue finale par webhook ou
+// /payment/status/. Le code PIN ne transite jamais par nos serveurs.
+// Refus immédiat (numéro/opérateur incohérents…) : 400 PAYMENT_REJECTED.
+export class CodeesRejectedError extends CodeesError {}
+
+export async function processPayment(input: ProcessPaymentInput): Promise<{ transaction_id: string; status: string }> {
+  const res = await codeesFetch("/payment/process/", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { detail?: string; error_code?: string; message?: string } | null;
+    const detail = body?.message || body?.detail || res.statusText || `Erreur Codees (${res.status})`;
+    if (body?.error_code === "PAYMENT_REJECTED") throw new CodeesRejectedError(detail, res.status);
+    throw new CodeesError(detail, res.status);
+  }
+  const body = (await res.json()) as { transaction_id?: string; status?: string };
+  if (!body.transaction_id) throw new CodeesError("Réponse Codees sans transaction_id.", res.status);
+  return { transaction_id: body.transaction_id, status: body.status ?? "pending" };
+}

@@ -3,15 +3,18 @@ import type { OnlineOrderPaymentStatus, Organization, PaymentProvider } from "@p
 import { recordAuditLog } from "@/lib/audit";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { notifyLaundryPaid } from "@/lib/marketplace/notifications";
-import { CodeesError, PAIEMENT_EXPIRATION_MS, createCheckout, getCheckoutStatus } from "@/lib/payments/codees";
-import { paymentOptions } from "@/lib/payments/methods";
-import { resolveFailureCode } from "@/lib/payments/service";
 import {
-  STRIPE_SESSION_TTL_MS,
-  StripePaymentError,
-  createStripeCheckout,
-  getStripeCheckoutState,
-} from "@/lib/payments/stripe";
+  CodeesError,
+  CodeesRejectedError,
+  PAIEMENT_EXPIRATION_MS,
+  createCheckout,
+  processPayment,
+} from "@/lib/payments/codees";
+import { failureMessage } from "@/lib/payments/failure";
+import { directPayer, type MobileMoneyPayer } from "@/lib/payments/initiate";
+import { paymentOptions } from "@/lib/payments/methods";
+import { fetchProviderStatus, resolveFailureCode } from "@/lib/payments/service";
+import { STRIPE_SESSION_TTL_MS, StripePaymentError, createStripeCheckout } from "@/lib/payments/stripe";
 
 // Paiement en ligne du montant DÉCLARÉ d'une commande de blanchisserie.
 // Même discipline que le paiement e-commerce (lib/payments/initiate.ts,
@@ -42,7 +45,10 @@ export async function initiateLaundryPayment(params: {
   provider: PaymentProvider;
   returnUrl: string;
   marketplaceCustomerId: string;
-}): Promise<{ ok: true; url: string } | { ok: false; detail: string }> {
+  mobileMoney?: MobileMoneyPayer;
+}): Promise<
+  { ok: true; mode: "CHECKOUT"; url: string } | { ok: true; mode: "DIRECT" } | { ok: false; detail: string }
+> {
   const { organization, orderId, provider, returnUrl } = params;
 
   return withTenantContext({ organizationId: organization.id }, async (tx) => {
@@ -58,7 +64,9 @@ export async function initiateLaundryPayment(params: {
     if (!paymentOptions(organization, order.shop).online.includes(provider)) {
       throw new LaundryPaymentError("MOYEN_INDISPONIBLE");
     }
-    if (provider === "CODEES" && !order.emailClient) throw new LaundryPaymentError("EMAIL_REQUIS");
+    const amount = Math.round(Number(order.totalDeclare));
+    const direct = directPayer(provider, params.mobileMoney, amount);
+    if (provider === "CODEES" && !direct && !order.emailClient) throw new LaundryPaymentError("EMAIL_REQUIS");
 
     const reference = `${organization.slug}-${order.numero}`;
     const payment = await tx.laundryPayment.create({
@@ -68,45 +76,67 @@ export async function initiateLaundryPayment(params: {
         shopId: order.shopId,
         laundryOrderId: order.id,
         fournisseur: provider,
+        canal: direct ? "DIRECT" : "CHECKOUT",
         montant: order.totalDeclare,
         devise: organization.devise,
         expiresAt: new Date(Date.now() + (provider === "STRIPE" ? STRIPE_SESSION_TTL_MS : PAIEMENT_EXPIRATION_MS)),
       },
     });
 
-    let outcome: { ok: true; url: string } | { ok: false; detail: string };
+    let outcome:
+      { ok: true; mode: "CHECKOUT"; url: string } | { ok: true; mode: "DIRECT" } | { ok: false; detail: string };
     try {
-      const checkout =
-        provider === "CODEES"
-          ? await createCheckout({
-              amount: String(Math.round(Number(order.totalDeclare))),
-              currency: "XAF",
-              reference,
-              customer_name: order.nomClient,
-              customer_email: order.emailClient!,
-              success_url: returnUrl,
-              cancel_url: returnUrl,
-            }).then((c) => ({ id: c.checkout_id, url: c.checkout_url }))
-          : await createStripeCheckout({
-              amount: Number(order.totalDeclare),
-              devise: organization.devise,
-              description: `Blanchisserie ${order.numero} — ${order.shop.nom}`,
-              reference,
-              customerEmail: order.emailClient,
-              successUrl: returnUrl,
-              cancelUrl: returnUrl,
-              metadata: { laundryPaymentId: payment.id, organizationId: organization.id },
-            });
+      if (direct) {
+        const started = await processPayment({
+          amount,
+          customer_phone: direct.telephone,
+          network_code: direct.operateur,
+          reference,
+          customer_name: order.nomClient,
+          ...(order.emailClient ? { customer_email: order.emailClient } : {}),
+        });
+        await tx.laundryPayment.update({
+          where: { id: payment.id },
+          data: { statut: "EN_ATTENTE", referenceExterne: started.transaction_id },
+        });
+        outcome = { ok: true, mode: "DIRECT" };
+      } else {
+        const checkout =
+          provider === "CODEES"
+            ? await createCheckout({
+                amount: String(Math.round(Number(order.totalDeclare))),
+                currency: "XAF",
+                reference,
+                customer_name: order.nomClient,
+                customer_email: order.emailClient!,
+                success_url: returnUrl,
+                cancel_url: returnUrl,
+              }).then((c) => ({ id: c.checkout_id, url: c.checkout_url }))
+            : await createStripeCheckout({
+                amount: Number(order.totalDeclare),
+                devise: organization.devise,
+                description: `Blanchisserie ${order.numero} — ${order.shop.nom}`,
+                reference,
+                customerEmail: order.emailClient,
+                successUrl: returnUrl,
+                cancelUrl: returnUrl,
+                metadata: { laundryPaymentId: payment.id, organizationId: organization.id },
+              });
+        await tx.laundryPayment.update({
+          where: { id: payment.id },
+          data: { statut: "EN_ATTENTE", referenceExterne: checkout.id },
+        });
+        outcome = { ok: true, mode: "CHECKOUT", url: checkout.url };
+      }
+    } catch (error) {
+      const rejected = error instanceof CodeesRejectedError;
+      const brut =
+        error instanceof CodeesError || error instanceof StripePaymentError ? error.message : "Erreur réseau inconnue.";
       await tx.laundryPayment.update({
         where: { id: payment.id },
-        data: { statut: "EN_ATTENTE", referenceExterne: checkout.id },
+        data: { statut: "ECHEC", erreurBrute: brut, codeEchec: rejected ? "PAYMENT_REJECTED" : "PAYMENT_FAILED" },
       });
-      outcome = { ok: true, url: checkout.url };
-    } catch (error) {
-      const detail =
-        error instanceof CodeesError || error instanceof StripePaymentError ? error.message : "Erreur réseau inconnue.";
-      await tx.laundryPayment.update({ where: { id: payment.id }, data: { statut: "ECHEC", erreurBrute: detail, codeEchec: "PAYMENT_FAILED" } });
-      outcome = { ok: false, detail };
+      outcome = { ok: false, detail: rejected ? failureMessage("PAYMENT_REJECTED") : brut };
     }
 
     await recordAuditLog(tx, {
@@ -115,31 +145,15 @@ export async function initiateLaundryPayment(params: {
       action: "LAUNDRY_PAYMENT_INITIATED",
       entite: "laundry_payment",
       entiteId: payment.id,
-      apres: { laundryOrderId: order.id, montant: Number(order.totalDeclare), fournisseur: provider, succes: outcome.ok },
+      apres: {
+        laundryOrderId: order.id,
+        montant: Number(order.totalDeclare),
+        fournisseur: provider,
+        succes: outcome.ok,
+      },
     });
     return outcome;
   });
-}
-
-async function providerStatus(
-  fournisseur: PaymentProvider,
-  ref: string,
-): Promise<{ next: OnlineOrderPaymentStatus | null; brut: string }> {
-  if (fournisseur === "STRIPE") {
-    const { state } = await getStripeCheckoutState(ref);
-    const next = state === "paid" ? "REUSSI" : state === "expired" ? "EXPIRE" : state === "unpaid_complete" ? "ECHEC" : null;
-    return { next, brut: state };
-  }
-  const { status } = await getCheckoutStatus(ref);
-  const next =
-    status === "completed"
-      ? "REUSSI"
-      : status === "failed" || status === "cancelled"
-        ? "ECHEC"
-        : status === "expired"
-          ? "EXPIRE"
-          : null;
-  return { next, brut: status };
 }
 
 // Seule source de vérité pour faire avancer un paiement de blanchisserie —
@@ -167,7 +181,7 @@ export async function verifyLaundryPayment(ctx: { organizationId: string; shopId
 
     let status;
     try {
-      status = await providerStatus(payment.fournisseur, payment.referenceExterne);
+      status = await fetchProviderStatus(payment);
     } catch {
       return { payment, order: payment.laundryOrder, justPaid: false };
     }
@@ -176,7 +190,10 @@ export async function verifyLaundryPayment(ctx: { organizationId: string; shopId
       return { payment, order: payment.laundryOrder, justPaid: false };
     }
 
-    const codeEchec = await resolveFailureCode(payment, status.next, status.brut);
+    const codeEchec =
+      status.next === "REUSSI"
+        ? null
+        : (status.failureCode ?? (await resolveFailureCode(payment, status.next, status.brut)));
     const updated = await tx.laundryPayment.update({
       where: { id: paymentId },
       data: { statut: status.next, dernierStatutBrut: status.brut, codeEchec },

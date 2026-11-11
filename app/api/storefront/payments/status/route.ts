@@ -51,7 +51,12 @@ export async function GET(request: Request) {
   return NextResponse.json({
     orderStatut,
     paiement: latestPayment
-      ? { statut: latestPayment.statut, expiresAt: latestPayment.expiresAt, echec: paymentFailure(latestPayment) }
+      ? {
+          statut: latestPayment.statut,
+          canal: latestPayment.canal,
+          expiresAt: latestPayment.expiresAt,
+          echec: paymentFailure(latestPayment),
+        }
       : null,
   });
 }

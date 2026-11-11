@@ -10,6 +10,11 @@ import { Label } from "@/components/ui/label";
 import { formatMoney } from "@/lib/money";
 
 import { useCart } from "../../cart-context";
+import { MobileMoneyFields, effectiveOperateur, mobileMoneyReady, type MobileMoneyValue } from "../mobile-money-fields";
+
+// Au-delà, Codees n'accepte plus le paiement direct : page hébergée, qui
+// exige un email.
+const DIRECT_MAX_XAF = 500_000;
 
 type Provider = "CODEES" | "STRIPE";
 type PaymentChoice = "RECEPTION" | Provider;
@@ -43,6 +48,8 @@ export function CheckoutForm({ devise }: { devise: string }) {
   const [minimumLivraison, setMinimumLivraison] = useState<number | null>(null);
   const [choice, setChoice] = useState<PaymentChoice>("RECEPTION");
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [mobileMoney, setMobileMoney] = useState<MobileMoneyValue>({ telephone: "", operateur: null });
+  const emailRequis = choice === "CODEES" && total > DIRECT_MAX_XAF;
   const isOnline = choice !== "RECEPTION";
 
   // Le paiement en ligne est décidé boutique par boutique (Shop côté
@@ -79,9 +86,21 @@ export function CheckoutForm({ devise }: { devise: string }) {
       const res = await fetch("/api/storefront/payments/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId, provider }),
+        body: JSON.stringify({
+          orderId,
+          provider,
+          // Mobile Money : paiement direct sur le téléphone du client, qui
+          // reste sur le site (page de suivi de la commande).
+          ...(provider === "CODEES"
+            ? { telephone: mobileMoney.telephone, operateur: effectiveOperateur(mobileMoney) }
+            : {}),
+        }),
       });
-      const body = (await res.json()) as { url?: string; error?: string };
+      const body = (await res.json()) as { mode?: "DIRECT" | "CHECKOUT"; url?: string; error?: string };
+      if (res.ok && body.mode === "DIRECT") {
+        router.push(`/merci/${orderId}`);
+        return;
+      }
       if (!res.ok || !body.url) {
         setError(body.error ?? "Échec du démarrage du paiement.");
         setPendingOrderId(orderId);
@@ -154,7 +173,11 @@ export function CheckoutForm({ devise }: { devise: string }) {
         <p className="text-sm text-muted-foreground">
           Votre commande est enregistrée, mais le paiement en ligne n&apos;a pas pu démarrer.
         </p>
-        <Button onClick={() => startPayment(pendingOrderId, choice === "RECEPTION" ? "STRIPE" : choice)} disabled={pending}>
+        {choice === "CODEES" && <MobileMoneyFields value={mobileMoney} onChange={setMobileMoney} idPrefix="retry" />}
+        <Button
+          onClick={() => startPayment(pendingOrderId, choice === "RECEPTION" ? "STRIPE" : choice)}
+          disabled={pending || (choice === "CODEES" && !mobileMoneyReady(mobileMoney))}
+        >
           {pending ? "Connexion au service de paiement..." : "Réessayer le paiement"}
         </Button>
       </div>
@@ -231,9 +254,9 @@ export function CheckoutForm({ devise }: { devise: string }) {
         {isOnline && (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="emailClient">
-              {choice === "CODEES" ? "Email (requis pour le paiement Mobile Money)" : "Email (reçu de paiement)"}
+              {emailRequis ? "Email (requis pour ce montant)" : "Email (reçu de paiement, facultatif)"}
             </Label>
-            <Input id="emailClient" name="emailClient" type="email" required={choice === "CODEES"} />
+            <Input id="emailClient" name="emailClient" type="email" required={emailRequis} />
           </div>
         )}
       </div>
@@ -355,15 +378,23 @@ export function CheckoutForm({ devise }: { devise: string }) {
               </label>
             ),
           )}
+          {choice === "CODEES" && !emailRequis && (
+            <MobileMoneyFields value={mobileMoney} onChange={setMobileMoney} />
+          )}
           <p className="text-xs text-muted-foreground">
-            {isOnline
+            {choice === "CODEES" && !emailRequis
+              ? "Vous restez sur le site : il suffit de valider la demande sur votre téléphone."
+              : isOnline
               ? "Vous serez redirigé(e) vers la page de paiement sécurisée."
               : "Vous payez directement à la boutique, au retrait ou à la livraison."}
           </p>
         </div>
       )}
 
-      <Button type="submit" disabled={pending || !paymentOptions}>
+      <Button
+        type="submit"
+        disabled={pending || !paymentOptions || (choice === "CODEES" && !emailRequis && !mobileMoneyReady(mobileMoney))}
+      >
         {pending ? "Envoi..." : isOnline ? "Payer maintenant" : "Confirmer la commande"}
       </Button>
     </form>

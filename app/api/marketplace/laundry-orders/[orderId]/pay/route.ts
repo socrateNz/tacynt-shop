@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { systemPrisma } from "@/lib/db/system-client";
 import { requestOrigin } from "@/lib/http/request-origin";
+import { readMobileMoneyPayer } from "@/lib/payments/payer-input";
 import { LAUNDRY_PAYMENT_ERRORS, LaundryPaymentError, initiateLaundryPayment } from "@/lib/laundry/payments";
 import { getMarketplaceCustomer, unauthorized } from "@/lib/marketplace/auth";
 import { resolveMarketplaceOrganization } from "@/lib/marketplace/catalog";
@@ -19,8 +20,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
   if (!customer) return unauthorized();
 
   const { orderId } = await params;
-  const body = (await request.json().catch(() => null)) as { provider?: string; appReturnUrl?: string } | null;
+  const body = (await request.json().catch(() => null)) as {
+    provider?: string;
+    appReturnUrl?: string;
+    telephone?: string;
+    operateur?: string;
+  } | null;
   const provider = PROVIDERS.find((p) => p === body?.provider);
+  // Numéro Mobile Money fourni = paiement direct sur le téléphone, sans
+  // quitter l'app ; sinon page de paiement hébergée.
+  const { payer, error: payerError } = readMobileMoneyPayer(body);
+  if (payerError) return NextResponse.json({ error: payerError }, { status: 400 });
   const appReturnUrl = String(body?.appReturnUrl ?? "");
   if (!provider) return NextResponse.json({ error: "Moyen de paiement invalide." }, { status: 400 });
   if (!isAllowedAppReturn(appReturnUrl)) {
@@ -41,9 +51,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
       provider,
       returnUrl: buildReturnUrl(requestOrigin(request), appReturnUrl, orderId),
       marketplaceCustomerId: customer.id,
+      mobileMoney: payer,
     });
     if (!result.ok) return NextResponse.json({ error: result.detail }, { status: 502 });
-    return NextResponse.json({ url: result.url });
+    return NextResponse.json(result.mode === "DIRECT" ? { mode: "DIRECT" } : { mode: "CHECKOUT", url: result.url });
   } catch (error) {
     if (error instanceof LaundryPaymentError) {
       const { status, error: message } = LAUNDRY_PAYMENT_ERRORS[error.code];

@@ -910,6 +910,13 @@ enum OnlineOrderPaymentMode {
   @@map("online_order_payment_mode")
 }
 
+enum PaymentChannel {
+  CHECKOUT
+  DIRECT
+
+  @@map("payment_channel")
+}
+
 model OnlineOrderPayment {
   id               String                   @id @default(uuid()) @db.Uuid
   organizationId   String                   @map("organization_id") @db.Uuid
@@ -931,6 +938,10 @@ model OnlineOrderPayment {
   // Raison d'un échec donnée par Codees (INSUFFICIENT_FUNDS…), ou ANNULE /
   // EXPIRE côté local.
   codeEchec        String?                  @map("code_echec")
+  // CHECKOUT = page de paiement hébergée (referenceExterne = checkout_id) ;
+  // DIRECT = demande envoyée au téléphone du client sans quitter l'app ou
+  // le site (referenceExterne = transaction_id).
+  canal            PaymentChannel           @default(CHECKOUT)
   expiresAt        DateTime                 @map("expires_at")
   createdAt        DateTime                 @default(now()) @map("created_at")
 
@@ -1995,6 +2006,7 @@ model LaundryPayment {
   erreurBrute      String?                  @map("erreur_brute")
   referenceMarchand String?                 @map("reference_marchand")
   codeEchec        String?                  @map("code_echec")
+  canal            PaymentChannel           @default(CHECKOUT)
   expiresAt        DateTime                 @map("expires_at")
   createdAt        DateTime                 @default(now()) @map("created_at")
 

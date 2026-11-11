@@ -14,6 +14,7 @@ const MESSAGES: Record<string, string> = {
   LIMIT_EXCEEDED: "Le montant dépasse le plafond de votre compte Mobile Money.",
   REVERSED: "L'opérateur a annulé ce paiement. Vous n'avez pas été débité.",
   PAYMENT_FAILED: "Le paiement a échoué. Réessayez dans quelques instants.",
+  PAYMENT_REJECTED: "Le paiement n'a pas pu démarrer. Vérifiez le numéro et l'opérateur (Orange ou MTN), puis réessayez.",
   ANNULE: "Le paiement a été annulé.",
   EXPIRE: "La session de paiement a expiré. Relancez le paiement.",
 };
@@ -21,6 +22,10 @@ const MESSAGES: Record<string, string> = {
 const GENERIQUE = "Le paiement n'a pas abouti. Réessayez.";
 
 export type PaymentFailure = { code: string; message: string };
+
+export function failureMessage(code: string): string {
+  return MESSAGES[code] ?? GENERIQUE;
+}
 
 // Raison à présenter pour un paiement terminé sans succès (null sinon).
 export function paymentFailure(payment: {

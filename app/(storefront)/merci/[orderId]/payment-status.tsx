@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { MobileMoneyFields, effectiveOperateur, mobileMoneyReady, type MobileMoneyValue } from "../../mobile-money-fields";
+
 type PaymentStatut = "INITIE" | "EN_ATTENTE" | "REUSSI" | "ECHEC" | "EXPIRE";
 
 const TERMINAL = new Set<PaymentStatut>(["REUSSI", "ECHEC", "EXPIRE"]);
@@ -12,16 +14,26 @@ export function PaymentStatus({
   orderConfirmee,
   statutInitial,
   echecInitial,
+  directInitial,
+  mobileMoney: mobileMoneyEnabled,
+  telephoneClient,
 }: {
   orderId: string;
   orderConfirmee: boolean;
   statutInitial: PaymentStatut | null;
   // Raison de l'échec (solde insuffisant…), déjà traduite côté serveur.
   echecInitial: string | null;
+  // Paiement direct en cours : la demande est sur le téléphone du client.
+  directInitial: boolean;
+  // Nouvel essai en Mobile Money direct possible (organisation camerounaise).
+  mobileMoney: boolean;
+  telephoneClient: string;
 }) {
   const [confirmee, setConfirmee] = useState(orderConfirmee);
   const [statut, setStatut] = useState<PaymentStatut | null>(statutInitial);
   const [echec, setEchec] = useState<string | null>(echecInitial);
+  const [direct, setDirect] = useState(directInitial);
+  const [payer, setPayer] = useState<MobileMoneyValue>({ telephone: telephoneClient, operateur: null });
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -34,7 +46,7 @@ export function PaymentStatus({
         const res = await fetch(`/api/storefront/payments/status?orderId=${orderId}`);
         const body = (await res.json()) as {
           orderStatut?: string;
-          paiement?: { statut: PaymentStatut; echec?: { message: string } | null } | null;
+          paiement?: { statut: PaymentStatut; canal?: string; echec?: { message: string } | null } | null;
         };
         if (body.orderStatut === "CONFIRMEE") {
           setConfirmee(true);
@@ -42,6 +54,7 @@ export function PaymentStatus({
         if (body.paiement) {
           setStatut(body.paiement.statut);
           setEchec(body.paiement.echec?.message ?? null);
+          setDirect(body.paiement.canal === "DIRECT");
         }
       } catch {
         // Une panne réseau côté client ne doit pas arrêter le suivi, on
@@ -62,9 +75,19 @@ export function PaymentStatus({
       const res = await fetch("/api/storefront/payments/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({
+          orderId,
+          ...(mobileMoneyEnabled ? { telephone: payer.telephone, operateur: effectiveOperateur(payer) } : {}),
+        }),
       });
-      const body = (await res.json()) as { url?: string; error?: string };
+      const body = (await res.json()) as { mode?: "DIRECT" | "CHECKOUT"; url?: string; error?: string };
+      if (res.ok && body.mode === "DIRECT") {
+        // Nouvelle demande envoyée sur le téléphone : on reprend le suivi.
+        setEchec(null);
+        setDirect(true);
+        setStatut("EN_ATTENTE");
+        return;
+      }
       if (!res.ok || !body.url) {
         setRetryError(body.error ?? "Échec du démarrage du paiement.");
         return;
@@ -90,15 +113,25 @@ export function PaymentStatus({
           {echec ?? (statut === "EXPIRE" ? "La session de paiement a expiré." : "Le paiement a échoué.")}
         </p>
         {retryError && <p className="text-sm text-destructive">{retryError}</p>}
+        {mobileMoneyEnabled && <MobileMoneyFields value={payer} onChange={setPayer} idPrefix="retry" />}
         <button
           type="button"
           onClick={retryPayment}
-          disabled={retrying}
+          disabled={retrying || (mobileMoneyEnabled && !mobileMoneyReady(payer))}
           className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-60"
         >
           {retrying ? "Connexion au service de paiement..." : "Réessayer le paiement"}
         </button>
       </div>
+    );
+  }
+
+  if (direct) {
+    return (
+      <p className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-foreground">
+        Une demande de paiement a été envoyée sur votre téléphone. Validez-la avec votre code PIN Mobile Money :
+        cette page se mettra à jour toute seule.
+      </p>
     );
   }
 

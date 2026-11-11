@@ -9,7 +9,7 @@ import type { OnlineOrderPayment } from "@prisma/client";
 
 import { notifyOrderPaid } from "@/lib/marketplace/notifications";
 
-import { CodeesError, getCheckoutStatus, type CodeesCheckoutStatus } from "./codees";
+import { CodeesError, getCheckoutStatus, getPaymentStatus, type CodeesCheckoutStatus } from "./codees";
 import { fetchCodeesFailure } from "./failure";
 import { getStripeCheckoutState, type StripeSessionState } from "./stripe";
 
@@ -43,16 +43,51 @@ function mapStripeState(state: StripeSessionState): OnlineOrderPaymentStatus | n
   }
 }
 
+// Statut d'une transaction Mobile Money en paiement direct
+// (/payment/status/) : pending/processing = en attente.
+function mapCodeesTransaction(status: string): OnlineOrderPaymentStatus | null {
+  switch (status) {
+    case "completed":
+      return "REUSSI";
+    case "failed":
+    case "cancelled":
+    case "reversed":
+    case "refunded":
+      return "ECHEC";
+    default:
+      return null;
+  }
+}
+
+export type ProviderState = {
+  next: OnlineOrderPaymentStatus | null;
+  brut: string;
+  raw: unknown;
+  // Raison d'échec déjà connue (paiement direct : donnée avec le statut).
+  failureCode?: string | null;
+};
+
 // Interroge le prestataire de CE paiement (jamais l'autre) et renvoie le
 // statut local correspondant (null = toujours en attente) + la réponse brute
-// pour le journal.
-async function fetchProviderStatus(
-  payment: OnlineOrderPayment,
-): Promise<{ next: OnlineOrderPaymentStatus | null; brut: string; raw: unknown }> {
+// pour le journal. Partagé avec les paiements de blanchisserie.
+export async function fetchProviderStatus(payment: {
+  fournisseur: OnlineOrderPayment["fournisseur"];
+  canal: OnlineOrderPayment["canal"];
+  referenceExterne: string | null;
+}): Promise<ProviderState> {
   const ref = payment.referenceExterne!;
   if (payment.fournisseur === "STRIPE") {
     const { state, raw } = await getStripeCheckoutState(ref);
     return { next: mapStripeState(state), brut: state, raw };
+  }
+  if (payment.canal === "DIRECT") {
+    const result = await getPaymentStatus({ transactionId: ref });
+    const next = mapCodeesTransaction(result.status);
+    const failureCode =
+      next === "ECHEC"
+        ? (result.failure_code ?? (result.status === "reversed" || result.status === "refunded" ? "REVERSED" : null))
+        : null;
+    return { next, brut: result.status, raw: result, failureCode };
   }
   const result = await getCheckoutStatus(ref);
   return { next: mapCodeesStatus(result.status), brut: result.status, raw: result };
@@ -150,7 +185,10 @@ export async function verifyAndApplyPayment(ctx: TenantRef, paymentId: string) {
       return { payment, order: payment.onlineOrder, shopNom, justConfirmed: false };
     }
 
-    const codeEchec = await resolveFailureCode(payment, nextStatut, statusResult.brut);
+    const codeEchec =
+      nextStatut === "REUSSI"
+        ? null
+        : (statusResult.failureCode ?? (await resolveFailureCode(payment, nextStatut, statusResult.brut)));
     const updatedPayment = await tx.onlineOrderPayment.update({
       where: { id: paymentId },
       data: { statut: nextStatut, codeEchec },

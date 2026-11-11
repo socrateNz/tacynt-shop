@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { withTenantContext } from "@/lib/db/tenant-context";
 import { formatMoney } from "@/lib/money";
 import { paymentFailure } from "@/lib/payments/failure";
+import { codeesEligible } from "@/lib/payments/methods";
 import { getStorefrontOrganization } from "@/lib/storefront/context";
 
 import { StorefrontBreadcrumb } from "../../../storefront-breadcrumb";
@@ -118,6 +119,9 @@ export default async function MerciPage({
               orderConfirmee={order.statut === "CONFIRMEE"}
               statutInitial={latestPayment?.statut ?? null}
               echecInitial={latestPayment ? (paymentFailure(latestPayment)?.message ?? null) : null}
+              directInitial={latestPayment?.canal === "DIRECT"}
+              mobileMoney={codeesEligible(organization) && latestPayment?.fournisseur !== "STRIPE"}
+              telephoneClient={order.telephoneClient}
             />
           </div>
         ) : (
