@@ -218,6 +218,9 @@ model Organization {
   deliveryZones DeliveryZone[]
   laundryItems  LaundryItem[]
   laundryOrders LaundryOrder[]
+
+  vehicles        Vehicle[]
+  vehicleBookings VehicleBooking[]
   laundryPayments LaundryPayment[]
   @@map("organizations")
 }
@@ -345,6 +348,10 @@ model Shop {
   // les frais de la zone ne sont alors pas facturés. Case à cocher + montant.
   livraisonGratuiteActive Boolean  @default(false) @map("livraison_gratuite_active")
   montantLivraisonGratuite Decimal? @map("montant_livraison_gratuite") @db.Decimal(14, 2)
+  // Module Location de véhicules : supplément par jour quand le client
+  // demande un chauffeur — le même pour tous les véhicules de la boutique
+  // (décision utilisateur), jamais un montant par véhicule.
+  supplementChauffeurJour Decimal @default(0) @map("supplement_chauffeur_jour") @db.Decimal(12, 2)
 
   organization   Organization    @relation(fields: [organizationId], references: [id])
   userShops      UserShop[]
@@ -372,6 +379,9 @@ model Shop {
 
   laundryItems  LaundryItem[]
   laundryOrders LaundryOrder[]
+
+  vehicles        Vehicle[]
+  vehicleBookings VehicleBooking[]
   laundryPayments LaundryPayment[]
   @@index([organizationId])
   deliveryZones DeliveryZone[]
@@ -1039,6 +1049,7 @@ model Customer {
   rentalContracts RentalContract[]
 
   laundryOrders  LaundryOrder[]
+  vehicleBookings VehicleBooking[]
   @@index([organizationId])
   @@map("customers")
 }
@@ -1786,6 +1797,7 @@ model MarketplaceCustomer {
   rentalRequests RentalContract[]
 
   laundryOrders  LaundryOrder[]
+  vehicleBookings VehicleBooking[]
   @@map("marketplace_customers")
 }
 
@@ -2018,4 +2030,143 @@ model LaundryPayment {
   @@index([laundryOrderId])
   @@index([referenceMarchand])
   @@map("laundry_payments")
+}
+
+// ---------------------------------------------------------------------------
+// Module Location de véhicules (clé "location_vehicules"). Indépendant du
+// module Location (logements) : tarif à la JOURNÉE, réservation sur une
+// plage de dates, avec ou sans chauffeur.
+//
+// Une fiche = un MODÈLE (ex. "JETOUR T3 2024"), jamais un exemplaire :
+// `quantite` porte le nombre d'exemplaires identiques, et la disponibilité
+// se calcule par dates (lib/vehicles/bookings.ts) — on n'enregistre pas
+// trois fois le même véhicule.
+// ---------------------------------------------------------------------------
+
+enum VehicleDriverMode {
+  // Location sans chauffeur uniquement.
+  SANS_CHAUFFEUR
+  // Chauffeur obligatoire (le client ne conduit jamais).
+  AVEC_CHAUFFEUR
+  // Le client choisit au moment de réserver.
+  AU_CHOIX
+
+  @@map("vehicle_driver_mode")
+}
+
+model Vehicle {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  shopId         String  @map("shop_id") @db.Uuid
+  marque         String
+  modele         String
+  annee          Int?
+  description    String?
+  // Étiquettes saisies librement par le personnel ("Climatisé", "7 places",
+  // "Automatique"…) — pas d'enum : chaque loueur a les siennes. Le
+  // formulaire propose celles déjà utilisées pour éviter les doublons.
+  tags           String[] @default([])
+  prixJour       Decimal  @map("prix_jour") @db.Decimal(12, 2)
+  // false : la vitrine et l'app affichent "Prix sur demande" et ne montrent
+  // aucun total — le personnel communique le prix en rappelant le client.
+  afficherPrix   Boolean  @default(true) @map("afficher_prix")
+  chauffeurMode  VehicleDriverMode @default(AU_CHOIX) @map("chauffeur_mode")
+  // Caution demandée à la remise du véhicule (null = aucune), affichée au
+  // client seulement si afficherCaution.
+  caution         Decimal? @db.Decimal(12, 2)
+  afficherCaution Boolean  @default(true) @map("afficher_caution")
+  // Nombre d'exemplaires identiques disponibles à la location.
+  quantite       Int      @default(1)
+  // Un véhicule retiré ne se supprime pas (réservations déjà rattachées).
+  actif          Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  shop         Shop             @relation(fields: [shopId], references: [id])
+  images       VehicleImage[]
+  bookings     VehicleBooking[]
+
+  @@index([organizationId])
+  @@index([shopId])
+  @@map("vehicles")
+}
+
+// Même patron que RentalUnitImage : modèle séparé pour ne jamais alourdir
+// vehicle.findMany() avec image_data.
+model VehicleImage {
+  id             String  @id @default(uuid()) @db.Uuid
+  vehicleId      String  @map("vehicle_id") @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  shopId         String  @map("shop_id") @db.Uuid
+  position       Int     @default(0)
+  imageData      Bytes?  @map("image_data")
+  imageMimeType  String? @map("image_mime_type")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@map("vehicle_images")
+}
+
+enum VehicleBookingStatus {
+  // Demande du client, en attente de réponse du personnel.
+  DEMANDE
+  // Acceptée : un exemplaire est réservé sur ces dates.
+  CONFIRMEE
+  // Véhicule remis au client.
+  EN_COURS
+  // Véhicule rendu.
+  TERMINEE
+  ANNULEE
+
+  @@map("vehicle_booking_status")
+}
+
+model VehicleBooking {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  shopId         String  @map("shop_id") @db.Uuid
+  vehicleId      String  @map("vehicle_id") @db.Uuid
+  numero         String
+  customerId     String? @map("customer_id") @db.Uuid
+  // Identité au moment de la demande, jamais recalculée (même règle que
+  // RentalContract).
+  nomClient       String @map("nom_client")
+  telephoneClient String @map("telephone_client")
+  statut         VehicleBookingStatus @default(DEMANDE)
+  // Jour de prise et jour de retour, tous deux inclus dans la période
+  // d'occupation du véhicule.
+  dateDebut      DateTime @map("date_debut") @db.Date
+  dateFin        DateTime @map("date_fin") @db.Date
+  // Jours facturés : (dateFin - dateDebut), au moins 1.
+  nombreJours    Int      @map("nombre_jours")
+  avecChauffeur  Boolean  @default(false) @map("avec_chauffeur")
+  // Snapshots au moment de la demande — jamais recalculés si le tarif change.
+  prixJour                Decimal  @map("prix_jour") @db.Decimal(12, 2)
+  supplementChauffeurJour Decimal  @default(0) @map("supplement_chauffeur_jour") @db.Decimal(12, 2)
+  caution                 Decimal? @db.Decimal(12, 2)
+  // (prixJour + supplément chauffeur éventuel) × nombreJours, hors caution.
+  total          Decimal  @db.Decimal(14, 2)
+  notes          String?
+  // Compte client Sodu à l'origine de la demande (null hors app mobile).
+  marketplaceCustomerId String? @map("marketplace_customer_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at")
+  confirmedAt    DateTime? @map("confirmed_at")
+  startedAt      DateTime? @map("started_at")
+  returnedAt     DateTime? @map("returned_at")
+  cancelledAt    DateTime? @map("cancelled_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  shop         Shop         @relation(fields: [shopId], references: [id])
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id])
+  customer     Customer?    @relation(fields: [customerId], references: [id])
+  marketplaceCustomer MarketplaceCustomer? @relation(fields: [marketplaceCustomerId], references: [id])
+
+  @@unique([shopId, numero])
+  @@index([organizationId])
+  @@index([shopId])
+  @@index([vehicleId])
+  @@index([marketplaceCustomerId])
+  @@map("vehicle_bookings")
 }

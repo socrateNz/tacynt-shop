@@ -5,6 +5,8 @@ import { formatUnite } from "@/lib/tenant/units";
 import { systemPrisma } from "@/lib/db/system-client";
 import { OCCUPYING_STATUSES } from "@/lib/rentals/contracts";
 import { formatLocalityLabel } from "@/lib/rentals/types";
+import { toPublicVehicle, type PublicVehicle } from "@/lib/storefront/vehicles";
+import { availableTodayByVehicle } from "@/lib/vehicles/bookings";
 import { organizationHasModule } from "@/lib/tenant/modules";
 import { parseOrgSettings } from "@/lib/tenant/settings";
 
@@ -37,6 +39,7 @@ export type MarketplaceFilters = MarketplacePage & {
   // Fiche détail : toutes les variantes d'un produit / un logement précis.
   productId?: string;
   unitId?: string;
+  vehicleId?: string;
 };
 
 export type MarketplaceOrganization = {
@@ -48,6 +51,8 @@ export type MarketplaceOrganization = {
   locationEnabled: boolean;
   // Module Blanchisserie : catalogue de pièces à laver dans l'app.
   laundryEnabled: boolean;
+  // Module Location de véhicules.
+  vehiclesEnabled: boolean;
   logoUrl: string | null;
   storefrontUrl: string;
   // Coordonnées de la boutique vitrine (même boutique que celle dont le
@@ -92,7 +97,7 @@ async function findMarketplaceOrganizations() {
 // contrat que resolveStorefrontOrganization.
 export async function resolveMarketplaceOrganization(
   organizationId: string,
-  moduleKey: "ecommerce" | "location" | "blanchisserie",
+  moduleKey: "ecommerce" | "location" | "blanchisserie" | "location_vehicules",
 ): Promise<Organization | null> {
   if (!UUID_RE.test(organizationId)) return null;
   const organization = await systemPrisma.organization.findUnique({ where: { id: organizationId } });
@@ -125,6 +130,7 @@ export async function getMarketplaceOrganizations(): Promise<MarketplaceOrganiza
       ecommerceEnabled: organizationHasModule(o.enabledModules, "ecommerce"),
       locationEnabled: organizationHasModule(o.enabledModules, "location"),
       laundryEnabled: organizationHasModule(o.enabledModules, "blanchisserie"),
+      vehiclesEnabled: organizationHasModule(o.enabledModules, "location_vehicules"),
       logoUrl: branding?.hasLogo ? `/api/marketplace/organizations/${o.id}/logo` : null,
       storefrontUrl: storefrontUrl(o.slug, "/"),
       adresse: shop?.adresse ?? null,
@@ -146,6 +152,8 @@ type ShopResolution = {
   devise: string;
   ecommerceEnabled: boolean;
   locationEnabled: boolean;
+  vehiclesEnabled: boolean;
+  supplementChauffeurJour: number;
   adresse: string | null;
   telephone: string | null;
   paymentOptions: PaymentOptions;
@@ -187,6 +195,8 @@ async function resolveMarketplaceShops(): Promise<ShopResolution[]> {
       devise: org.devise,
       ecommerceEnabled: organizationHasModule(org.enabledModules, "ecommerce"),
       locationEnabled: organizationHasModule(org.enabledModules, "location"),
+      vehiclesEnabled: organizationHasModule(org.enabledModules, "location_vehicules"),
+      supplementChauffeurJour: Number(shop.supplementChauffeurJour),
       adresse: shop.adresse,
       telephone: shop.telephone,
       paymentOptions: paymentOptions(org, shop),
@@ -383,4 +393,71 @@ export async function getMarketplaceRentalUnits({
         },
       ];
     });
+}
+
+export type MarketplaceVehicle = PublicVehicle & {
+  devise: string;
+  organizationId: string;
+  organizationNom: string;
+  shopId: string;
+  storefrontUrl: string;
+};
+
+// Véhicules à louer de toutes les organisations marketplace ayant le module
+// Location de véhicules. Mêmes règles d'affichage que la vitrine
+// (lib/storefront/vehicles.ts) : prix et caution masqués ne sortent jamais
+// du serveur.
+export async function getMarketplaceVehicles({
+  skip = 0,
+  take,
+  organizationId,
+  q,
+  vehicleId,
+}: MarketplaceFilters = {}): Promise<MarketplaceVehicle[]> {
+  if (vehicleId && !UUID_RE.test(vehicleId)) return [];
+  const shops = (await resolveMarketplaceShops()).filter(
+    (s) => s.vehiclesEnabled && (!organizationId || s.organizationId === organizationId),
+  );
+  if (shops.length === 0) return [];
+
+  const shopById = new Map(shops.map((s) => [s.shopId, s]));
+  const term = q?.trim();
+
+  const vehicles = await systemPrisma.vehicle.findMany({
+    where: {
+      shopId: { in: [...shopById.keys()] },
+      actif: true,
+      ...(term
+        ? {
+            OR: [
+              { marque: { contains: term, mode: "insensitive" as const } },
+              { modele: { contains: term, mode: "insensitive" as const } },
+              { tags: { has: term } },
+            ],
+          }
+        : {}),
+      ...(vehicleId ? { id: vehicleId } : {}),
+    },
+    include: { images: { select: { id: true }, orderBy: { position: "asc" }, take: vehicleId ? 10 : 5 } },
+    orderBy: [{ marque: "asc" }, { modele: "asc" }, { annee: "desc" }],
+    skip,
+    take: clampTake(take),
+  });
+
+  const disponibles = await availableTodayByVehicle(systemPrisma, vehicles);
+
+  return vehicles.flatMap((v) => {
+    const shop = shopById.get(v.shopId);
+    if (!shop) return [];
+    return [
+      {
+        ...toPublicVehicle(v, shop.supplementChauffeurJour, disponibles.get(v.id) ?? 0),
+        devise: shop.devise,
+        organizationId: shop.organizationId,
+        organizationNom: shop.organizationNom,
+        shopId: shop.shopId,
+        storefrontUrl: storefrontUrl(shop.organizationSlug, `/vehicules/${v.id}?shop=${shop.shopId}`),
+      },
+    ];
+  });
 }

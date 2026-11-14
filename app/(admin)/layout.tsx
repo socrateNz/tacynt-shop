@@ -55,6 +55,8 @@ function buildGroups({
   pendingRentalRequests,
   laundryEnabled,
   pendingLaundryOrders,
+  vehiclesEnabled,
+  pendingVehicleBookings,
 }: {
   role: Role;
   ecommerceEnabled: boolean;
@@ -63,6 +65,8 @@ function buildGroups({
   pendingRentalRequests: number;
   laundryEnabled: boolean;
   pendingLaundryOrders: number;
+  vehiclesEnabled: boolean;
+  pendingVehicleBookings: number;
 }): NavGroup[] {
   const can = (capability: Capability) => hasCapability(role, capability);
 
@@ -114,6 +118,26 @@ function buildGroups({
           label: "Villes & quartiers",
           icon: "MapPin",
           show: can("location:manage") && locationEnabled,
+        },
+      ],
+    },
+    {
+      label: "Véhicules",
+      links: [
+        {
+          href: "/vehicles/bookings",
+          label: "Réservations",
+          icon: "CalendarDays",
+          badge: pendingVehicleBookings,
+          show: can("vehicles:manage") && vehiclesEnabled,
+        },
+        {
+          href: "/vehicles",
+          label: "Catalogue",
+          icon: "Car",
+          // Seul le catalogue : /vehicles/bookings a son propre lien.
+          exact: true,
+          show: can("vehicles:manage") && vehiclesEnabled,
         },
       ],
     },
@@ -205,7 +229,7 @@ function buildGroups({
       label: group.label,
       links: group.links
         .filter((link) => link.show)
-        .map(({ href, label, icon, badge }) => ({ href, label, icon, badge })),
+        .map(({ href, label, icon, badge, exact }) => ({ href, label, icon, badge, exact })),
     }))
     .filter((group) => group.links.length > 0);
 }
@@ -262,6 +286,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         )
       : 0;
 
+  // Demandes de location de véhicule en attente de réponse (badge du menu).
+  const vehiclesEnabled = organizationHasModule(organization?.enabledModules, "location_vehicules");
+  const pendingVehicleBookings =
+    vehiclesEnabled && hasCapability(ctx.role, "vehicles:manage")
+      ? await withTenantContext({ organizationId: ctx.organizationId }, (tx) =>
+          tx.vehicleBooking.count({ where: { statut: "DEMANDE" } }),
+        )
+      : 0;
+
   const navGroups = buildGroups({
     role: ctx.role,
     ecommerceEnabled: organizationHasModule(organization?.enabledModules, "ecommerce"),
@@ -270,6 +303,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     pendingRentalRequests,
     laundryEnabled,
     pendingLaundryOrders,
+    vehiclesEnabled,
+    pendingVehicleBookings,
   });
 
   const nav = {

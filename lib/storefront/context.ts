@@ -52,6 +52,8 @@ export type RootPageContext =
       // (sinon "not-found" juste en dessous).
       ecommerceEnabled: boolean;
       locationEnabled: boolean;
+      // Module Location de véhicules : troisième catalogue possible à la racine.
+      vehiclesEnabled: boolean;
     };
 
 // Racine "/" (M32 ; généralisé M38 au module Location) : contrairement à
@@ -85,11 +87,12 @@ export async function resolveRootPageContext(host: string): Promise<RootPageCont
 
   const ecommerceEnabled = organizationHasModule(organization.enabledModules, "ecommerce");
   const locationEnabled = organizationHasModule(organization.enabledModules, "location");
-  if (!ecommerceEnabled && !locationEnabled) {
+  const vehiclesEnabled = organizationHasModule(organization.enabledModules, "location_vehicules");
+  if (!ecommerceEnabled && !locationEnabled && !vehiclesEnabled) {
     return { kind: "not-found" };
   }
 
-  return { kind: "storefront", organization, ecommerceEnabled, locationEnabled };
+  return { kind: "storefront", organization, ecommerceEnabled, locationEnabled, vehiclesEnabled };
 }
 
 export async function getRootPageContext(): Promise<RootPageContext> {

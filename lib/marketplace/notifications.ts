@@ -148,6 +148,40 @@ export function notifyRentalRequestStatus(contractId: string): Promise<void> {
   });
 }
 
+export function notifyVehicleBookingStatus(bookingId: string): Promise<void> {
+  return safely("statut réservation véhicule", async () => {
+    const booking = await systemPrisma.vehicleBooking.findUnique({
+      where: { id: bookingId },
+      select: {
+        numero: true,
+        statut: true,
+        marketplaceCustomerId: true,
+        organization: { select: { nom: true } },
+        vehicle: { select: { marque: true, modele: true } },
+      },
+    });
+    if (!booking?.marketplaceCustomerId) return;
+    const vehicule = `${booking.vehicle.marque} ${booking.vehicle.modele}`;
+    const messages: Partial<Record<typeof booking.statut, { title: string; body: string }>> = {
+      CONFIRMEE: {
+        title: "Réservation acceptée",
+        body: `${booking.organization.nom} a accepté votre réservation ${booking.numero} (${vehicule}).`,
+      },
+      ANNULEE: {
+        title: "Réservation annulée",
+        body: `Votre réservation ${booking.numero} (${vehicule}) n'a pas pu être maintenue.`,
+      },
+      TERMINEE: {
+        title: "Location terminée",
+        body: `Merci ! Le retour du véhicule (${vehicule}) est enregistré.`,
+      },
+    };
+    const msg = messages[booking.statut];
+    if (!msg) return;
+    await sendToCustomer(booking.marketplaceCustomerId, { ...msg, data: { url: "/reservations" } });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Blanchisserie — mêmes règles : client Sodu uniquement, jamais bloquant.
 // Les commandes de blanchisserie apparaissent dans "Mes commandes" de l'app.

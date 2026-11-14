@@ -28,6 +28,7 @@ import { withTenantContext } from "@/lib/db/tenant-context";
 import { getStorefrontCatalog } from "@/lib/storefront/catalog";
 import { getRootPageContext, resolveStorefrontShopId } from "@/lib/storefront/context";
 import { getStorefrontRentalUnits } from "@/lib/storefront/rentals";
+import { getStorefrontVehicles } from "@/lib/storefront/vehicles";
 
 import { CatalogueClient } from "./catalogue-client";
 import { CatalogueTabs } from "./catalogue-tabs";
@@ -37,6 +38,7 @@ import { RentalCatalogueClient } from "./rental-catalogue-client";
 import { ScrollReveal } from "./scroll-reveal";
 import { StorefrontHero } from "./storefront-hero";
 import { StorefrontShell } from "./storefront-shell";
+import { VehicleCatalogueClient } from "./vehicle-catalogue-client";
 
 type Feature = { icon: LucideIcon; title: string; description: string; featured?: boolean };
 
@@ -507,14 +509,14 @@ export default async function Home({
     return <MarketingHome />;
   }
 
-  const { organization, ecommerceEnabled, locationEnabled } = context;
+  const { organization, ecommerceEnabled, locationEnabled, vehiclesEnabled } = context;
   const { shop: requestedShopId } = await searchParams;
   const shopId = await resolveStorefrontShopId(organization.id, requestedShopId);
   if (!shopId) {
     notFound();
   }
 
-  const [items, units] = await Promise.all([
+  const [items, units, vehicles] = await Promise.all([
     ecommerceEnabled
       ? withTenantContext({ organizationId: organization.id, shopId }, (tx) =>
           getStorefrontCatalog(tx, shopId),
@@ -523,6 +525,11 @@ export default async function Home({
     locationEnabled
       ? withTenantContext({ organizationId: organization.id, shopId }, (tx) =>
           getStorefrontRentalUnits(tx, shopId),
+        )
+      : Promise.resolve([]),
+    vehiclesEnabled
+      ? withTenantContext({ organizationId: organization.id, shopId }, (tx) =>
+          getStorefrontVehicles(tx, shopId),
         )
       : Promise.resolve([]),
   ]);
@@ -547,35 +554,34 @@ export default async function Home({
   // sont jamais comptés comme disponibles.
   const freeUnits = units.filter((u) => !u.occupe).length;
   const unitLabel = `${freeUnits} logement${freeUnits > 1 ? "s" : ""} disponible${freeUnits > 1 ? "s" : ""}`;
+  const vehicleLabel = `${vehicles.length} véhicule${vehicles.length > 1 ? "s" : ""} à louer`;
 
-  // Les deux modules actifs : un seul catalogue sous forme de deux onglets,
-  // jamais deux pages séparées (décision explicite de l'utilisateur).
-  // Priorité Produits par défaut, sauf catalogue produit vide — alors
-  // Logements prend la priorité (même si lui aussi est vide).
-  if (ecommerceEnabled && locationEnabled) {
-    return (
-      <StorefrontShell organization={organization}>
-        <StorefrontHero nom={organization.nom} subtitle={`${itemLabel} · ${unitLabel}`} />
-        <CatalogueTabs
-          defaultTab={items.length > 0 ? "produits" : "logements"}
+  // Un onglet par module vitrine actif, sur la même page (jamais des pages
+  // séparées — décision explicite de l'utilisateur). Ouvert par défaut : le
+  // premier catalogue non vide, dans l'ordre Produits → Logements →
+  // Véhicules.
+  const catalogues = [
+    ecommerceEnabled && {
+      value: "produits",
+      label: "Produits",
+      count: items.length,
+      subtitle: itemLabel,
+      content: (
+        <CatalogueClient
           items={items}
-          units={units}
           shopId={shopId}
           devise={organization.devise}
           allCategories={allCategories}
           priceCeiling={priceCeiling}
-          rentalPriceCeiling={rentalPriceCeiling}
-          dureeCeiling={dureeCeiling}
-          allVilles={allVilles}
         />
-      </StorefrontShell>
-    );
-  }
-
-  if (locationEnabled) {
-    return (
-      <StorefrontShell organization={organization}>
-        <StorefrontHero nom={organization.nom} subtitle={unitLabel} />
+      ),
+    },
+    locationEnabled && {
+      value: "logements",
+      label: "Logements",
+      count: units.length,
+      subtitle: unitLabel,
+      content: (
         <RentalCatalogueClient
           units={units}
           shopId={shopId}
@@ -584,22 +590,37 @@ export default async function Home({
           dureeCeiling={dureeCeiling}
           allVilles={allVilles}
         />
+      ),
+    },
+    vehiclesEnabled && {
+      value: "vehicules",
+      label: "Véhicules",
+      count: vehicles.length,
+      subtitle: vehicleLabel,
+      content: <VehicleCatalogueClient vehicles={vehicles} shopId={shopId} devise={organization.devise} />,
+    },
+  ].filter((c): c is Exclude<typeof c, false> => Boolean(c));
+
+  const subtitle = catalogues.map((c) => c.subtitle).join(" · ");
+
+  if (catalogues.length === 1) {
+    return (
+      <StorefrontShell organization={organization}>
+        <StorefrontHero nom={organization.nom} subtitle={subtitle} />
+        <div className="flex flex-col gap-6">{catalogues[0].content}</div>
       </StorefrontShell>
     );
   }
 
+  const defaultTab = (catalogues.find((c) => c.count > 0) ?? catalogues[0]).value;
+
   return (
     <StorefrontShell organization={organization}>
-      <StorefrontHero nom={organization.nom} subtitle={itemLabel} />
-      <div className="flex flex-col gap-6">
-        <CatalogueClient
-          items={items}
-          shopId={shopId}
-          devise={organization.devise}
-          allCategories={allCategories}
-          priceCeiling={priceCeiling}
-        />
-      </div>
+      <StorefrontHero nom={organization.nom} subtitle={subtitle} />
+      <CatalogueTabs
+        defaultTab={defaultTab}
+        tabs={catalogues.map(({ value, label, content }) => ({ value, label, content }))}
+      />
     </StorefrontShell>
   );
 }

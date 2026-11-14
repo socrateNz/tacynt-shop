@@ -8,6 +8,8 @@ import {
   BarChart3,
   Boxes,
   Building2,
+  CalendarDays,
+  Car,
   ClipboardList,
   FileUp,
   Home,
@@ -51,6 +53,8 @@ const ICONS = {
   BarChart3,
   Boxes,
   Building2,
+  CalendarDays,
+  Car,
   ClipboardList,
   FileUp,
   Home,
@@ -77,11 +81,19 @@ const ICONS = {
 } satisfies Record<string, LucideIcon>;
 
 export type IconKey = keyof typeof ICONS;
-export type NavLink = { href: string; label: string; icon: IconKey; badge?: number };
+export type NavLink = {
+  href: string;
+  label: string;
+  icon: IconKey;
+  badge?: number;
+  // true : actif uniquement sur cette URL exacte (lien parent d'un autre
+  // lien du menu, ex. /vehicles et /vehicles/bookings).
+  exact?: boolean;
+};
 export type NavGroup = { label: string; links: NavLink[] };
 
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/" || href === "/platform") return pathname === href;
+function isActive(pathname: string, href: string, exact = false): boolean {
+  if (exact || href === "/" || href === "/platform") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -124,7 +136,7 @@ function NavItem({
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
-  const active = isActive(pathname, link.href);
+  const active = isActive(pathname, link.href, link.exact);
   const Icon = ICONS[link.icon];
   return (
     <Link

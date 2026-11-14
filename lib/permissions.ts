@@ -37,6 +37,7 @@ export type Capability =
   | "ecommerce:manage"
   | "location:manage"
   | "laundry:manage"
+  | "vehicles:manage"
   | "white_label:manage";
 
 const ALL_CAPABILITIES: Capability[] = [
@@ -67,6 +68,7 @@ const ALL_CAPABILITIES: Capability[] = [
   "ecommerce:manage",
   "location:manage",
   "laundry:manage",
+  "vehicles:manage",
   "white_label:manage",
 ];
 

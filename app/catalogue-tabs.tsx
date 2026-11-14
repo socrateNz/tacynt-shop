@@ -1,67 +1,32 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
-import type { StorefrontItem } from "@/lib/storefront/catalog";
-import type { StorefrontRentalUnit } from "@/lib/storefront/rentals";
 
-import { CatalogueClient } from "./catalogue-client";
-import { RentalCatalogueClient } from "./rental-catalogue-client";
+export type CatalogueTab = { value: string; label: string; content: ReactNode };
 
-// Catalogue produit + logements à louer sous forme de deux onglets (M38),
-// jamais deux pages séparées — une seule page "/" quand les deux modules
-// sont actifs. defaultTab porte la règle de priorité décidée avec
-// l'utilisateur : Produits par défaut, sauf si le catalogue produit est
-// vide, où Logements prend la priorité (app/page.tsx calcule laquelle).
-export function CatalogueTabs({
-  defaultTab,
-  items,
-  units,
-  shopId,
-  devise,
-  allCategories,
-  priceCeiling,
-  rentalPriceCeiling,
-  dureeCeiling,
-  allVilles,
-}: {
-  defaultTab: "produits" | "logements";
-  items: StorefrontItem[];
-  units: StorefrontRentalUnit[];
-  shopId: string;
-  devise: string;
-  allCategories: string[];
-  priceCeiling: number;
-  rentalPriceCeiling: number;
-  dureeCeiling: number;
-  allVilles: string[];
-}) {
+// Les catalogues de la vitrine (produits, logements à louer, véhicules à
+// louer) sous forme d'onglets sur la même page "/" — jamais des pages
+// séparées (M38, étendu au module Location de véhicules). app/page.tsx
+// construit la liste des onglets selon les modules actifs et choisit celui
+// ouvert par défaut ; le contenu de chaque onglet est déjà rendu par lui.
+export function CatalogueTabs({ defaultTab, tabs }: { defaultTab: string; tabs: CatalogueTab[] }) {
   return (
     <Tabs defaultValue={defaultTab} className="flex flex-col gap-6">
-      <TabsList className="self-start">
-        <TabsTab value="produits">Produits</TabsTab>
-        <TabsTab value="logements">Logements</TabsTab>
+      <TabsList className="max-w-full self-start overflow-x-auto">
+        {tabs.map((tab) => (
+          <TabsTab key={tab.value} value={tab.value}>
+            {tab.label}
+          </TabsTab>
+        ))}
       </TabsList>
 
-      <TabsPanel value="produits">
-        <CatalogueClient
-          items={items}
-          shopId={shopId}
-          devise={devise}
-          allCategories={allCategories}
-          priceCeiling={priceCeiling}
-        />
-      </TabsPanel>
-
-      <TabsPanel value="logements">
-        <RentalCatalogueClient
-          units={units}
-          shopId={shopId}
-          devise={devise}
-          priceCeiling={rentalPriceCeiling}
-          dureeCeiling={dureeCeiling}
-          allVilles={allVilles}
-        />
-      </TabsPanel>
+      {tabs.map((tab) => (
+        <TabsPanel key={tab.value} value={tab.value}>
+          {tab.content}
+        </TabsPanel>
+      ))}
     </Tabs>
   );
 }

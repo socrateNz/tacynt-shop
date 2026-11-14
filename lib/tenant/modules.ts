@@ -22,6 +22,11 @@ export const MODULE_CATALOG = [
     desc: "Location de logements (chambres, studios, appartements, villas) : échéancier et suivi des paiements.",
   },
   {
+    key: "location_vehicules",
+    label: "Location de véhicules",
+    desc: "Catalogue de véhicules loués à la journée, avec ou sans chauffeur : demandes, réservations par dates, caution.",
+  },
+  {
     key: "blanchisserie",
     label: "Blanchisserie",
     desc: "Catalogue de pièces à laver (prix par pièce), commandes avec collecte/dépôt et recomptage.",

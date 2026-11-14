@@ -26,6 +26,7 @@ const PUBLIC_PATHS = new Set([
 
 const PRODUCT_IMAGE_PATH = /^\/api\/products\/[^/]+\/images\/[^/]+$/;
 const RENTAL_UNIT_IMAGE_PATH = /^\/api\/rentals\/units\/[^/]+\/images\/[^/]+$/;
+const VEHICLE_IMAGE_PATH = /^\/api\/vehicles\/[^/]+\/images\/[^/]+$/;
 
 // Chemins publics UNIQUEMENT pour certaines méthodes — /api/branding/logo
 // sert (GET, anonyme, résout l'organisation par host lui-même comme
@@ -40,7 +41,8 @@ function isPublicForMethod(pathname: string, method: string): boolean {
     method === "GET" &&
     (pathname === "/api/branding/logo" ||
       PRODUCT_IMAGE_PATH.test(pathname) ||
-      RENTAL_UNIT_IMAGE_PATH.test(pathname))
+      RENTAL_UNIT_IMAGE_PATH.test(pathname) ||
+      VEHICLE_IMAGE_PATH.test(pathname))
   );
 }
 
@@ -64,6 +66,8 @@ function isStorefrontPath(pathname: string): boolean {
     pathname === "/produit" ||
     pathname.startsWith("/produit/") ||
     pathname.startsWith("/locations/") ||
+    // Vitrine Location de véhicules : fiche + confirmation, même principe.
+    pathname.startsWith("/vehicules/") ||
     pathname.startsWith("/api/storefront/")
   );
 }

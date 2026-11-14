@@ -17,6 +17,8 @@ const SEGMENTS: Record<string, { label: string; link?: false }> = {
   contracts: { label: "Locations" },
   localities: { label: "Villes & quartiers" },
   laundry: { label: "Blanchisserie", link: false },
+  vehicles: { label: "Véhicules" },
+  bookings: { label: "Réservations" },
   orders: { label: "Commandes" },
   items: { label: "Catalogue" },
   catalog: { label: "Catalogue", link: false },
